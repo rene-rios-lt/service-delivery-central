@@ -2,39 +2,84 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Repository Purpose
+## Overview
 
-This is the **central governance repository** for the Service Delivery system. It does not contain application code — that lives in three separate repos:
+This is the **central governance repository** for the Service Delivery system. It does not contain application code — that lives in the repos below. This repo owns local dev orchestration, AI skill and agent definitions, and system-level documentation.
 
-- **Frontend** — [service-delivery-frontend](https://github.com/rene-rios-lt/service-delivery-frontend) — .NET MAUI Blazor Hybrid client targeting Desktop (macOS/Windows), Mobile (iOS/Android), and Web (Blazor WASM)
-- **Backend** — [service-deliver-backend](https://github.com/rene-rios-lt/service-deliver-backend) — .NET 10 Clean Architecture API + Azure infrastructure (Terraform)
-- **Central** — [service-delivery-central](https://github.com/rene-rios-lt/service-delivery-central) — this repo
+## Repositories
 
-This repo owns:
-- AI skills and agent definitions used across the system
-- Scripts to stand up the full system locally for development
+| Repo | URL | Purpose |
+|------|-----|---------|
+| Central (this repo) | [service-delivery-central](https://github.com/rene-rios-lt/service-delivery-central) | Local dev scripts, AI skills/agents, architecture docs |
+| Frontend | [service-delivery-frontend](https://github.com/rene-rios-lt/service-delivery-frontend) | .NET MAUI Blazor Hybrid — Desktop, Mobile, Web |
+| Backend | [service-deliver-backend](https://github.com/rene-rios-lt/service-deliver-backend) | .NET 10 Clean Architecture API + Azure (Terraform) |
 
 ## System Architecture
 
-The Service Delivery system is composed of:
+```
+Frontend (Core / UI / Desktop / Mobile / Web)
+         ↕ HTTP
+Backend  (Domain / Application / Infrastructure / Api)
+         ↕ Terraform
+Azure Infrastructure
+```
 
-- **Frontend** ([repo](https://github.com/rene-rios-lt/service-delivery-frontend)) — five-project structure: `Core` (models/interfaces/ViewModels), `UI` (all Razor components and pages), `Desktop` (macOS/Windows MAUI host), `Mobile` (iOS/Android MAUI host), `Web` (Blazor WASM host)
-- **Backend** ([repo](https://github.com/rene-rios-lt/service-deliver-backend)) — Clean Architecture: `Domain` → `Application` → `Infrastructure` → `Api`; Terraform infrastructure under `terraform/` targeting Azure
-- **Local Dev Orchestration** — Docker Compose managed from `scripts/local/` in this repo
+- **Frontend** — Five-project MAUI Blazor Hybrid solution. `Core` holds models and interfaces; `UI` holds all Razor components and pages; `Desktop`, `Mobile`, and `Web` are thin platform hosts.
+- **Backend** — Clean Architecture .NET 10 API. `Domain` → `Application` → `Infrastructure` → `Api`. Azure infrastructure provisioned via Terraform in `terraform/`.
+- **Local Dev** — Docker Compose in `scripts/local/` spins up the backend and its dependencies locally. The frontend runs natively and points at the local backend.
+
+## Commands
+
+```bash
+# Bring up the full system locally (once scripts are populated)
+./scripts/local/start.sh
+
+# Tear down local environment
+./scripts/local/stop.sh
+
+# Run a utility script
+./scripts/utils/<script-name>.sh
+```
+
+All scripts must be runnable from the repo root and must be executable (`chmod +x`).
 
 ## Directory Structure
 
-- `ai/skills/` — reusable AI skill definitions governing agent behavior across the system
-- `ai/agents/` — AI agent configurations and personas
-- `scripts/local/` — Docker Compose files and shell scripts to spin up the full system locally
-- `scripts/utils/` — shared helper scripts used across local and CI workflows
-- `docs/architecture/` — architecture diagrams and decision context
-- `docs/adr/` — Architecture Decision Records (ADRs)
+```
+ai/
+  skills/       # Reusable AI skill definitions (markdown)
+  agents/       # AI agent configurations that compose skills
+scripts/
+  local/        # Docker Compose files and shell scripts for local dev
+  utils/        # Shared helper scripts used across local and CI workflows
+docs/
+  architecture/ # Architecture diagrams and decision context
+  adr/          # Architecture Decision Records (ADRs)
+```
 
-## Local Development
+## Conventions
 
-Local environment orchestration scripts live in `scripts/local/`. Once populated, the canonical command to bring up the full system will be documented here. Scripts should be runnable from the repo root.
+### AI Skills (`ai/skills/`)
+- One file per skill, named in `kebab-case.md`
+- Each skill file defines: purpose, trigger conditions, inputs, outputs, and constraints
+- Skills are self-contained — they must not depend on other skill files
 
-## AI Skills & Agents
+### AI Agents (`ai/agents/`)
+- One file per agent, named in `kebab-case.md`
+- Each agent composes one or more skills from `ai/skills/` by reference
+- Agent files define: scope, persona, referenced skills, and behavioral guardrails
 
-Skills in `ai/skills/` are markdown-based definitions. Agents in `ai/agents/` reference skills and define scoped behaviors. Follow existing conventions when adding new skills or agents.
+### Scripts (`scripts/`)
+- Shell scripts only (`.sh`), written for `bash` or `zsh`
+- Each script must be idempotent — safe to run more than once
+- `scripts/local/` — orchestration only (Docker Compose, service startup/shutdown)
+- `scripts/utils/` — reusable helpers (e.g. env setup, token generation) sourced by other scripts
+
+### Architecture Decision Records (`docs/adr/`)
+- Named `NNNN-short-title.md` (e.g. `0001-use-clean-architecture.md`)
+- Follow the standard ADR format: Title, Status, Context, Decision, Consequences
+- Once a decision is `Accepted`, it is never deleted — superseded ADRs are updated to `Superseded` and linked to their replacement
+
+### Architecture Docs (`docs/architecture/`)
+- Diagrams should be stored as source files (e.g. `.drawio`, `.puml`) alongside exported images
+- Each diagram should have a brief accompanying `.md` file explaining what it shows and when it was last updated
