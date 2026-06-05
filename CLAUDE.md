@@ -4,10 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Purpose
 
-This is the **central governance repository** for the Service Delivery system. It does not contain application code — that lives in two separate repos:
+This is the **central governance repository** for the Service Delivery system. It does not contain application code — that lives in three separate repos:
 
-- **Client Repo** — .NET MAUI application targeting desktop, web, and mobile
-- **Backend Repo** — .NET 10 API + Azure infrastructure (Terraform)
+- **Frontend** — [service-delivery-frontend](https://github.com/rene-rios-lt/service-delivery-frontend) — .NET MAUI Blazor Hybrid client targeting Desktop (macOS/Windows), Mobile (iOS/Android), and Web (Blazor WASM)
+- **Backend** — [service-deliver-backend](https://github.com/rene-rios-lt/service-deliver-backend) — .NET 10 Clean Architecture API + Azure infrastructure (Terraform)
+- **Central** — [service-delivery-central](https://github.com/rene-rios-lt/service-delivery-central) — this repo
 
 This repo owns:
 - AI skills and agent definitions used across the system
@@ -17,9 +18,8 @@ This repo owns:
 
 The Service Delivery system is composed of:
 
-- **MAUI Client** — cross-platform UI (desktop, web via MAUI Blazor hybrid, mobile) in a separate repository
-- **.NET 10 Backend** — REST/gRPC API hosted on Azure in a separate repository
-- **Azure Infrastructure** — provisioned via Terraform, co-located with the backend repo
+- **Frontend** ([repo](https://github.com/rene-rios-lt/service-delivery-frontend)) — five-project structure: `Core` (models/interfaces/ViewModels), `UI` (all Razor components and pages), `Desktop` (macOS/Windows MAUI host), `Mobile` (iOS/Android MAUI host), `Web` (Blazor WASM host)
+- **Backend** ([repo](https://github.com/rene-rios-lt/service-deliver-backend)) — Clean Architecture: `Domain` → `Application` → `Infrastructure` → `Api`; Terraform infrastructure under `terraform/` targeting Azure
 - **Local Dev Orchestration** — Docker Compose managed from `scripts/local/` in this repo
 
 ## Directory Structure
