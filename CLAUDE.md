@@ -130,5 +130,8 @@ All production code must follow SOLID. The project structures in each repo are d
 - Once a decision is `Accepted`, it is never deleted — superseded ADRs are updated to `Superseded` and linked to their replacement
 
 ### Architecture Docs (`docs/architecture/`)
-- Diagrams should be stored as source files (e.g. `.drawio`, `.puml`) alongside exported images
-- Each diagram should have a brief accompanying `.md` file explaining what it shows and when it was last updated
+- All diagrams **must** be authored as **PlantUML (`.puml`)** source files in `docs/architecture/`
+- The `.puml` file is the authoritative source — markdown files may include ASCII art as a quick reference, but the `.puml` is what gets maintained
+- File naming: match the companion `.md` (e.g. `state-machines.md` → `state-machines.puml`)
+- When adding or changing a diagram: (1) create or update the `.puml` file, (2) reference it in the `.md` with a link or note
+- A PR that adds a new diagram to a `.md` without a corresponding `.puml` source will not be merged — enforced via PR checklist

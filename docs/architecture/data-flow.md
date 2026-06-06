@@ -1,5 +1,7 @@
 # Data Flow
 
+> **Source diagrams:** [`data-flow.puml`](data-flow.puml) — contains sequence diagrams for position updates, normal request lifecycle, priority redirect, and rep offline flows.
+
 ## Real-Time Position Updates
 
 ```

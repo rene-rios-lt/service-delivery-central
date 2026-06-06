@@ -1,0 +1,69 @@
+@startuml system-architecture
+title Service Delivery — System Architecture
+
+skinparam package {
+    BorderColor #455A64
+    BackgroundColor #ECEFF1
+    FontColor #263238
+    FontStyle bold
+}
+skinparam component {
+    BackgroundColor #E3F2FD
+    BorderColor #1565C0
+    FontColor #0D47A1
+}
+skinparam database {
+    BackgroundColor #F3E5F5
+    BorderColor #6A1B9A
+}
+skinparam arrow {
+    Color #37474F
+}
+
+package "service-delivery-simulator" as SimPkg {
+    component "VehicleWorker x8" as Workers
+    component "BackendApiClient\n(HTTP)" as ApiClient
+    component "SignalRClient" as SimSignalR
+    Workers --> ApiClient : uses
+    Workers --> SimSignalR : uses
+}
+
+package "service-deliver-backend" as BackendPkg {
+    component "REST Endpoints\n(/auth, /vehicles, /service-requests,\n/job-offers, /rep, /dispatcher)" as REST
+    component "SignalR Hubs\n(Position, Dispatch, Rep, Requester)" as Hubs
+    component "Application Layer\n(CQRS Handlers + Matching Algorithm)" as App
+    component "Domain Layer\n(Entities + Business Rules)" as Domain
+    component "Infrastructure Layer\n(Repositories)" as Infra
+    database "SQL Database" as DB
+
+    REST --> App
+    Hubs --> App
+    App --> Domain
+    App --> Infra
+    Infra --> DB
+}
+
+package "service-delivery-frontend" as FEPkg {
+    component "Dispatcher View\n(fleet map, request queue,\nredirect controls)" as DispView
+    component "ServiceRep View\n(vehicle selection, job offers,\nactive job, mark complete)" as RepView
+    component "Requester View\n(submit request, Uber-like\ntracking, redirect notification)" as ReqView
+    note bottom of FEPkg
+      Shared Razor UI across
+      Desktop (MAUI) / Web (WASM) / Mobile (MAUI)
+    end note
+}
+
+' Simulator → Backend (REST)
+ApiClient --> REST : POST /vehicles/{id}/position\n(every 3 seconds)\nPOST /job-offers/{id}/accept|decline\nPOST /rep/arrive\nPOST /rep/complete
+SimSignalR ..> Hubs : subscribe RepHub\n(receive JobOfferReceived)
+
+' Frontend → Backend (REST + SignalR)
+DispView --> REST : REST
+RepView --> REST : REST
+ReqView --> REST : REST
+
+DispView ..> Hubs : SignalR — fleet updates\n(VehiclePositionHub, DispatchHub)
+RepView ..> Hubs : SignalR — job offers\n(RepHub)
+ReqView ..> Hubs : SignalR — rep position, ETA\n(RequesterHub)
+
+@enduml

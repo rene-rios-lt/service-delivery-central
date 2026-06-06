@@ -1,5 +1,7 @@
 # State Machines
 
+> **Source diagrams:** [`state-machines.puml`](state-machines.puml) — contains all four state machines as PlantUML source. Render with any PlantUML-compatible tool or the [PlantUML online server](https://www.plantuml.com/plantuml).
+
 ## Service Rep States
 
 ```

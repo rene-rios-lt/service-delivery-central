@@ -1,5 +1,7 @@
 # System Overview
 
+> **Source diagram:** [`system-architecture.puml`](system-architecture.puml) — component diagram showing the 4-repo structure, REST and SignalR communication channels.
+
 ## What This System Does
 
 Service Delivery is an "Uber for service reps" — a fleet dispatch platform that connects service requesters with the nearest qualified field technician. When a requester reports a fault on their equipment (identified by a Diagnostic Trouble Code), the system finds the closest service vehicle carrying the right equipment to handle that specific fault, and dispatches the rep. Dispatchers manage the fleet, handle priority escalations, and ensure premium service plans are honored.

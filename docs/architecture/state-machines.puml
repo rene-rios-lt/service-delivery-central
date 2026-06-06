@@ -1,0 +1,132 @@
+@startuml rep-state-machine
+hide empty description
+title Service Rep State Machine
+
+skinparam state {
+    BackgroundColor #E3F2FD
+    BorderColor #1565C0
+    FontColor #0D47A1
+}
+
+state "Offline" as Offline
+state "Available" as Available
+state "En Route" as EnRoute
+state "Within 15 Miles" as Within15Miles #FFF3E0
+state "On Site" as OnSite #FFF3E0
+
+[*] --> Offline
+
+Offline --> Available : claims vehicle\n[Rep]
+Available --> EnRoute : accepts job offer\n[System]
+EnRoute --> Within15Miles : Haversine < 15 mi\n[Backend on position update]
+Within15Miles --> OnSite : taps "I've Arrived"\n[Rep]
+OnSite --> Available : taps "Mark Complete"\n[Rep]
+
+EnRoute -[dashed]-> Offline : disconnect / logout\n[SignalR OnDisconnectedAsync]
+Within15Miles -[dashed]-> Offline : disconnect / logout
+OnSite -[dashed]-> Offline : disconnect / logout
+Available -[dashed]-> Offline : explicit logout
+
+note right of EnRoute
+  Redirect allowed by dispatcher
+  subject to tier + cooldown rules
+end note
+
+note right of Within15Miles
+  PROTECTED
+  No redirect — any tier
+end note
+
+note right of OnSite
+  PROTECTED
+  No redirect — any tier
+end note
+
+@enduml
+
+@startuml request-state-machine
+hide empty description
+title Service Request State Machine
+
+skinparam state {
+    BackgroundColor #E8F5E9
+    BorderColor #2E7D32
+    FontColor #1B5E20
+}
+
+state "Pending" as Pending
+state "Assigned" as Assigned
+state "In Progress" as InProgress
+state "Completed" as Completed
+
+[*] --> Pending : requester submits
+
+Pending --> Assigned : rep accepts job offer
+Assigned --> InProgress : rep taps "I've Arrived"
+InProgress --> Completed : rep taps "Mark Complete"
+Completed --> [*]
+
+Assigned -[dashed]-> Pending : rep redirected\nOR rep goes Offline
+InProgress -[dashed]-> Pending : rep goes Offline mid-job
+
+@enduml
+
+@startuml vehicle-state-machine
+hide empty description
+title Vehicle State Machine
+
+skinparam state {
+    BackgroundColor #F3E5F5
+    BorderColor #6A1B9A
+    FontColor #4A148C
+}
+
+state "Unclaimed" as Unclaimed
+state "Claimed" as Claimed
+
+[*] --> Unclaimed : seeded at startup
+
+Unclaimed --> Claimed : rep selects vehicle\n[first-come, first-served]
+Claimed -[dashed]-> Unclaimed : rep logs out and releases
+Claimed -[dashed]-> Unclaimed : dispatcher force-releases
+
+note right of Claimed
+  Stays claimed if rep disconnects.
+  Released only by rep re-login + release
+  or dispatcher force-release.
+end note
+
+@enduml
+
+@startuml job-offer-state-machine
+hide empty description
+title Job Offer State Machine
+
+skinparam state {
+    BackgroundColor #FFF8E1
+    BorderColor #F57F17
+    FontColor #E65100
+}
+
+state "Pending" as Pending
+state "Accepted" as Accepted
+state "Declined" as Declined
+state "Expired" as Expired
+
+[*] --> Pending : offer sent to rep\n(60s countdown starts)
+
+Pending --> Accepted : rep taps Accept
+Pending --> Declined : rep taps Decline
+Pending --> Expired : 60s elapsed, no response
+
+Accepted --> [*] : request → Assigned
+Declined --> [*] : next best rep offered
+Expired --> [*] : treated as Declined\nrep permanently skipped for this job
+
+note bottom of Expired
+  Expired = Declined for all
+  business rule purposes.
+  Rep skipped even if request re-queues.
+end note
+
+@enduml
