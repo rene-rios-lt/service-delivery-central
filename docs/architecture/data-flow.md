@@ -157,9 +157,9 @@ for the pending job
 
 | Hub | Publishers | Subscribers |
 |-----|-----------|-------------|
-| `VehiclePositionHub` | Simulator | Dispatchers, Requester (assigned rep only) |
+| `VehiclePositionHub` | Backend (receives positions from Simulator via REST, fans out) | Dispatchers, Requester (assigned rep only) |
 | `DispatchHub` | Backend | Dispatchers |
-| `RepHub` | Backend | Individual service rep (by connection) |
+| `RepHub` | Backend | Individual service rep (by connection); Simulator (subscribes to receive job offers) |
 | `RequesterHub` | Backend | Individual requester (by connection) |
 
-All hubs are managed by the backend. The simulator is a publisher only — it does not subscribe to any hub.
+All hubs are managed by the backend. The simulator pushes position updates via **REST** (`POST /vehicles/{id}/position`) — not via SignalR. It does subscribe to `RepHub` to receive job offers pushed by the backend.
