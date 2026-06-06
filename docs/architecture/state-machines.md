@@ -43,7 +43,7 @@
 | En Route → Within 15 Miles | **Backend** (checks Haversine distance on every position update from simulator) |
 | Within 15 Miles → On Site | Rep (taps "I've Arrived") |
 | On Site → Available | Rep (taps "Mark Complete") |
-| Any → Offline (mid-job) | App crash or rep logout — job returns to Pending, dispatcher notified |
+| Any → Offline (mid-job) | App crash or rep logout — job returns to Pending, dispatcher notified. **Detection mechanism (POC):** SignalR `OnDisconnectedAsync` callback on the RepHub. When a rep's connection drops, the backend immediately transitions the rep to Offline, moves any active job back to Pending, and notifies dispatchers. |
 
 ### Redirect Cooldown
 

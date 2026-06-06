@@ -66,3 +66,6 @@ The POC operates across the state of Iowa. Eight service vehicles follow pre-det
 - [ADR-0001](../adr/0001-four-repo-structure.md) — Why four repos
 - [ADR-0002](../adr/0002-signalr-for-realtime-communication.md) — Why SignalR
 - [ADR-0003](../adr/0003-simulated-jwt-auth-for-poc.md) — Auth strategy
+- [ADR-0004](../adr/0004-haversine-straight-line-distance.md) — Why Haversine distance
+- [ADR-0005](../adr/0005-simulator-as-external-actor.md) — Why simulator is a separate repo
+- [ADR-0006](../adr/0006-single-dealer-poc-multidealer-ready.md) — Single-dealer POC, multi-dealer data model
