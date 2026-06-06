@@ -13,7 +13,7 @@ Split the system into four separate repositories:
 | Repo | Role |
 |------|------|
 | `service-delivery-central` | Local dev orchestration, AI skills/agents, architecture docs, ADRs |
-| `service-deliver-backend` | .NET 10 Clean Architecture API |
+| `service-delivery-backend` | .NET 10 Clean Architecture API |
 | `service-delivery-frontend` | .NET MAUI Blazor Hybrid (Desktop, Web, Mobile) |
 | Simulator repo (TBD) | POC data simulator — external actor, separate deployment |
 

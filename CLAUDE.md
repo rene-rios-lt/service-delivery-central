@@ -22,7 +22,7 @@ This system is a fleet dispatch platform — "Uber for service reps." When a req
 |------|-----|---------|
 | Central (this repo) | [service-delivery-central](https://github.com/rene-rios-lt/service-delivery-central) | Local dev scripts, AI skills/agents, architecture docs |
 | Frontend | [service-delivery-frontend](https://github.com/rene-rios-lt/service-delivery-frontend) | .NET MAUI Blazor Hybrid — Desktop, Mobile, Web |
-| Backend | [service-deliver-backend](https://github.com/rene-rios-lt/service-deliver-backend) | .NET 10 Clean Architecture API + Azure (Terraform) *(repo name missing 'y' — preserved to match remote)* |
+| Backend | [service-delivery-backend](https://github.com/rene-rios-lt/service-delivery-backend) | .NET 10 Clean Architecture API + Azure (Terraform) |
 | Simulator | [service-delivery-simulator](https://github.com/rene-rios-lt/service-delivery-simulator) | .NET 10 Worker Service — POC vehicle data simulator |
 
 ## System Architecture
