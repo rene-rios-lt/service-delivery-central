@@ -57,6 +57,37 @@ docs/
   adr/          # Architecture Decision Records (ADRs)
 ```
 
+## Engineering Standards
+
+All code across the Service Delivery system follows two non-negotiable standards: Test-Driven Development and SOLID design principles. These apply in both the frontend and backend repos. This section states the system-wide intent; each repo's own CLAUDE.md contains repo-specific rules.
+
+### Test-Driven Development
+
+TDD is the default working mode — not optional, not aspirational.
+
+```
+Red   → Write a failing test that describes the behaviour you want
+Green → Write the minimum production code to make it pass
+Refactor → Clean up without breaking the tests
+```
+
+**Rules that apply across all repos:**
+- No production code without a failing test first
+- Tests describe *behaviour*, not implementation — if a test breaks when you rename a private method, it is testing the wrong thing
+- A feature is not done until it has tests. A PR without tests for new behaviour will not be merged
+- Test names must be readable as plain English specifications (`GivenARequest_WhenSubmitted_ThenConfirmationIsSent`)
+- Every test follows Arrange / Act / Assert with each section clearly separated
+
+### SOLID Design Principles
+
+All production code must follow SOLID. The project structures in each repo are designed to make violations obvious:
+
+- **S — Single Responsibility** — One class, one reason to change. If you can describe a class with "and", split it.
+- **O — Open/Closed** — Add behaviour by creating new files, not by modifying existing ones.
+- **L — Liskov Substitution** — Implementations must fully honour the contracts of their interfaces — no silent no-ops or partial implementations.
+- **I — Interface Segregation** — Prefer many small, focused interfaces over one large one. Callers should not depend on methods they do not use.
+- **D — Dependency Inversion** — Depend on abstractions. Concrete implementations are registered at the composition root and injected — never instantiated inside business logic.
+
 ## Conventions
 
 ### AI Skills (`ai/skills/`)
