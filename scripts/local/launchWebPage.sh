@@ -3,6 +3,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 URL="http://localhost:5023"
+PORT=5023
 
 # Walk up from script location to find the ServiceDelivery root
 ROOT_DIR="$SCRIPT_DIR"
@@ -16,6 +17,14 @@ if [ ! -d "$ROOT_DIR/service-delivery-frontend" ]; then
 fi
 
 FRONTEND_DIR="$ROOT_DIR/service-delivery-frontend"
+
+# Kill any existing process on the port
+EXISTING_PID=$(lsof -ti tcp:$PORT 2>/dev/null || true)
+if [ -n "$EXISTING_PID" ]; then
+  echo "Stopping existing instance on port $PORT (PID $EXISTING_PID)..."
+  kill "$EXISTING_PID" 2>/dev/null || true
+  sleep 1
+fi
 
 echo "Starting Service Delivery web app..."
 
