@@ -90,6 +90,47 @@ end
 
 @enduml
 
+@startuml flow2-no-qualified-rep
+title Flow 2 — No Qualified Rep Available
+
+skinparam participant {
+    BackgroundColor #EDE7F6
+    BorderColor #4527A0
+}
+
+actor Requester
+participant "Backend" as Backend
+participant "RequesterHub" as ReqHub
+participant "DispatchHub" as DispHub
+actor "Dispatcher" as Dispatcher
+actor "Service Rep" as Rep
+
+Requester -> Backend : POST /service-requests\n(GPS location + DTC selection)
+
+Backend -> Backend : Run matching algorithm:\n  no qualified rep found\n  (none available, all declined, or all expired)
+
+Backend -> ReqHub : request stays Pending
+ReqHub -> Requester : spinner: "finding your technician"
+
+Backend -> DispHub : ServiceRequestPending → Dispatcher
+DispHub -> Dispatcher : request appears in queue\n(no rep assigned yet)
+
+note over Backend
+  Backend monitors for rep state changes.
+  Any rep transition to Available triggers
+  re-run of matching for all Pending requests.
+end note
+
+alt A rep becomes Available
+    Rep -> Backend : POST /rep/complete\n  or POST /vehicles/{id}/claim\n  (transitions rep → Available)
+
+    Backend -> Backend : Re-run matching algorithm\nfor all Pending requests
+
+    note right : Resumes Flow 1\nfrom job offer step
+end
+
+@enduml
+
 @startuml flow3-priority-redirect
 title Flow 3 — Priority Redirect
 
