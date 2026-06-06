@@ -31,6 +31,9 @@ Azure Infrastructure
 ## Commands
 
 ```bash
+# Launch the web client (kills any existing instance, starts the Blazor WASM app, opens browser)
+./scripts/local/launchWebPage.sh
+
 # Bring up the full system locally (once scripts are populated)
 ./scripts/local/start.sh
 

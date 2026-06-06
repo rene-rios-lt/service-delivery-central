@@ -1,17 +1,23 @@
 # Service Delivery Central
 
-Central repository for the Service Delivery system.
+Central repository for the Service Delivery system. Owns local dev orchestration, AI skill and agent definitions, and system-level documentation.
 
-> This project is under active planning. More details to come.
+## Repositories
 
-## Overview
+| Repo | Purpose |
+|------|---------|
+| [service-delivery-central](https://github.com/rene-rios-lt/service-delivery-central) | This repo — scripts, AI skills/agents, architecture docs |
+| [service-delivery-frontend](https://github.com/rene-rios-lt/service-delivery-frontend) | .NET MAUI Blazor Hybrid — Desktop, Mobile, Web |
+| [service-deliver-backend](https://github.com/rene-rios-lt/service-deliver-backend) | .NET 10 Clean Architecture API + Azure (Terraform) |
 
-Service Delivery Central is the core system for managing and coordinating service delivery operations.
+## Local Development
 
-## Getting Started
+### Launch the web client
 
-Documentation will be added as the project takes shape.
+From the repo root:
 
-## Contributing
+```bash
+./scripts/local/launchWebPage.sh
+```
 
-Details on contributing guidelines and workflows will be added soon.
+This will kill any existing instance on port 5023, start the Blazor WASM web app, and open it in your browser at `http://localhost:5023`.
