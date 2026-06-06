@@ -18,12 +18,15 @@ fi
 
 FRONTEND_DIR="$ROOT_DIR/service-delivery-frontend"
 
-# Kill any existing process on the port
-EXISTING_PID=$(lsof -ti tcp:$PORT 2>/dev/null || true)
-if [ -n "$EXISTING_PID" ]; then
-  echo "Stopping existing instance on port $PORT (PID $EXISTING_PID)..."
-  kill "$EXISTING_PID" 2>/dev/null || true
-  sleep 1
+# Kill any existing processes on the port
+EXISTING_PIDS=$(lsof -ti tcp:$PORT 2>/dev/null || true)
+if [ -n "$EXISTING_PIDS" ]; then
+  echo "Stopping existing instance(s) on port $PORT..."
+  echo "$EXISTING_PIDS" | xargs kill 2>/dev/null || true
+  # Wait until the port is actually free
+  while lsof -ti tcp:$PORT > /dev/null 2>&1; do
+    sleep 0.5
+  done
 fi
 
 echo "Starting Service Delivery web app..."
