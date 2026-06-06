@@ -6,6 +6,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is the **central governance repository** for the Service Delivery system. It does not contain application code — that lives in the repos below. This repo owns local dev orchestration, AI skill and agent definitions, and system-level documentation.
 
+## System Context
+
+This system is a fleet dispatch platform — "Uber for service reps." When a requester reports an equipment fault (identified by a Diagnostic Trouble Code), the system finds the nearest qualified service vehicle and dispatches the rep. Dispatchers manage the fleet and handle priority escalations (Bronze / Silver / Gold service tiers). Real-time updates flow over SignalR.
+
+**Before working on any cross-cutting concern**, read the architecture docs:
+- [`docs/architecture/system-overview.md`](docs/architecture/system-overview.md) — full system description, personas, tech stack, seed data
+- [`docs/architecture/state-machines.md`](docs/architecture/state-machines.md) — all rep, request, vehicle, and job offer state machines
+- [`docs/architecture/data-flow.md`](docs/architecture/data-flow.md) — end-to-end flows for all scenarios
+- [`docs/adr/`](docs/adr/) — all architectural decisions (4-repo structure, SignalR, auth strategy, Haversine distance, simulator design, multi-dealer data model)
+
 ## Repositories
 
 | Repo | URL | Purpose |
@@ -13,6 +23,7 @@ This is the **central governance repository** for the Service Delivery system. I
 | Central (this repo) | [service-delivery-central](https://github.com/rene-rios-lt/service-delivery-central) | Local dev scripts, AI skills/agents, architecture docs |
 | Frontend | [service-delivery-frontend](https://github.com/rene-rios-lt/service-delivery-frontend) | .NET MAUI Blazor Hybrid — Desktop, Mobile, Web |
 | Backend | [service-deliver-backend](https://github.com/rene-rios-lt/service-deliver-backend) | .NET 10 Clean Architecture API + Azure (Terraform) |
+| Simulator | [service-delivery-simulator](https://github.com/rene-rios-lt/service-delivery-simulator) | .NET 10 Worker Service — POC vehicle data simulator |
 
 ## System Architecture
 
