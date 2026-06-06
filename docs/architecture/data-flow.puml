@@ -1,0 +1,175 @@
+@startuml position-update-flow
+title Real-Time Position Update Flow
+
+skinparam participant {
+    BackgroundColor #E3F2FD
+    BorderColor #1565C0
+}
+
+participant "Simulator\n(VehicleWorker)" as Sim
+participant "Backend API" as Backend
+participant "VehiclePositionHub" as PosHub
+participant "DispatchHub" as DispHub
+participant "RequesterHub" as ReqHub
+actor "Dispatcher(s)" as Dispatcher
+actor "Requester" as Requester
+
+Sim -> Backend : POST /vehicles/{id}/position\n{ vehicleId, latitude, longitude }\nevery 3 seconds
+
+Backend -> Backend : Persist position
+Backend -> Backend : If rep has active Assigned request:\n  - Recalculate Haversine distance to requester\n  - If < 15 miles and EnRoute → Within15Miles\n  - Recalculate ETA
+
+Backend -> PosHub : VehiclePositionUpdated\n{ repId, vehicleId, lat, lng, state }
+PosHub -> Dispatcher : broadcast to all dispatchers
+
+alt Rep has active Assigned request
+    Backend -> DispHub : FleetPositionUpdate\n{ repId, lat, lng, state }
+    DispHub -> Dispatcher : fleet map update
+
+    Backend -> ReqHub : RepPositionUpdated\n{ lat, lng, etaMinutes, state }
+    ReqHub -> Requester : live position + ETA update
+end
+
+@enduml
+
+@startuml flow1-normal-request
+title Flow 1 — Normal Request Lifecycle
+
+skinparam participant {
+    BackgroundColor #E8F5E9
+    BorderColor #2E7D32
+}
+
+actor Requester
+participant "Backend" as Backend
+participant "RepHub" as RepHub
+participant "RequesterHub" as ReqHub
+participant "DispatchHub" as DispHub
+actor "Service Rep" as Rep
+actor Dispatcher
+
+Requester -> Backend : POST /service-requests\n(GPS location + DTC selection)
+
+Backend -> Backend : Run matching algorithm:\n1. Filter by dealer\n2. Filter by equipment (DTC match)\n3. Filter: Available or EnRoute\n4. Exclude skipped reps\n5. Sort by Haversine distance\n6. Tiebreaker: longest Available
+
+Backend -> RepHub : JobOfferReceived → Rep\n{ offerId, requesterName, tier, dtcTitle,\n  distanceMiles, etaMinutes, lat, lng }
+RepHub -> Rep : job offer screen\n60-second countdown
+
+alt Rep accepts
+    Rep -> Backend : POST /job-offers/{id}/accept
+
+    Backend -> ReqHub : RepAssigned → Requester\n{ repId, repName, etaMinutes, lat, lng }
+    Backend -> DispHub : ServiceRequestAssigned + RepStateChanged → Dispatcher
+
+    ReqHub -> Requester : tracking view\n(rep name, ETA, live map)
+    DispHub -> Dispatcher : fleet map: rep marker → Blue (En Route)
+
+    note over Backend, Dispatcher
+      Position updates flow every 3 seconds (see position-update-flow diagram)
+    end note
+
+    Backend -> Backend : Haversine < 15 miles detected\nRep state → Within15Miles
+
+    Rep -> Backend : POST /rep/arrive
+    Backend -> Backend : Rep → OnSite\nRequest → InProgress
+
+    Requester <-- ReqHub : state = "Almost There" (Within15Miles)
+
+    Rep -> Backend : POST /rep/complete
+    Backend -> Backend : Rep → Available\nRequest → Completed
+
+    Backend -> ReqHub : ServiceCompleted → Requester
+    ReqHub -> Requester : "Your service is complete."
+    DispHub -> Dispatcher : request removed from map\nrep marker → Green (Available)
+
+else Rep declines or 60s expires
+    Rep -> Backend : POST /job-offers/{id}/decline\n(or timeout)
+    Backend -> Backend : Mark offer Declined/Expired\nRep permanently skipped for this job\nFind next best qualified rep
+    note right : Repeats until accepted\nor all reps exhausted
+end
+
+@enduml
+
+@startuml flow3-priority-redirect
+title Flow 3 — Priority Redirect
+
+skinparam participant {
+    BackgroundColor #FFF3E0
+    BorderColor #E65100
+}
+
+actor "Gold Requester" as Gold
+actor "Bronze Requester" as Bronze
+participant "Backend" as Backend
+participant "RepHub" as RepHub
+participant "RequesterHub (Bronze)" as BronzeHub
+participant "RequesterHub (Gold)" as GoldHub
+participant "DispatchHub" as DispHub
+actor "Dispatcher" as Dispatcher
+actor "Rep (En Route)" as Rep
+
+Gold -> Backend : POST /service-requests (Gold tier)
+
+Backend -> DispHub : ServiceRequestPending → Dispatcher\n{ Gold badge, suggested match:\n  nearest En Route rep serving Bronze }
+DispHub -> Dispatcher : Gold request in queue\nRedirect button enabled
+
+Dispatcher -> Backend : POST /dispatcher/redirect\n{ repId, toRequestId: Gold request }
+
+Backend -> Backend : Validate redirect eligibility:\n- Rep is EnRoute ✓\n- Gold > Bronze ✓\n- Cooldown? Gold overrides ✓\n- Not Within15Miles / OnSite ✓
+
+Backend -> Backend : Bronze request → Pending\nRep hard-assigned to Gold request\nCooldown starts (5 min) for this rep
+
+Backend -> RepHub : RedirectReceived → Rep\n{ newRequestId, Gold requester, dtcTitle,\n  distanceMiles, etaMinutes, lat, lng }
+RepHub -> Rep : active job screen updates\nto new destination — no accept/decline
+
+Backend -> Backend : Run matching algorithm\nfor displaced Bronze request
+
+Backend -> GoldHub : RepAssigned → Gold Requester
+GoldHub -> Gold : tracking view\n(rep heading to Gold location)
+
+note over Backend
+  Matching runs for Bronze:
+  next best rep offered (Flow 1)
+end note
+
+Backend -> BronzeHub : RepRedirected → Bronze Requester\n(sent only after new rep accepts)\n{ oldRepName, newRepName, newEtaMinutes }
+BronzeHub -> Bronze : "Our apologies, we needed to redirect\n[old rep]. [new rep] is heading your way."
+
+@enduml
+
+@startuml flow4-rep-offline
+title Flow 4 — Rep Goes Offline Mid-Job
+
+skinparam participant {
+    BackgroundColor #FCE4EC
+    BorderColor #880E4F
+}
+
+actor "Service Rep" as Rep
+participant "Backend\n(RepHub)" as Backend
+participant "DispatchHub" as DispHub
+participant "RequesterHub" as ReqHub
+actor Dispatcher
+actor Requester
+
+Rep ->x Backend : Connection lost\n(crash or logout)
+
+Backend -> Backend : OnDisconnectedAsync triggered\nRep → Offline\nActive job → Pending\nVehicle stays Claimed
+
+Backend -> DispHub : RepOfflineMidJob\n{ repId, requestId }
+DispHub -> Dispatcher : alert: "[Rep] went offline — [DTC] request re-queued"\nrep marker disappears from map
+
+Backend -> ReqHub : (requester returns to Pending state)
+ReqHub -> Requester : spinner: "finding your technician"
+
+Backend -> Backend : Run matching algorithm\nfor re-queued request
+
+alt Rep reconnects
+    Rep -> Backend : login + vehicle claim
+    note right : Vehicle still claimed —\nrep sees it and can release it
+else Dispatcher force-releases vehicle
+    Dispatcher -> Backend : POST /vehicles/{id}/force-release
+    Backend -> Backend : Vehicle → Unclaimed\nAvailable for another rep
+end
+
+@enduml
