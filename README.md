@@ -8,7 +8,7 @@ Central repository for the Service Delivery system. Owns local dev orchestration
 |------|---------|
 | [service-delivery-central](https://github.com/rene-rios-lt/service-delivery-central) | This repo — scripts, AI skills/agents, architecture docs |
 | [service-delivery-frontend](https://github.com/rene-rios-lt/service-delivery-frontend) | .NET MAUI Blazor Hybrid — Desktop, Mobile, Web |
-| [service-deliver-backend](https://github.com/rene-rios-lt/service-deliver-backend) | .NET 10 Clean Architecture API + Azure (Terraform) |
+| [service-delivery-backend](https://github.com/rene-rios-lt/service-delivery-backend) | .NET 10 Clean Architecture API + Azure (Terraform) |
 
 ## Local Development
 

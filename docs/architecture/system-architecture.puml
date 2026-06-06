@@ -28,7 +28,7 @@ package "service-delivery-simulator" as SimPkg {
     Workers --> SimSignalR : uses
 }
 
-package "service-deliver-backend" as BackendPkg {
+package "service-delivery-backend" as BackendPkg {
     component "REST Endpoints\n(/auth, /vehicles, /service-requests,\n/job-offers, /rep, /dispatcher)" as REST
     component "SignalR Hubs\n(Position, Dispatch, Rep, Requester)" as Hubs
     component "Application Layer\n(CQRS Handlers + Matching Algorithm)" as App
