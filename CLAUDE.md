@@ -128,7 +128,8 @@ Skills are Claude Code slash commands — each lives in `.claude/skills/<name>/S
 | `solid-principles/` | `/solid-principles` | All five SOLID principles mapped per layer per repo |
 | `ac-coverage/` | `/ac-coverage` | AC → test mapping process, Configuration ACs, SignalR event ACs |
 | `master/` | `/master` | Story pipeline orchestrator — invoke as `/master <STORY-ID>` |
-| `audit-pipeline/` | `/audit-pipeline` | Full audit of all agents and skills — ratings, strengths, weaknesses, inconsistencies, contradictions, improvement backlog |
+| `audit-agents/` | `/audit-agents` | Full audit of all pipeline agents — ratings across 9 dimensions, strengths, weaknesses, inconsistencies, contradictions, improvement backlog |
+| `audit-skills/` | `/audit-skills` | Full audit of all pipeline skills — ratings across 7 dimensions, strengths, weaknesses, inconsistencies, contradictions, improvement backlog |
 
 ### AI Agents (`.claude/agents/`)
 
