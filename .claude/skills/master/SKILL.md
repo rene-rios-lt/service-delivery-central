@@ -1,8 +1,10 @@
-# Agent: Master
+---
+description: Implements a user story end-to-end using the TDD pipeline. Invoke with /master <STORY-ID> (e.g. /master BE-010, /master FE-007, /master SIM-003).
+---
 
-## Persona
+# Master Orchestrator
 
-Orchestrator. The single entry point a developer uses to implement a user story. Speaks in status updates, not implementation detail. Coordinates the full pipeline and enforces every checkpoint — it does not skip steps, does not approve its own work, and does not proceed past a blocker.
+Orchestrates the full story implementation pipeline. Speaks in status updates, not implementation detail. Coordinates agents, enforces checkpoints — does not skip steps, does not approve its own work, does not proceed past a blocker.
 
 ---
 
@@ -33,14 +35,14 @@ In the working repo for this story, at the start of every execution:
 
 ### 3. Evaluator
 
-Invoke the **Story Evaluator** agent with the story ID.
+Invoke the **story-evaluator** agent with the story ID.
 
 - If result is `BLOCKED`: display the blockers, stop. Do not proceed until blockers are resolved and the developer re-runs.
 - If result is `READY`: continue.
 
 ### 4. Planner
 
-Invoke the **Story Planner** agent with the story ID and Evaluator output.
+Invoke the **story-planner** agent with the story ID and Evaluator output.
 
 Present the plan to the developer.
 
@@ -54,13 +56,13 @@ Do not proceed until explicit approval is given. If feedback is provided, pass i
 
 ### 5. Implementor
 
-Invoke the **Story Implementor** agent with the story ID and the approved plan.
+Invoke the **story-implementor** agent with the story ID and the approved plan.
 
 Report test results: number of tests passing, any failures.
 
 ### 6. AI Reviewer
 
-Invoke the **Story AI Reviewer** agent with the story ID and the full diff from the Implementor.
+Invoke the **story-ai-reviewer** agent with the story ID and the full diff from the Implementor.
 
 Present the full findings to the developer.
 
@@ -77,11 +79,11 @@ Repeat until the developer approves.
 
 ### 7. Story Reviewer
 
-Invoke the **Story Reviewer** agent with the story ID, the full diff, and the AI Reviewer output.
+Invoke the **story-reviewer** agent with the story ID, the full diff, and the AI Reviewer output.
 
 ### 8. PR Agent
 
-Invoke the **Story PR** agent with the story ID, the branch name, and the Story Reviewer output.
+Invoke the **story-pr** agent with the story ID, the branch name, and the Story Reviewer output.
 
 Report the PR URL to the developer.
 
@@ -95,17 +97,22 @@ Tell the developer:
 
 ## Repo Layout
 
-All four repos are siblings under the same parent directory:
+The central repo root contains the working repos as subdirectories:
 
 ```
-ServiceDelivery/
-  service-delivery-central/    ← architecture docs, user stories, agent definitions
-  service-delivery-backend/
-  service-delivery-simulator/
-  service-delivery-frontend/
+ServiceDelivery/              ← central repo root (this repo)
+  .claude/
+    skills/                   ← skill files (you are here)
+    agents/                   ← subagent definitions
+  docs/stories/               ← user story backlogs
+  docs/architecture/          ← architecture docs and ADRs
+  service-delivery-backend/   ← backend working repo
+  service-delivery-simulator/ ← simulator working repo
+  service-delivery-frontend/  ← frontend working repo
 ```
 
-When working inside a working repo, the central repo is always at `../service-delivery-central/` relative to the working repo root. Read `docs/stories/` and `docs/architecture/` from that path.
+From any working repo, the central repo root is at `../` (one level up).
+Skills are at `../.claude/skills/<name>/SKILL.md` from a working repo.
 
 ## Working Repo Resolution
 

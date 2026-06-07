@@ -64,9 +64,9 @@ All scripts must be runnable from the repo root and must be executable (`chmod +
 ## Directory Structure
 
 ```
-ai/
-  skills/       # Reusable AI skill definitions (markdown)
-  agents/       # AI agent configurations that compose skills
+.claude/
+  skills/       # Claude Code skills — slash-invocable rule sets (one folder per skill, SKILL.md inside)
+  agents/       # Claude Code subagents — isolated pipeline stages (one folder per agent, AGENT.md inside)
 scripts/
   local/        # Docker Compose files and shell scripts for local dev
   utils/        # Shared helper scripts used across local and CI workflows
@@ -109,43 +109,45 @@ All production code must follow SOLID. The project structures in each repo are d
 
 ## Conventions
 
-### AI Skills (`ai/skills/`)
+### AI Skills (`.claude/skills/`)
 
-Skills are atomic rule sets. They are never invoked directly — agents reference them.
+Skills are Claude Code slash commands — each lives in `.claude/skills/<name>/SKILL.md` and is invocable as `/<name>`. Skills load into the current conversation context when invoked. Subagents read skill files directly as required reading at the start of their process.
 
-- One file per skill, named in `kebab-case.md`
-- Each skill file must contain: **Purpose**, the rules themselves, and a **Repo Adaptations** section that maps the rules to Backend, Frontend, and Simulator where the behaviour differs
+- One folder per skill: `.claude/skills/<name>/SKILL.md`
+- Each SKILL.md must have a `description:` frontmatter field (shown in autocomplete and used for auto-invocation)
+- Each SKILL.md must contain: **Purpose**, the rules themselves, and a **Repo Adaptations** section
 - Skills are self-contained — they must not depend on other skill files
 
 **Existing skills** (do not duplicate — extend in place):
 
-| File | Governs |
-|------|---------|
-| `tdd-cycle.md` | Red-green-refactor discipline, `GivenA_When_Then` naming, Arrange/Act/Assert |
-| `clean-architecture.md` | Layer dependency rules and directory structure per repo |
-| `test-quality.md` | Unit vs integration levels, value-add criteria, duplication check |
-| `solid-principles.md` | All five SOLID principles mapped per layer per repo |
-| `ac-coverage.md` | AC → test mapping process, Configuration ACs, SignalR event ACs |
+| Folder | Slash command | Governs |
+|--------|--------------|---------|
+| `tdd-cycle/` | `/tdd-cycle` | Red-green-refactor discipline, `GivenA_When_Then` naming, Arrange/Act/Assert |
+| `clean-architecture/` | `/clean-architecture` | Layer dependency rules and directory structure per repo |
+| `test-quality/` | `/test-quality` | Unit vs integration levels, value-add criteria, duplication check |
+| `solid-principles/` | `/solid-principles` | All five SOLID principles mapped per layer per repo |
+| `ac-coverage/` | `/ac-coverage` | AC → test mapping process, Configuration ACs, SignalR event ACs |
+| `master/` | `/master` | Story pipeline orchestrator — invoke as `/master <STORY-ID>` |
 
-### AI Agents (`ai/agents/`)
+### AI Agents (`.claude/agents/`)
 
-Agents are the executable units. Each is invoked by the Master agent as a pipeline stage.
+Agents are Claude Code subagents — each runs in an isolated context window with its own tool set. The master skill delegates to them as pipeline stages.
 
-- One file per agent, named in `kebab-case.md`
-- Each agent file must contain: **Persona**, **Skills Used**, **Inputs**, **Audit Output** (the `.stories/<STORY-ID>/NN-<name>.md` file it writes), **Process** (numbered steps), **Output** or **Output Format**, and **Guardrails**
+- One folder per agent: `.claude/agents/<name>/AGENT.md`
+- Each AGENT.md must have `description:` and `allowed-tools:` frontmatter fields
+- Each AGENT.md must contain: **Persona**, **Required Reading** (skill file paths to read first), **Inputs**, **Audit Output** (the `.stories/<STORY-ID>/NN-<name>.md` file it writes), **Process** (numbered steps), and **Output Format**
 - Agents must write their audit file before returning — it is the contract between pipeline stages
 
 **Existing agents** (do not duplicate — extend in place):
 
-| File | Stage | Audit file written |
-|------|-------|--------------------|
-| `master.md` | Orchestrator | none — coordinates the pipeline |
-| `story-evaluator.md` | 1 — Evaluate | `01-evaluation.md` |
-| `story-planner.md` | 2 — Plan | `02-plan.md` |
-| `story-implementor.md` | 3 — Implement | none — writes production code and tests |
-| `story-ai-reviewer.md` | 4 — AI Review | `03-ai-review.md` |
-| `story-reviewer.md` | 5 — Review | `04-review-package.md` |
-| `story-pr.md` | 6 — PR | `05-pr.md` |
+| Folder | Stage | Audit file written |
+|--------|-------|--------------------|
+| `story-evaluator/` | 1 — Evaluate | `01-evaluation.md` |
+| `story-planner/` | 2 — Plan | `02-plan.md` |
+| `story-implementor/` | 3 — Implement | none — writes production code and tests |
+| `story-ai-reviewer/` | 4 — AI Review | `03-ai-review.md` |
+| `story-reviewer/` | 5 — Review | `04-review-package.md` |
+| `story-pr/` | 6 — PR | `05-pr.md` |
 
 ### Audit Files (`.stories/`)
 
