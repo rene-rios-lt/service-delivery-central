@@ -1,5 +1,5 @@
 ---
-description: Reviews story implementation against 8 checks — test coverage, test level, test value, duplication, naming, SOLID, Clean Architecture, and dead code. Returns APPROVED or BLOCKED with specific findings.
+description: Reviews story implementation against 9 checks — test coverage, test level, test value, duplication, naming, SOLID, Clean Architecture, dead code, and hallucination guard. Returns APPROVED or BLOCKED with specific findings.
 allowed-tools: [Read, Bash, Glob, Grep, Write]
 ---
 
@@ -44,7 +44,7 @@ Write findings to `.stories/<STORY-ID>/03-ai-review.md` in the working repo befo
 Run each check in order. A finding in any check does not stop the remaining checks — complete all checks before producing the output.
 
 **Finding severity:**
-- **Blocking** — prevents APPROVED. Must be resolved before the Implementor cycle closes. Checks 0, 1, 2, 5, 6, 7, and 8 produce blocking findings.
+- **Blocking** — prevents APPROVED. Must be resolved before the Implementor cycle closes. Checks 0, 1, 2, 5, 6, 7, 8, and 9 produce blocking findings.
 - **Advisory** — flagged but does not prevent APPROVED. Checks 3 and 4 produce advisory findings. Advisory findings are listed in the APPROVED output under a separate "Advisory Notes" section.
 
 ### Check 0 — Run the tests
@@ -118,6 +118,34 @@ Flag patterns:
 For each new method or class in the production diff that is not referenced by any production code or test:
 - Flag it as speculative — it was added without a failing test driving it.
 
+### Check 9 — Hallucination Guard
+
+This check catches two forms of hallucination: invented calls to methods that do not exist on a type, and unplanned extensions to existing interfaces.
+
+**Part A — Invented method calls**
+
+For each method call in the production diff on a project-defined type (an interface or class whose name begins with the project namespace — `ServiceDelivery.*` — or is declared in the diff):
+
+1. Identify the receiver type from its constructor injection parameter or local variable declaration.
+2. Use `Grep` to locate the type's definition in the codebase (or the diff, for newly defined types).
+3. Confirm the called method name appears in that type's definition.
+4. If the method is absent: flag it as **[Hallucinated call]** — a method call on a type that does not declare it.
+
+Do **not** flag:
+- Calls on .NET framework types (`System.*`, `Microsoft.*`, `MediatR.*`) — the build verifies these.
+- Calls within test files on mock objects — mocks respond to any call by design.
+- Calls on types that are entirely new in this diff and whose definition is also in the diff — internal inconsistencies are caught by the build.
+
+**Part B — Unplanned interface extensions**
+
+For each modified interface in the production diff (an interface that existed before this story and now has new method signatures added):
+
+1. Read the plan's "Interfaces Required" section from `.stories/<STORY-ID>/02-plan.md`.
+2. For each new method signature in the modified interface, check whether it appears in the plan's interface definitions.
+3. If a new method is not in the plan: flag it as **[Unplanned interface extension]** — a contract was widened beyond what was designed.
+
+Do **not** flag new methods on interfaces that are themselves new in this diff — those are expected from the plan's "Interfaces Required" section.
+
 ---
 
 ## Output Format
@@ -134,6 +162,7 @@ AC Coverage: 5/5 criteria covered ✓
 Test levels: Unit (Application.Tests) ✓  Integration (Api.Tests) ✓
 SOLID: No violations ✓
 Clean Architecture: No boundary violations ✓
+Hallucination Guard: No invented calls, no unplanned interface extensions ✓
 
 AC → Test Mapping:
 | # | AC | Test Method | Level | Status |
@@ -161,7 +190,7 @@ BLOCKED
 
 Story: BE-010 — Submit a service request
 
-Findings (3):
+Findings (4):
 
 1. [AC Coverage] AC-4 ("Returns { requestId, status }") has no corresponding test. The only integration test asserts a 200 status but does not assert the response body contains requestId.
    File: tests/ServiceDelivery.Api.Tests/ServiceRequestsEndpointTests.cs
@@ -175,6 +204,10 @@ Findings (3):
    File: tests/ServiceDelivery.Application.Tests/SubmitRequestTests.cs
    Method: TestSubmitRequest_Success
    Fix: Rename to GivenAValidRequest_WhenSubmitted_ThenStatusIsPending
+
+4. [Hallucinated call] SubmitRequestCommandHandler calls _repository.GetPendingByDealerAsync() but IServiceRequestRepository does not declare that method.
+   File: src/ServiceDelivery.Application/Features/ServiceRequests/Commands/SubmitRequestCommandHandler.cs, line 34
+   Fix: Add GetPendingByDealerAsync(Guid dealerId) to IServiceRequestRepository in Domain/Interfaces/, or rename the call to match a method that is already declared.
 
 AC → Test Mapping:
 | # | AC | Test Method | Level | Status |
