@@ -145,6 +145,15 @@ AC → Test Mapping:
 | AC-5 | Requires Requester role | GivenADispatcherToken_WhenPostingRequest_ThenReturns403 | Integration | Covered |
 ```
 
+If Checks 3 or 4 produced findings, append an Advisory Notes section after the AC table:
+
+```
+Advisory Notes:
+1. [Test Value] GivenAValidRequest_WhenSubmitted_ThenMatchingIsTriggered asserts only that a mock method was called — no state or return value is asserted. Consider adding an assertion on the matched rep ID or job offer ID.
+```
+
+If neither Check 3 nor Check 4 produced findings, omit the Advisory Notes section entirely.
+
 ### If blockers exist: `BLOCKED`
 
 ```
