@@ -13,11 +13,11 @@ Central repository for the Service Delivery system. Owns local dev orchestration
 
 ## AI Agent System
 
-The `ai/` directory contains an agent system for implementing user stories with enforced TDD, SOLID, and Clean Architecture discipline. A single Master agent orchestrates the full pipeline from story evaluation through PR creation.
+Skills and agents in `.claude/` implement user stories with enforced TDD, SOLID, and Clean Architecture discipline. The `/master` skill orchestrates the full pipeline from story evaluation through PR creation.
 
 ### Usage
 
-Invoke the Master agent with a story ID:
+Invoke the Master skill with a story ID:
 
 ```
 /master BE-010
@@ -32,35 +32,36 @@ Master → Evaluator   → READY or BLOCKED
        → Planner     → implementation plan
        → CHECKPOINT #1: approve plan
        → Implementor → TDD cycle per AC bullet → passing tests
-       → AI Reviewer → 8-dimension quality gate
+       → AI Reviewer → 8-check quality gate
        → CHECKPOINT #2: approve or send back
        → Reviewer    → PR description package
-       → PR Agent    → branch, commit, push, PR created
+       → PR Agent    → stage, commit, push, PR created
 ```
 
 ### Agents
 
-| Agent | File | Role |
-|-------|------|------|
-| Master | `ai/agents/master.md` | Orchestrator — single entry point, enforces both checkpoints |
-| Story Evaluator | `ai/agents/story-evaluator.md` | Gatekeeper — checks upstream dependencies and AC testability before a line is written |
-| Story Planner | `ai/agents/story-planner.md` | Senior engineer — produces the file list, interface definitions, and named test scenarios per AC bullet |
-| Story Implementor | `ai/agents/story-implementor.md` | TDD craftsperson — red-green-refactor, one AC bullet at a time |
-| Story AI Reviewer | `ai/agents/story-ai-reviewer.md` | Impartial reviewer — 8 checks: tests pass, AC coverage, test levels, value, duplication, SOLID, Clean Architecture, dead code |
-| Story Reviewer | `ai/agents/story-reviewer.md` | Communicator — produces the PR description with AC→test table and checklist |
-| Story PR | `ai/agents/story-pr.md` | Executor — branch, commit, push, PR creation |
+| Agent | Folder | Role |
+|-------|--------|------|
+| Story Evaluator | `.claude/agents/story-evaluator/` | Gatekeeper — checks upstream dependencies and AC testability before a line is written |
+| Story Planner | `.claude/agents/story-planner/` | Senior engineer — produces the file list, interface definitions, and named test scenarios per AC bullet |
+| Story Implementor | `.claude/agents/story-implementor/` | TDD craftsperson — red-green-refactor, one AC bullet at a time |
+| Story AI Reviewer | `.claude/agents/story-ai-reviewer/` | Impartial reviewer — 8 checks: tests pass, AC coverage, test levels, value, duplication, SOLID, Clean Architecture, dead code |
+| Story Reviewer | `.claude/agents/story-reviewer/` | Communicator — produces the PR description with AC→test table and checklist |
+| Story PR | `.claude/agents/story-pr/` | Executor — stage, commit, push, PR creation |
 
 ### Skills
 
-Skills are atomic, self-contained rule sets that agents apply. They are not invoked directly.
+Skills are Claude Code slash commands invocable as `/<name>`. Agents read the relevant skill files at the start of each pipeline stage.
 
-| Skill | File | Governs |
-|-------|------|---------|
-| TDD Cycle | `ai/skills/tdd-cycle.md` | Red-green-refactor discipline, test naming (`GivenA_When_Then`), Arrange/Act/Assert |
-| Clean Architecture | `ai/skills/clean-architecture.md` | Layer dependency rules, directory structure, violation patterns — Backend and Frontend |
-| Test Quality | `ai/skills/test-quality.md` | Unit vs integration levels, value-add criteria, duplication check — all three repos |
-| SOLID Principles | `ai/skills/solid-principles.md` | All five principles mapped per layer — Backend, Frontend, and Simulator |
-| AC Coverage | `ai/skills/ac-coverage.md` | AC → test mapping process, Configuration AC handling, SignalR event testing |
+| Skill | Slash command | Governs |
+|-------|--------------|---------|
+| TDD Cycle | `/tdd-cycle` | Red-green-refactor discipline, test naming (`GivenA_When_Then`), Arrange/Act/Assert |
+| Clean Architecture | `/clean-architecture` | Layer dependency rules, directory structure, violation patterns — Backend and Frontend |
+| Test Quality | `/test-quality` | Unit vs integration levels, value-add criteria, duplication check — all three repos |
+| SOLID Principles | `/solid-principles` | All five principles mapped per layer — Backend, Frontend, and Simulator |
+| AC Coverage | `/ac-coverage` | AC → test mapping process, Configuration AC handling, SignalR event testing |
+| Audit Agents | `/audit-agents` | Full audit of all pipeline agents — ratings across 9 dimensions, improvement backlog |
+| Audit Skills | `/audit-skills` | Full audit of all pipeline skills — ratings across 8 dimensions, improvement backlog |
 
 ### Audit Files
 
