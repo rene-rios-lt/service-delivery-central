@@ -49,6 +49,8 @@ One-line justification is required for every dimension score.
 - No error path defined for a step that can fail
 - Cross-repo variation (BE/FE/SIM) unaddressed where agent behaviour differs
 - A step that says "as needed" or "if applicable" with no criteria for when it applies
+- Any of the six required sections missing: Persona, Required Reading, Inputs, Audit Output, Process, Output Format
+- Missing `description:` or `allowed-tools:` frontmatter fields
 
 ---
 
@@ -73,6 +75,7 @@ This dimension unifies two concerns that fail together:
 - "if applicable" or "as needed" without a stated applicability criterion
 - A term used before it is defined in the file
 - An example that contradicts the rule it illustrates
+- A Persona that creates the wrong mindset for the agent's pipeline role — e.g. a "collaborative helper" framing on a skeptical reviewer, or a "neutral analyst" framing on an agent whose job is to block non-compliant work
 
 ---
 
@@ -109,6 +112,7 @@ This dimension unifies two concerns that fail together:
 - A rule that is fully restated from a skill without a cross-reference to that skill
 - Backend-specific guidance presented as universal without a skip note for other repos
 - An implicit assumption about system state that is not documented
+- A process step that performs work belonging to an adjacent pipeline stage (e.g. the Planner writing production code, the Implementor producing a PR)
 
 ---
 
@@ -123,10 +127,13 @@ This dimension unifies two concerns that fail together:
 | **5–6** | Uses different terminology for a concept already defined in a skill, or omits a cross-reference to a skill that governs behaviour this agent relies on. |
 | **1–4** | Directly conflicts with another agent or skill in the pipeline on a rule, term, or process step. |
 
+**Red flags (automatic −2 each — silent context loss is weighted double):**
+- A skill that governs behaviour this agent relies on but is absent from Required Reading — the subagent will never read it and will produce wrong output with no error
+
 **Red flags (automatic −1 each):**
 - A status value or severity label that differs from the definition in the governing skill
-- A missing cross-reference to a skill this agent depends on
 - A process step that contradicts the equivalent step in a related agent or skill
+- A cross-reference that names a skill or agent by the wrong path or folder name
 
 ---
 
@@ -207,6 +214,7 @@ Subagents run in isolated context windows. Each invocation starts clean — no m
 - A tool called in a process step that is absent from `allowed-tools`
 - Context assumed from a prior agent that is not listed as an explicit named Input
 - An instruction that depends on the subagent knowing which story or repo it is operating in, when that is not passed as an explicit input
+- Missing `allowed-tools:` frontmatter — tool access is unconstrained at load time, making the agent's actual tool scope undefined
 
 > **Gate rule (Subagent Compatibility):** if Subagent Compatibility scores below 6, the overall rating is capped at 7 regardless of all other scores. A file that cannot execute as a subagent is not fit for purpose.
 
