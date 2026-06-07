@@ -50,7 +50,7 @@ Define how each of the five SOLID principles applies in this specific codebase, 
 
 **In Infrastructure:** repository implementations must return accurate results. Returning an empty list when records exist, or skipping persistence, breaks Liskov.
 
-**Exception (scaffolding only):** `NotImplementedException` is acceptable as a temporary stub during active development within a single TDD cycle — it must be resolved before the story's AI Review gate.
+**Exception (scaffolding only):** `NotImplementedException` is acceptable as a temporary stub during active development within a single TDD cycle — it must be resolved before the story's AI Review gate. The single-cycle boundary is defined in `.claude/skills/tdd-cycle/SKILL.md`.
 
 **How to spot a violation:**
 - A method body that is `throw new NotImplementedException()` in production code.
@@ -125,7 +125,7 @@ SOLID applies in all repos. The vocabulary differs per repo — map the principl
 | O | New features → new files under `UI/Features/<FeatureName>/`. Never add new routes or UI logic to an existing unrelated feature folder. |
 | L | Every service implementation in a host's `Services/` folder must fully honour its `Core/Interfaces/` contract. No silent no-ops. If a platform cannot support a feature, return a typed "unsupported" result — do not silently return null. |
 | I | Interfaces in `Core/Interfaces/` are narrow per capability (e.g. `IAuthService`, `IVehicleService`). A component that only reads vehicles should not depend on an interface that also creates and deletes them. |
-| D | Components depend on interfaces from Core, never on concrete implementations from host `Services/` folders. Register concretes in `MauiProgram.cs` or `Program.cs`. |
+| D | Components depend on interfaces from Core, never on concrete implementations from host `Services/` folders. Register concretes in the host bootstrapper: Desktop and Mobile use `MauiProgram.cs`; Web uses `Program.cs`. |
 
 ### Simulator (`service-delivery-simulator`)
 

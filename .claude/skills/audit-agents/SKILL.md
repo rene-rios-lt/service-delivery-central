@@ -153,6 +153,8 @@ This dimension unifies two concerns that fail together:
 - An explanation of WHY a rule exists when the reason is self-evident from context
 - More than one example where a single example would suffice
 
+> **Note on interaction with Teachability (Dimension 7):** explaining WHY is required when the reason is non-obvious — Teachability demands it. Conciseness only penalises explaining WHY when the reason is already self-evident. The two dimensions do not conflict.
+
 ---
 
 #### Dimension 7 — Output Contract
@@ -263,6 +265,24 @@ Format:
 
 ---
 
+## Self-Audit
+
+After completing the standard per-file assessments and cross-file analysis, apply all nine dimensions specifically to this file (`audit-agents/SKILL.md`) and answer the following questions directly:
+
+1. **Completeness** — Are there agent patterns or structures this audit would fail to catch? Are there gaps in what the nine dimensions cover?
+2. **Executability** — Could two auditors score the same agent file and land within 1 point on every dimension? If not, which dimension definitions are too vague?
+3. **Internal Consistency** — Do any two dimensions penalise the same flaw twice? Do any two dimensions give conflicting guidance?
+4. **Scope Precision** — Does this skill stay in its lane — assessing, not fixing? Does it avoid telling the auditor what the correct fix is (that belongs in the improvement backlog)?
+5. **Cross-File Alignment** — Does this skill's vocabulary (dimension names, severity labels, output format) match `audit-skills/SKILL.md`? Are the two audit skills diverging?
+6. **Conciseness** — Is any dimension definition longer than it needs to be to produce consistent scoring?
+7. **Teachability** — Does this skill explain enough about WHY each dimension matters that an auditor can score a novel agent type it has never seen before?
+8. **Security** — Does this skill instruct any dangerous behaviour?
+9. **Subagent Compatibility** — Are there subagent-specific patterns this audit's Subagent Compatibility dimension would fail to catch in a novel agent type?
+
+Report findings from the self-audit in the improvement backlog alongside findings from the standard run. Label them `[Self-audit]` so they are distinguishable.
+
+---
+
 ## Prioritized Improvement Backlog
 
 Collect all findings — per-file weaknesses plus cross-file issues — into a single ranked table:
@@ -284,8 +304,9 @@ Effort definitions:
 
 1. Per-file assessments (alphabetical by agent folder name)
 2. Cross-file analysis (Inconsistencies → Contradictions → Missing Cross-References)
-3. Prioritized improvement backlog
-4. Overall system rating — average of all per-file scores, one paragraph summary
+3. Self-audit findings for this file specifically
+4. Prioritized improvement backlog (per-file + cross-file + self-audit findings combined)
+5. Overall system rating — average of all per-file scores, one paragraph summary
 
 ---
 
@@ -295,3 +316,4 @@ Effort definitions:
 - Do not conflate inconsistency with contradiction. An inconsistency is a mismatch in wording; a contradiction makes it impossible to follow both files simultaneously.
 - Do not suggest improvements outside the scope of what the agent governs. An agent that covers implementation should not be criticised for not covering PR creation.
 - Suggestions must be specific enough to act on. "Improve clarity" is not a suggestion. "Add a definition of 'behavioral finding' vs 'structural finding' to the When Sent Back section" is.
+- For the equivalent audit of skill files, see `.claude/skills/audit-skills/SKILL.md`.

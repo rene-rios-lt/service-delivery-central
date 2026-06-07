@@ -103,13 +103,26 @@ Use this pattern only when the logic path is identical and only the data varies.
 
 ---
 
+## Integration Test Timing
+
+For stories that require integration tests (any story touching the Application or Infrastructure layer), the cycle runs at two levels:
+
+1. Complete the full Red-Green-Refactor cycle at the unit level first — all unit tests passing.
+2. Then add the integration test Red step: write a failing integration test that verifies the unit-tested behaviour against a real dependency (database, real HTTP server, real hub).
+3. Write the minimum production code (if any — often the unit-level Green phase already satisfies it) to make the integration test pass.
+4. Refactor. Run both suites. All tests must stay green.
+
+The unit cycle always runs first. An integration test should never be the first test written for a behaviour.
+
+---
+
 ## Hard Rules
 
 - Never write production code for a behaviour that has no failing test first.
 - Never write two tests before going green on the first.
 - Never let a test pass for the wrong reason (e.g. swallowed exception, wrong assertion).
 - Never skip the refactor phase — accumulating debt here breaks the next Red phase. "Never skip" means never skip the *inspection*: if the code is already clean after Green, inspect it, confirm no change is needed, and record that confirmation. A cycle that produces no code change is valid when the code is already clean.
-- A feature is not done until every AC bullet has a passing test.
+- A feature is not done until every AC bullet has a passing test — for the mapping table that operationalises this rule at review time, see `.claude/skills/ac-coverage/SKILL.md`.
 
 ---
 

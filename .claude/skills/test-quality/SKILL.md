@@ -28,7 +28,7 @@ Any story that touches the Application or Infrastructure layers requires tests a
 
 - Test a unit's interaction with a **real dependency**.
 - Use an in-memory database, test containers, or a real test HTTP server (`WebApplicationFactory`).
-- Slower — acceptable, but not needlessly bloated. A single integration test should complete within 5 seconds. If it consistently exceeds this, investigate: is it fetching more data than needed? Is the test database over-seeded? Scope test data to the minimum required for the assertion.
+- Slower — acceptable, but not needlessly bloated. A single integration test should complete within 5 seconds. If it exceeds this on three consecutive cold runs, investigate: is it fetching more data than needed? Is the test database over-seeded? Scope test data to the minimum required for the assertion. If the root cause cannot be fixed within the story scope, raise an **Advisory** finding in the AI Review output: `Advisory: Integration test [name] exceeds 5s on cold runs — investigate test data scope.`
 - Live in `ServiceDelivery.Infrastructure.Tests` and `ServiceDelivery.Api.Tests`.
 
 **What they verify:** EF Core queries produce correct results, endpoints return correct status codes, SignalR events are sent to the right groups.
