@@ -110,17 +110,13 @@ gh pr create \
   --body "$(cat .stories/BE-010/04-review-package.md)"
 ```
 
-### Step 6 — Fill in the PR template checklist
+### Step 6 — Verify the PR checklist
 
-The repo's PR template includes a checklist. After creation, the body already includes it (it was merged into the Story Reviewer output). Confirm the following items are checked in the PR body:
+The Story Reviewer's output includes a PR Checklist section with the correct boxes already marked. Verify it is present in the PR body. If `gh pr create` truncated or dropped it, update the PR body:
 
-- `[x] Tests written first (TDD — red before green)` — always checked after Implementor ran
-- `[x] All acceptance criteria covered by tests` — always checked after AI Reviewer approved
-- `[ ] PlantUML diagram added or updated` — check only if this story adds or changes a diagram
-- `[ ] ADR created or updated` — check only if this story introduces an architectural decision
-- `[ ] CLAUDE.md updated` — check only if this story changes conventions or commands
-
-If the PR body needs updating to reflect the correct checklist state, use `gh pr edit`.
+```bash
+gh pr edit <PR-NUMBER> --body "$(cat .stories/<STORY-ID>/04-review-package.md)"
+```
 
 ### Step 7 — Report
 

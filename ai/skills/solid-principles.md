@@ -96,3 +96,29 @@ Define how each of the five SOLID principles applies in this specific codebase, 
 | L | `NotImplementedException` or silent no-op in production | Fully implement the method |
 | I | Handler depends on a large interface, uses 1–2 methods | Split interface to what the caller actually needs |
 | D | `new ConcreteType()` inside Domain or Application | Inject the interface; register in `Program.cs` |
+
+---
+
+## Repo Adaptations
+
+SOLID applies in all repos. The vocabulary differs per repo — map the principles to the actual constructs used.
+
+### Frontend (`service-delivery-frontend`)
+
+| Principle | Frontend application |
+|-----------|---------------------|
+| S | A Razor component renders one thing. If it also fetches data and transforms it, extract the data access to a ViewModel and the transformation to Core logic. |
+| O | New features → new files under `UI/Features/<FeatureName>/`. Never add new routes or UI logic to an existing unrelated feature folder. |
+| L | Every service implementation in a host's `Services/` folder must fully honour its `Core/Interfaces/` contract. No silent no-ops. If a platform cannot support a feature, return a typed "unsupported" result — do not silently return null. |
+| I | Interfaces in `Core/Interfaces/` are narrow per capability (e.g. `IAuthService`, `IVehicleService`). A component that only reads vehicles should not depend on an interface that also creates and deletes them. |
+| D | Components depend on interfaces from Core, never on concrete implementations from host `Services/` folders. Register concretes in `MauiProgram.cs` or `Program.cs`. |
+
+### Simulator (`service-delivery-simulator`)
+
+| Principle | Simulator application |
+|-----------|----------------------|
+| S | `VehicleWorker` moves vehicles and POSTs positions — one responsibility. `BackendApiClient` calls the HTTP API — one responsibility. `SignalRClient` manages the hub — one responsibility. Never combine two of these into one class. |
+| O | Add new simulator behaviours (e.g. smarter routing) by extending `VehicleWorker` or creating a new helper — never by modifying `BackendApiClient` or `SignalRClient`. |
+| L | `BackendApiClient` and `SignalRClient` must fully implement `IBackendApiClient` and `ISignalRClient`. No `NotImplementedException` in production. |
+| I | `IBackendApiClient` exposes only operations `VehicleWorker` needs (auth, position POST, offer accept/decline). `ISignalRClient` exposes only connection management. Keep them separate. |
+| D | `VehicleWorker` depends on `IBackendApiClient` and `ISignalRClient`. Register concretes in `Program.cs`. Never instantiate `BackendApiClient` or `SignalRClient` directly inside a worker. |

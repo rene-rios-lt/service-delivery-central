@@ -24,11 +24,12 @@ Invoked with a story ID:
 
 Read `docs/stories/<repo>.md` in the central repo (match story prefix: `BE-` → `backend.md`, `SIM-` → `simulator.md`, `FE-` → `frontend.md`). Display the story title and all acceptance criteria.
 
-### 2. Audit directory setup
+### 2. Setup
 
 In the working repo for this story, at the start of every execution:
 1. Delete `.stories/<STORY-ID>/` if it exists (clean slate).
 2. Create `.stories/<STORY-ID>/`.
+3. Create the feature branch: `git checkout -b feature/<STORY-ID>-<kebab-case-title>` where the title comes from the story heading, lowercased and hyphenated. Example: story "BE-010 — Submit a service request" → `feature/BE-010-submit-service-request`. If the branch already exists, check it out and verify it is not behind `main`.
 
 ### 3. Evaluator
 
@@ -91,6 +92,20 @@ Tell the developer:
 > "PR is open at <URL>. Merge when ready."
 
 ---
+
+## Repo Layout
+
+All four repos are siblings under the same parent directory:
+
+```
+ServiceDelivery/
+  service-delivery-central/    ← architecture docs, user stories, agent definitions
+  service-delivery-backend/
+  service-delivery-simulator/
+  service-delivery-frontend/
+```
+
+When working inside a working repo, the central repo is always at `../service-delivery-central/` relative to the working repo root. Read `docs/stories/` and `docs/architecture/` from that path.
 
 ## Working Repo Resolution
 

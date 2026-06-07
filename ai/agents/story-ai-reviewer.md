@@ -34,6 +34,16 @@ Write findings to `.stories/<STORY-ID>/03-ai-review.md` in the working repo befo
 
 Run each check in order. A finding in any check does not stop the remaining checks — complete all checks before producing the output.
 
+### Check 0 — Run the tests
+
+Before reviewing the diff, run the test suite to confirm all tests pass:
+
+- Backend: `dotnet test`
+- Frontend: `dotnet test tests/ServiceDelivery.Client.Tests`
+- Simulator: `dotnet test ServiceDelivery.Simulator.slnx`
+
+If any test fails, this is an immediate blocking finding — report it as **[Tests Failing]** and do not proceed to the other checks until the Implementor fixes it.
+
 ### Check 1 — AC Coverage (`ac-coverage.md`)
 
 1. Read every AC bullet from the story.
@@ -43,10 +53,13 @@ Run each check in order. A finding in any check does not stop the remaining chec
 
 ### Check 2 — Test Level (`test-quality.md`)
 
-If the story touches the Application or Infrastructure layers:
-- Confirm unit-level tests exist in `Application.Tests` or `Domain.Tests`.
-- Confirm integration-level tests exist in `Api.Tests` or `Infrastructure.Tests`.
-- If only one level is present, flag it as a blocking finding.
+Apply the level check using the repo-appropriate projects (see `test-quality.md` Repo Adaptations):
+
+- **Backend:** if story touches Application or Infrastructure — confirm unit tests in `Application.Tests`/`Domain.Tests` AND integration tests in `Api.Tests`/`Infrastructure.Tests`.
+- **Frontend:** confirm both ViewModel unit tests and bUnit component tests are present if the story adds both a ViewModel and a component.
+- **Simulator:** unit tests in `Simulator.Tests` only — no integration test requirement.
+
+If the required test level is missing, flag it as a blocking finding.
 
 ### Check 3 — Test Value (`test-quality.md`)
 
@@ -103,19 +116,20 @@ APPROVED
 
 Story: BE-010 — Submit a service request
 
+Tests: all passing ✓
 AC Coverage: 5/5 criteria covered ✓
 Test levels: Unit (Application.Tests) ✓  Integration (Api.Tests) ✓
 SOLID: No violations ✓
 Clean Architecture: No boundary violations ✓
 
 AC → Test Mapping:
-| AC | Test | Level |
-|----|------|-------|
-| Creates request with status Pending | GivenAValidRequest_WhenSubmitted_ThenStatusIsPending | Unit |
-| Scoped to requester's dealerId | GivenARequesterWithGoldTier_WhenRequestSubmitted_ThenTierIsGold | Unit |
-| Triggers matching | GivenAValidRequest_WhenSubmitted_ThenMatchingIsTriggered | Unit |
-| Returns { requestId, status } | GivenAValidRequest_WhenPostedToEndpoint_ThenReturns200WithRequestId | Integration |
-| Requires Requester role | GivenADispatcherToken_WhenPostingRequest_ThenReturns403 | Integration |
+| # | AC | Test Method | Level | Status |
+|---|----|-------------|-------|--------|
+| AC-1 | Creates request with status Pending | GivenAValidRequest_WhenSubmitted_ThenStatusIsPending | Unit | Covered |
+| AC-2 | Scoped to requester's dealerId | GivenARequesterWithGoldTier_WhenRequestSubmitted_ThenTierIsGold | Unit | Covered |
+| AC-3 | Triggers matching algorithm | GivenAValidRequest_WhenSubmitted_ThenMatchingIsTriggered | Unit | Covered |
+| AC-4 | Returns { requestId, status } | GivenAValidRequest_WhenPostedToEndpoint_ThenReturns200WithRequestId | Integration | Covered |
+| AC-5 | Requires Requester role | GivenADispatcherToken_WhenPostingRequest_ThenReturns403 | Integration | Covered |
 ```
 
 ### If blockers exist: `BLOCKED`
@@ -127,7 +141,7 @@ Story: BE-010 — Submit a service request
 
 Findings (3):
 
-1. [AC Coverage] AC-3 ("Returns { requestId, status }") has no corresponding test. The only integration test asserts a 200 status but does not assert the response body contains requestId.
+1. [AC Coverage] AC-4 ("Returns { requestId, status }") has no corresponding test. The only integration test asserts a 200 status but does not assert the response body contains requestId.
    File: tests/ServiceDelivery.Api.Tests/ServiceRequestsEndpointTests.cs
    Fix: Assert result.RequestId is not empty in GivenAValidRequest_WhenPostedToEndpoint_ThenReturns200WithRequestId
 
@@ -140,10 +154,12 @@ Findings (3):
    Method: TestSubmitRequest_Success
    Fix: Rename to GivenAValidRequest_WhenSubmitted_ThenStatusIsPending
 
-AC → Test Mapping (for reference):
-| AC | Test | Level | Status |
-|----|------|-------|--------|
-| Creates request with status Pending | GivenAValidRequest_WhenSubmitted_ThenStatusIsPending | Unit | Covered |
-| Scoped to dealerId | GivenARequesterWithGoldTier_WhenRequestSubmitted_ThenTierIsGold | Unit | Covered |
-| Returns { requestId, status } | GivenAValidRequest_WhenPostedToEndpoint_ThenReturns200WithRequestId | Integration | Partial — body not asserted |
+AC → Test Mapping:
+| # | AC | Test Method | Level | Status |
+|---|----|-------------|-------|--------|
+| AC-1 | Creates request with status Pending | GivenAValidRequest_WhenSubmitted_ThenStatusIsPending | Unit | Covered |
+| AC-2 | Scoped to dealerId | GivenARequesterWithGoldTier_WhenRequestSubmitted_ThenTierIsGold | Unit | Covered |
+| AC-3 | Triggers matching | GivenAValidRequest_WhenSubmitted_ThenMatchingIsTriggered | Unit | Covered |
+| AC-4 | Returns { requestId, status } | GivenAValidRequest_WhenPostedToEndpoint_ThenReturns200WithRequestId | Integration | Partial — body not asserted |
+| AC-5 | Requires Requester role | GivenADispatcherToken_WhenPostingRequest_ThenReturns403 | Integration | Covered |
 ```

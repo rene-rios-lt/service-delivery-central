@@ -78,3 +78,35 @@ public async Task GivenAValidCredential_WhenLoginCalled_ThenJwtIsReturned()
 - Never let a test pass for the wrong reason (e.g. swallowed exception, wrong assertion).
 - Never skip the refactor phase — accumulating debt here breaks the next Red phase.
 - A feature is not done until every AC bullet has a passing test.
+
+---
+
+## Repo Adaptations
+
+The TDD discipline and naming conventions are identical across all repos. Only the test runner command and testing library differ.
+
+### Backend (`service-delivery-backend`)
+
+```bash
+dotnet test                                      # all projects
+dotnet test tests/ServiceDelivery.Api.Tests      # integration only
+dotnet test tests/ServiceDelivery.Application.Tests  # unit only
+```
+
+Testing libraries: xUnit, Moq, FluentAssertions, WebApplicationFactory.
+
+### Frontend (`service-delivery-frontend`)
+
+```bash
+dotnet test tests/ServiceDelivery.Client.Tests
+```
+
+Testing libraries: xUnit, bUnit (Razor component testing). `Render<TComponent>()` is the bUnit entry point. Arrange/Act/Assert structure applies — Act is typically `cut.Find("button").Click()` or a service method call; Assert is `cut.Find("p").MarkupMatches(...)` or a ViewModel property assertion.
+
+### Simulator (`service-delivery-simulator`)
+
+```bash
+dotnet test ServiceDelivery.Simulator.slnx
+```
+
+Testing libraries: xUnit, Moq. Workers and services are pure C# — standard xUnit applies with no special framework.

@@ -130,4 +130,45 @@ tests/
   ServiceDelivery.Application.Tests/
   ServiceDelivery.Infrastructure.Tests/
   ServiceDelivery.Api.Tests/
+  ServiceDelivery.Architecture.Tests/   ← enforces layer boundaries via NetArchTest.Rules; must pass as part of dotnet test
 ```
+
+---
+
+## Repo Adaptations
+
+This skill's layer map and rules apply directly to the backend. The Frontend and Simulator have different structures.
+
+### Frontend (`service-delivery-frontend`)
+
+The Frontend uses a three-layer dependency graph, not four:
+
+```
+Core  ←  UI  ←  Hosts (Desktop / Mobile / Web)
+```
+
+| Layer | Project | May reference | What belongs here |
+|-------|---------|--------------|-------------------|
+| Core | `ServiceDelivery.Client.Core` | Nothing | Models, ViewModels, service interfaces (`Interfaces/`) |
+| UI | `ServiceDelivery.Client.UI` | Core only | All Razor pages and components under `Features/<Name>/Pages/` and `Features/<Name>/Components/` |
+| Hosts | Desktop / Mobile / Web | UI + Core | Bootstrapping (`MauiProgram.cs` / `Program.cs`) and native service implementations |
+
+**Violations to flag (Frontend):**
+- Business logic in a Razor component (belongs in a ViewModel in Core)
+- Service interface defined in UI instead of Core
+- Host project bootstrapping code referencing another Host project
+- A component that directly calls `HttpClient` instead of depending on a Core service interface
+
+### Simulator (`service-delivery-simulator`)
+
+The Simulator is a single project with no formal layering. Internal organisation is by responsibility:
+
+```
+src/ServiceDelivery.Simulator/
+  Workers/      ← one VehicleWorker per vehicle; each is a BackgroundService
+  Services/     ← BackendApiClient (HTTP) and SignalRClient (real-time)
+  Models/       ← VehicleRoute, VehiclePosition, JobAssignment
+  Configuration/← SimulatorOptions (strongly-typed settings)
+```
+
+No layer boundary violations are possible because there is only one project. Apply Single Responsibility checks instead: each class should do one thing. `VehicleWorker` moves vehicles; `BackendApiClient` calls the API; `SignalRClient` manages the hub connection. If a class does two of these, flag it.

@@ -37,11 +37,19 @@ Read the full story: title, narrative, and every acceptance criterion bullet.
 
 Read `docs/stories/execution-plan.md`. Find the story's phase and identify its upstream dependency phases and stories.
 
-For each upstream dependency story:
-1. Check whether the code it should have produced exists in the working repo (e.g. if BE-001 should have created `AuthController.cs`, does it exist?).
-2. Run `dotnet test` (or the appropriate test command) in the working repo. If tests from an upstream story are failing, that story is not complete.
+For each upstream dependency story, use a **file existence check** as the primary signal — not a full test run. A full `dotnet test` is expensive and misleading (passing tests don't prove a story is complete).
 
-If any upstream story is incomplete, it is a **blocker**.
+Heuristic: does the primary deliverable file for the upstream story exist?
+
+Examples:
+- BE-001 (login endpoint) → does `AuthController.cs` or a login-related endpoint file exist?
+- BE-009 (GET /dtcs) → does `DtcsController.cs` or a DTC query handler exist?
+- SIM-001 (authenticate) → does `BackendApiClient.cs` implement `AuthenticateAsync`?
+
+**Hard BLOCKED:** the primary file is absent entirely.
+**Warning (not a blocker):** the file exists but you cannot confirm its completeness. Report the uncertainty and proceed as READY with a note.
+
+Reserve hard BLOCKED for unambiguous gaps. Do not block on uncertainty.
 
 ### Step 3 — Assess AC testability
 
