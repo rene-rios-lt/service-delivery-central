@@ -79,13 +79,50 @@ Cross-reference with the `ac-coverage.md` skill to produce the mapping table dur
 
 ---
 
+## Domain-Only Stories
+
+A story that touches only the Domain layer (e.g. a pure value object, an entity invariant, a domain event) requires unit tests in `Domain.Tests` only. No integration tests are required. The "both levels required" rule applies only when Application or Infrastructure layers are touched.
+
+---
+
 ## Checklist for AI Review
 
 For each test file, verify:
 
-- [ ] Both unit and integration tests present (if Application or Infrastructure layer touched)
+- [ ] Both unit and integration tests present (if Application or Infrastructure layer touched — see Repo Adaptations below for the equivalent check per repo)
 - [ ] Every test method asserts on state or output, not only on mock interactions
 - [ ] No two tests are duplicates
 - [ ] Every AC bullet maps to at least one test
 - [ ] All test methods follow `GivenA_When_Then` naming
 - [ ] All tests follow Arrange / Act / Assert structure
+
+---
+
+## Repo Adaptations
+
+The two-level rule (unit + integration) applies to all repos but the projects differ.
+
+### Backend (`service-delivery-backend`)
+
+| Level | Projects |
+|-------|---------|
+| Unit | `Domain.Tests`, `Application.Tests` |
+| Integration | `Infrastructure.Tests`, `Api.Tests` |
+
+Both levels required for stories touching Application or Infrastructure. Domain-only stories need `Domain.Tests` only.
+
+### Frontend (`service-delivery-frontend`)
+
+All tests live in `ServiceDelivery.Client.Tests`. There is no separate integration test project.
+
+| Test type | What it tests | Tools |
+|-----------|--------------|-------|
+| ViewModel unit test | Pure C# logic in `Core/ViewModels/` | xUnit (no bUnit needed) |
+| Component test | Razor component rendering and interaction | xUnit + bUnit (`Render<T>()`) |
+| Service contract test | Interface implementations in host `Services/` folders | xUnit with mocked dependencies |
+
+Both ViewModel unit tests and component tests are required for any story that adds a ViewModel AND a component. A story that only adds a component does not need a ViewModel test if no ViewModel is involved.
+
+### Simulator (`service-delivery-simulator`)
+
+All tests live in `ServiceDelivery.Simulator.Tests`. Unit tests for workers and services use mocked `IBackendApiClient` and `ISignalRClient`. There are no integration tests (the Simulator is integration-tested end-to-end by running it against the real backend). The two-level rule does not apply — unit-level tests only.

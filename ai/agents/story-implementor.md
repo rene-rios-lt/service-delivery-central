@@ -30,15 +30,15 @@ Work through each AC bullet in the plan's AC → Test Scenario table, **in order
 
 #### Red
 1. Write the test method named in the plan.
-2. Place it in the correct test project (Application.Tests for unit, Api.Tests or Infrastructure.Tests for integration).
+2. Place it in the correct test project (see repo-specific commands below).
 3. Follow Arrange / Act / Assert structure, clearly separated.
-4. Run the test suite: `dotnet test`
+4. Run the test suite using the repo-appropriate command (see below).
 5. Confirm the new test **fails** with an assertion error — not a compile error. If it fails to compile, the test structure is wrong; fix it before proceeding.
 
 #### Green
 1. Write the minimum production code in the correct layer (as specified in the plan's file list) to make the failing test pass.
 2. Nothing more. If a hardcoded value makes the test pass, that is fine — the next test will force the real logic.
-3. Run `dotnet test`. All previously passing tests must still pass, plus the new test.
+3. Run the repo-appropriate test command. All previously passing tests must still pass, plus the new test.
 
 #### Refactor
 1. Clean up naming. Extract private methods if needed. Remove duplication.
@@ -71,15 +71,27 @@ Read `.stories/<STORY-ID>/03-ai-review.md`. For each numbered finding:
 - All test methods must follow `GivenA_When_Then` naming.
 - All tests must follow Arrange / Act / Assert structure.
 - Do not add code that is not driven by a failing test or required by the plan. Speculative additions are a blocker at AI Review.
+- **Do not commit during the TDD cycle.** The PR Agent creates the single story commit at the end. If work in progress needs to be preserved before the pipeline ends, use `git stash` — do not commit to the feature branch mid-story.
+- **Verify you are on the feature branch before writing any file.** Run `git branch --show-current`. If the result is `main`, stop and report to Master.
+
+---
+
+## Repo-Specific Test Commands
+
+| Repo | Command |
+|------|---------|
+| Backend | `dotnet test` (all) or `dotnet test tests/ServiceDelivery.Api.Tests` (integration only) |
+| Frontend | `dotnet test tests/ServiceDelivery.Client.Tests` |
+| Simulator | `dotnet test ServiceDelivery.Simulator.slnx` |
 
 ---
 
 ## Output
 
-- All tests in the working repo passing (`dotnet test` exits 0).
+- All tests passing (repo-appropriate test command exits 0).
 - Production code in the correct layers (matching the plan's file list).
 - Test files alongside production code.
-- No uncommitted changes unrelated to this story.
+- No commits made — all changes are unstaged or staged but uncommitted.
 
 Report to Master:
 - Number of tests added this cycle

@@ -65,6 +65,18 @@ For every file in the diff, one line describing the change:
 | `tests/.../SubmitRequestCommandHandlerTests.cs` | New — 4 unit tests |
 | `tests/.../ServiceRequestsEndpointTests.cs` | New — 2 integration tests |
 
+### Step 5 — PR Checklist
+
+Determine the correct state of each checklist item and include it in the output:
+
+- `[x] Tests written first (TDD — red before green)` — always checked (Implementor ran TDD)
+- `[x] All acceptance criteria covered by tests` — always checked (AI Reviewer approved)
+- `[x] PlantUML diagram added or updated` — check ONLY if this story adds or modifies a diagram
+- `[x] ADR created or updated` — check ONLY if this story introduces an architectural decision that warrants an ADR
+- `[x] CLAUDE.md updated` — check ONLY if this story changes commands, conventions, or project structure
+
+If a box does not apply, leave it unchecked (`[ ]`). Do not check boxes that do not apply.
+
 ---
 
 ## Output Format
@@ -76,14 +88,14 @@ The output is the PR description draft. Write it in markdown, ready to paste dir
 
 ### What was built
 
-<2–3 sentence plain-English summary>
+<2–3 sentence plain-English summary of the behaviour delivered and the business reason for it.>
 
 ### Acceptance Criteria → Test Coverage
 
-| # | AC | Test Method | Level |
-|---|----|-------------|-------|
-| AC-1 | Creates ServiceRequest with status Pending | GivenAValidRequest_WhenSubmitted_ThenStatusIsPending | Unit |
-| ... | | | |
+| # | AC | Test Method | Level | Status |
+|---|----|-------------|-------|--------|
+| AC-1 | Creates ServiceRequest with status Pending | GivenAValidRequest_WhenSubmitted_ThenStatusIsPending | Unit | Covered |
+| ... | | | | |
 
 ### AI Review
 
@@ -94,4 +106,12 @@ The output is the PR description draft. Write it in markdown, ready to paste dir
 | File | Change |
 |------|--------|
 | ... | ... |
+
+### PR Checklist
+
+- [x] Tests written first (TDD — red before green)
+- [x] All acceptance criteria covered by tests
+- [ ] PlantUML diagram added or updated
+- [ ] ADR created or updated
+- [ ] CLAUDE.md updated
 ```

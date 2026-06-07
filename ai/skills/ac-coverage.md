@@ -36,14 +36,16 @@ If an AC bullet has no corresponding test — either planned or existing — mar
 
 ## Output Format
 
-Produce a mapping table:
+Produce a 5-column mapping table. Use this format consistently — in planning output, in AI Review output, and in the PR description:
 
-| # | Acceptance Criterion | Test Method(s) | Status |
-|---|---------------------|----------------|--------|
-| AC-1 | Accepts `{ username, password }` | `GivenValidCredentials_WhenLoginCalled_ThenJwtIsReturned` | Covered |
-| AC-2 | Returns JWT with role, tier, dealerId claims | `GivenValidCredentials_WhenLoginCalled_ThenJwtContainsRoleTierDealerId` | Covered |
-| AC-3 | Returns 401 for invalid credentials | `GivenInvalidCredentials_WhenLoginCalled_ThenReturns401` | Covered |
-| AC-4 | JWT expiry configured via appsettings.json | — | **UNCOVERED** |
+| # | Acceptance Criterion | Test Method(s) | Level | Status |
+|---|---------------------|----------------|-------|--------|
+| AC-1 | Accepts `{ username, password }` | `GivenAValidCredential_WhenLoginCalled_ThenJwtIsReturned` | Unit | Covered |
+| AC-2 | Returns JWT with role, tier, dealerId claims | `GivenAValidCredential_WhenLoginCalled_ThenJwtContainsRoleTierDealerId` | Unit | Covered |
+| AC-3 | Returns 401 for invalid credentials | `GivenAnInvalidCredential_WhenLoginCalled_ThenReturns401` | Integration | Covered |
+| AC-4 | JWT expiry configured via appsettings.json | `GivenDefaultConfig_WhenAppStarts_ThenJwtExpiryIsSet` | Integration | Config |
+
+Valid Status values: **Covered**, **Partial** (covered at one level but not both where required), **Config** (configuration-only AC — see below), **UNCOVERED** (blocking).
 
 ---
 
@@ -63,8 +65,19 @@ Produce a mapping table:
 
 ---
 
+## Configuration ACs
+
+Some AC bullets describe a configuration value rather than a runtime behaviour (e.g. "JWT expiry configured via appsettings.json"). These cannot be tested with a unit test asserting business logic. Cover them with an integration test that reads the configuration and asserts the key is present and correctly typed. Mark the status as **Config** in the table — this is not a blocker.
+
+## SignalR Event ACs
+
+AC bullets that require a SignalR event to be sent (e.g. "broadcasts `RepAssigned` to the requester via `RequesterHub`") must be covered by integration tests in `Api.Tests` using `WebApplicationFactory` with a real SignalR hub connection. A unit test that only verifies a mock hub method was called does not count — the test must assert the event payload was received by a connected test client. Mark these as **Partial** if only mock verification exists.
+
+---
+
 ## Hard Rules
 
 - Every AC bullet must map to at least one test. No exceptions.
 - "The happy path is tested" is not sufficient if the AC also specifies error conditions.
 - A test that exists in the wrong test project (e.g. a database persistence test in `Application.Tests` using mocks) does not count as an integration test for that criterion.
+- Configuration ACs marked **Config** are not blockers, but they must still have an integration test.
