@@ -32,10 +32,9 @@ Master → Evaluator   → READY or BLOCKED
        → Planner     → implementation plan
        → CHECKPOINT #1: approve plan
        → Implementor → TDD cycle per AC bullet → passing tests
-       → AI Reviewer → 8-check quality gate
+       → AI Reviewer → 9-check quality gate
        → CHECKPOINT #2: approve or send back
-       → Reviewer    → PR description package
-       → PR Agent    → stage, commit, push, PR created
+       → PR Agent    → compose description, stage, commit, push, PR created
 ```
 
 ### Agents
@@ -46,8 +45,7 @@ Master → Evaluator   → READY or BLOCKED
 | Story Planner | `.claude/agents/story-planner/` | Senior engineer — produces the file list, interface definitions, and named test scenarios per AC bullet |
 | Story Implementor | `.claude/agents/story-implementor/` | TDD craftsperson — red-green-refactor, one AC bullet at a time |
 | Story AI Reviewer | `.claude/agents/story-ai-reviewer/` | Impartial reviewer — 9 checks: tests pass, AC coverage, test levels, value, duplication, SOLID, Clean Architecture, dead code, hallucination guard |
-| Story Reviewer | `.claude/agents/story-reviewer/` | Communicator — produces the PR description with AC→test table and checklist |
-| Story PR | `.claude/agents/story-pr/` | Executor — stage, commit, push, PR creation |
+| Story PR | `.claude/agents/story-pr/` | Executor — composes PR description from AI review output, then stages, commits, pushes, and creates the PR |
 
 ### Skills
 
@@ -72,8 +70,7 @@ Each agent writes a stage file to `.stories/<STORY-ID>/` in the working repo (gi
   01-evaluation.md
   02-plan.md
   03-ai-review.md
-  04-review-package.md
-  05-pr.md
+  04-pr.md
 ```
 
 ---
