@@ -45,7 +45,7 @@ Master → Evaluator   → READY or BLOCKED
 | Story Evaluator | `.claude/agents/story-evaluator/` | Gatekeeper — checks upstream dependencies and AC testability before a line is written |
 | Story Planner | `.claude/agents/story-planner/` | Senior engineer — produces the file list, interface definitions, and named test scenarios per AC bullet |
 | Story Implementor | `.claude/agents/story-implementor/` | TDD craftsperson — red-green-refactor, one AC bullet at a time |
-| Story AI Reviewer | `.claude/agents/story-ai-reviewer/` | Impartial reviewer — 8 checks: tests pass, AC coverage, test levels, value, duplication, SOLID, Clean Architecture, dead code |
+| Story AI Reviewer | `.claude/agents/story-ai-reviewer/` | Impartial reviewer — 9 checks: tests pass, AC coverage, test levels, value, duplication, SOLID, Clean Architecture, dead code, hallucination guard |
 | Story Reviewer | `.claude/agents/story-reviewer/` | Communicator — produces the PR description with AC→test table and checklist |
 | Story PR | `.claude/agents/story-pr/` | Executor — stage, commit, push, PR creation |
 
