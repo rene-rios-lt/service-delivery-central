@@ -30,11 +30,25 @@ Invoked with a story ID:
 
 ---
 
+## Agent Files
+
+| Agent name | File |
+|-----------|------|
+| `story-evaluator` | `.claude/agents/story-evaluator/AGENT.md` |
+| `story-planner` | `.claude/agents/story-planner/AGENT.md` |
+| `story-implementor` | `.claude/agents/story-implementor/AGENT.md` |
+| `story-ai-reviewer` | `.claude/agents/story-ai-reviewer/AGENT.md` |
+| `story-pr` | `.claude/agents/story-pr/AGENT.md` |
+
+---
+
 ## Lifecycle
 
 ### 1. Display the story
 
 Read `docs/stories/<repo>.md` in the central repo (match story prefix: `BE-` → `backend.md`, `SIM-` → `simulator.md`, `FE-` → `frontend.md`). Display the story title and all acceptance criteria.
+
+If the story ID does not appear in the file, stop and report: `Story [ID] not found in docs/stories/[repo].md. Verify the ID and re-run.`
 
 ### 2. Setup
 
@@ -91,7 +105,7 @@ Produce the diff:
 git diff main...HEAD
 ```
 
-Invoke the **story-ai-reviewer** agent with the story ID and this diff. Pass this same diff to the Story Reviewer in Step 7 — do not regenerate it.
+Invoke the **story-ai-reviewer** agent with the story ID and this diff. Pass this same diff to the PR Agent in Step 7 — do not regenerate it.
 
 Present the full findings to the developer.
 
@@ -108,17 +122,13 @@ Repeat until the developer approves.
 
 **Loop limit:** if the AI Reviewer returns BLOCKED for 3 consecutive cycles on the same story without any finding being resolved, stop. Surface all unresolved findings to the developer with a recommendation to revisit the plan. Do not invoke the Implementor a 4th time automatically.
 
-### 7. Story Reviewer
+### 7. PR Agent
 
-Invoke the **story-reviewer** agent with the story ID, the full diff, and the AI Reviewer output.
-
-### 8. PR Agent
-
-Invoke the **story-pr** agent with the story ID, the branch name, and the Story Reviewer output.
+Invoke the **story-pr** agent with: story ID, branch name, full diff, path to `.stories/<STORY-ID>/03-ai-review.md`, and path to `../docs/stories/<repo>.md`.
 
 Report the PR URL to the developer.
 
-### 9. Done
+### 8. Done
 
 Tell the developer:
 
@@ -149,8 +159,8 @@ Skills are at `../.claude/skills/<name>/SKILL.md` from a working repo.
 
 ## Guardrails
 
-- Never skip a checkpoint.
-- Never proceed to a later phase if an earlier phase returned a blocking result.
+- Never skip a checkpoint — checkpoints are the developer's opportunity to catch AI-generated errors before they propagate to later pipeline stages.
+- Never proceed to a later phase if an earlier phase returned a blocking result — downstream agents assume their inputs are valid; a blocking result means the assumption is violated.
 - Never merge or push to `main` directly.
-- Never approve the AI Reviewer's findings on behalf of the developer — that is a human decision.
+- Never approve the AI Reviewer's findings on behalf of the developer — AI approval of AI output bypasses the human oversight the checkpoint exists to provide.
 - If the developer provides no response at a checkpoint, wait. Do not time out and proceed.

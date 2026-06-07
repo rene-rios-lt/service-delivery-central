@@ -148,8 +148,7 @@ Agents are Claude Code subagents — each runs in an isolated context window wit
 | `story-planner/` | 2 — Plan | `02-plan.md` |
 | `story-implementor/` | 3 — Implement | none — writes production code and tests |
 | `story-ai-reviewer/` | 4 — AI Review | `03-ai-review.md` |
-| `story-reviewer/` | 5 — Review | `04-review-package.md` |
-| `story-pr/` | 6 — PR | `05-pr.md` |
+| `story-pr/` | 5 — PR | `04-pr.md` |
 
 ### Audit Files (`.stories/`)
 
