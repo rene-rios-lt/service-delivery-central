@@ -106,15 +106,9 @@ Report test results: number of tests passing, any failures.
 
 ### 6. AI Reviewer
 
-Produce the diff:
+Invoke the **story-ai-reviewer** agent with the story ID and the path to `.stories/<STORY-ID>/02-plan.md`. The agent produces its own diff internally — do not run `git diff` here.
 
-```bash
-git diff main...HEAD
-```
-
-Invoke the **story-ai-reviewer** agent with the story ID and this diff. Pass this same diff to the PR Agent in Step 7 — do not regenerate it.
-
-Present the full findings to the developer.
+Present the findings to the developer. On the first review cycle this is the full findings. On subsequent cycles it is a delta (resolved vs still-open findings).
 
 ### CHECKPOINT #2 — AI Review
 
@@ -123,7 +117,7 @@ Present the full findings to the developer.
 > "AI Review complete. Approve to prepare the PR, or send back to the Implementor with the listed issues."
 
 - If approved: continue.
-- If sent back: pass the AI Reviewer's findings as additional constraints to the Implementor. Re-run the Implementor. Re-run the AI Reviewer. Present the new findings. Pause again.
+- If sent back: pass the AI Reviewer's findings as additional constraints to the Implementor. Re-run the Implementor. Re-run the AI Reviewer — note in the invocation that this is cycle N (so the agent returns a delta). Present the delta findings. Pause again.
 
 Repeat until the developer approves.
 
@@ -131,7 +125,7 @@ Repeat until the developer approves.
 
 ### 7. PR Agent
 
-Invoke the **story-pr** agent with: story ID, branch name, full diff, path to `.stories/<STORY-ID>/03-ai-review.md`, and path to `../docs/stories/<repo>.md`.
+Invoke the **story-pr** agent with: story ID, branch name, path to `.stories/<STORY-ID>/03-ai-review.md`, and path to `../docs/stories/<repo>.md`.
 
 Report the PR URL to the developer.
 

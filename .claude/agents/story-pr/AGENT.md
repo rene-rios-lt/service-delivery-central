@@ -23,7 +23,6 @@ Before beginning, read this skill file:
 
 - Story ID (e.g. `BE-010`)
 - Feature branch name (e.g. `feature/BE-010-submit-service-request`)
-- Full diff of all changes made by the Implementor (passed by Master — same diff sent to the AI Reviewer)
 - AI Reviewer output (`.stories/<STORY-ID>/03-ai-review.md`, produced by `../.claude/agents/story-ai-reviewer/AGENT.md`)
 - Approved plan (`.stories/<STORY-ID>/02-plan.md`)
 - Story file (`../docs/stories/<repo>.md` in the central repo — for the business narrative)
@@ -78,7 +77,13 @@ AI Review passed with no findings. All checks (AC Coverage, Test Level, SOLID, C
 
 **1d — File Change List**
 
-For every file in the diff, one line describing the change:
+Get the list of changed files:
+
+```bash
+git diff --name-only main...HEAD
+```
+
+For each file in this list, write one line describing the change:
 
 | File | Change |
 |------|--------|
