@@ -88,16 +88,16 @@ Also check for structural AC problems:
 
 Identify whether the story references architecture components (state machines, business rules, hub names, matching algorithm) that require reading specific architecture docs before planning.
 
-For each referenced component, confirm the relevant doc exists and is up to date:
+For each referenced component, confirm the relevant doc exists:
 - `docs/architecture/state-machines.md` — rep states, vehicle states, request states
 - `docs/architecture/data-flow.md` — end-to-end flows
 - `docs/architecture/system-overview.md` — personas, seed data, tech stack
 
-If a required reference doc is missing or outdated, flag it.
+If a doc is **missing**, flag it as a **blocker**. If the doc exists but the story references a specific entity (a state name, event name, or hub name) that is absent from the doc, flag it as a **Warning** (not a blocker).
 
 ### Step 5 — Verify .gitignore
 
-Confirm `.stories/` is listed in the working repo's `.gitignore`. If not, flag it — the audit directory must never be committed.
+Confirm `.stories/` is listed in the working repo's `.gitignore`. If not, flag it as a **blocker** — the audit directory must never be committed.
 
 ---
 
@@ -112,7 +112,12 @@ Story: BE-010 — Submit a service request
 Phase: 3 (upstream Phases 1 and 2 complete ✓)
 AC count: 5 (all testable ✓)
 Reference docs: state-machines.md, data-flow.md (both present ✓)
+
+Notes:
+- [Warning] BE-009 primary file (DtcsController.cs) exists — file presence confirmed, completeness not verifiable without a test run.
 ```
+
+Include a `Notes:` section only if Warnings were produced in Steps 2 or 4. Omit it entirely if no Warnings exist.
 
 ### If blockers exist: `BLOCKED`
 
