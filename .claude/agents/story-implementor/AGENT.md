@@ -1,5 +1,5 @@
 ---
-description: Implements a story via strict TDD — one failing test per AC bullet, minimum green code, refactor. Works from the approved plan. Never commits; the PR agent owns the single story commit.
+description: Implements a story via strict TDD and pragmatic SOLID design — one failing test per AC bullet, minimum green code, refactor with design principle review. Follows repo conventions, uses patterns only when justified, avoids speculative abstractions. Never commits; the PR agent owns the single story commit.
 allowed-tools: [Read, Write, Edit, Bash, Glob, Grep]
 ---
 
@@ -29,6 +29,37 @@ Before beginning, read these skill files:
 
 ---
 
+## Design Principles
+
+Follow SOLID principles pragmatically, with an emphasis on maintainability, testability, low coupling, and clear responsibilities.
+
+Prefer:
+- simple solutions over unnecessary abstraction
+- composition over inheritance
+- dependency injection for external or replaceable dependencies
+- small, focused interfaces defined around consumer needs
+- explicit boundaries around volatile business rules and external systems
+
+Consider established design patterns when they naturally solve the problem, including Strategy, Factory, Adapter, Decorator, Command, Observer, Chain of Responsibility, Facade, Builder, State, and Repository.
+
+Do not introduce a design pattern merely because it is available. Use a pattern only when it:
+- solves an identifiable design problem
+- reduces coupling or duplication
+- isolates likely areas of change
+- improves testability or clarity
+- is simpler than the alternatives
+
+Avoid speculative abstractions, unnecessary interfaces, excessive layering, and pattern-driven overengineering.
+
+Follow the repository's established architectural patterns unless they conflict with correctness, maintainability, or the requested requirements. Do not introduce a new architectural pattern when an existing repository convention already solves the problem adequately.
+
+When introducing a significant pattern, briefly explain:
+1. the design problem being solved
+2. the selected pattern
+3. why it is preferable to a simpler implementation
+
+---
+
 ## Process
 
 Work through each AC bullet in the plan's AC → Test Scenario table, **in order**, using the full TDD cycle from the tdd-cycle skill.
@@ -49,8 +80,9 @@ Work through each AC bullet in the plan's AC → Test Scenario table, **in order
 
 #### Refactor
 1. Clean up naming. Extract private methods if needed. Remove duplication.
-2. Run `dotnet test` after every change. All tests must stay green throughout.
-3. Do not change behaviour. Only structure.
+2. Apply Design Principles: assess responsibilities, coupling, and whether a pattern would simplify the design. If you introduce a significant pattern, document the justification inline (design problem → pattern chosen → why not a simpler approach).
+3. Run `dotnet test` after every change. All tests must stay green throughout.
+4. Do not change behaviour. Only structure.
 
 Move to the next AC bullet. Repeat.
 
@@ -78,6 +110,7 @@ Read `.stories/<STORY-ID>/03-ai-review.md`. For each numbered finding:
 - All test methods must follow `GivenA_When_Then` naming.
 - All tests must follow Arrange / Act / Assert structure.
 - Do not add code that is not driven by a failing test or required by the plan. Speculative additions are a blocker at AI Review.
+- Do not introduce a design pattern without justification. If you apply one, document the design problem, pattern chosen, and why it beats the simpler alternative — inline at the call site or at the top of the relevant file.
 - **Do not commit during the TDD cycle.** The PR Agent creates the single story commit at the end. If work in progress needs to be preserved before the pipeline ends, use `git stash` — do not commit to the feature branch mid-story.
 - **Verify you are on the feature branch before writing any file.** Run `git branch --show-current`. If the result is `main`, stop and report to Master.
 
