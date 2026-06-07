@@ -73,6 +73,7 @@ scripts/
 docs/
   architecture/ # Architecture diagrams and decision context
   adr/          # Architecture Decision Records (ADRs)
+  stories/      # Full user story backlog (backend.md, frontend.md, simulator.md) and execution plan
 ```
 
 ## Engineering Standards
@@ -109,14 +110,51 @@ All production code must follow SOLID. The project structures in each repo are d
 ## Conventions
 
 ### AI Skills (`ai/skills/`)
+
+Skills are atomic rule sets. They are never invoked directly — agents reference them.
+
 - One file per skill, named in `kebab-case.md`
-- Each skill file defines: purpose, trigger conditions, inputs, outputs, and constraints
+- Each skill file must contain: **Purpose**, the rules themselves, and a **Repo Adaptations** section that maps the rules to Backend, Frontend, and Simulator where the behaviour differs
 - Skills are self-contained — they must not depend on other skill files
 
+**Existing skills** (do not duplicate — extend in place):
+
+| File | Governs |
+|------|---------|
+| `tdd-cycle.md` | Red-green-refactor discipline, `GivenA_When_Then` naming, Arrange/Act/Assert |
+| `clean-architecture.md` | Layer dependency rules and directory structure per repo |
+| `test-quality.md` | Unit vs integration levels, value-add criteria, duplication check |
+| `solid-principles.md` | All five SOLID principles mapped per layer per repo |
+| `ac-coverage.md` | AC → test mapping process, Configuration ACs, SignalR event ACs |
+
 ### AI Agents (`ai/agents/`)
+
+Agents are the executable units. Each is invoked by the Master agent as a pipeline stage.
+
 - One file per agent, named in `kebab-case.md`
-- Each agent composes one or more skills from `ai/skills/` by reference
-- Agent files define: scope, persona, referenced skills, and behavioral guardrails
+- Each agent file must contain: **Persona**, **Skills Used**, **Inputs**, **Audit Output** (the `.stories/<STORY-ID>/NN-<name>.md` file it writes), **Process** (numbered steps), **Output** or **Output Format**, and **Guardrails**
+- Agents must write their audit file before returning — it is the contract between pipeline stages
+
+**Existing agents** (do not duplicate — extend in place):
+
+| File | Stage | Audit file written |
+|------|-------|--------------------|
+| `master.md` | Orchestrator | none — coordinates the pipeline |
+| `story-evaluator.md` | 1 — Evaluate | `01-evaluation.md` |
+| `story-planner.md` | 2 — Plan | `02-plan.md` |
+| `story-implementor.md` | 3 — Implement | none — writes production code and tests |
+| `story-ai-reviewer.md` | 4 — AI Review | `03-ai-review.md` |
+| `story-reviewer.md` | 5 — Review | `04-review-package.md` |
+| `story-pr.md` | 6 — PR | `05-pr.md` |
+
+### Audit Files (`.stories/`)
+
+During story execution, each agent writes a stage file into `.stories/<STORY-ID>/` in the **working repo** (not this repo). These files are ephemeral working memory — never committed, deleted at the start of each new Master execution.
+
+- `.stories/` is listed in `.gitignore` in all three working repos
+- Audit files are numbered by stage: `01-evaluation.md`, `02-plan.md`, etc.
+- Each agent reads the previous stage's file before writing its own
+- Do not create `.stories/` entries in this repo — they belong in the working repos only
 
 ### Scripts (`scripts/`)
 - Shell scripts only (`.sh`), written for `bash` or `zsh`
