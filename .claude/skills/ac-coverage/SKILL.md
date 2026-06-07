@@ -1,3 +1,7 @@
+---
+description: Acceptance criterion to test mapping process — produces a 5-column coverage table showing every AC bullet, its test method(s), test level, and coverage status.
+---
+
 # Skill: AC Coverage
 
 ## Purpose

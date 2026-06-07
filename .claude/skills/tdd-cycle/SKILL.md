@@ -1,3 +1,7 @@
+---
+description: Red-green-refactor TDD discipline, GivenA_When_Then test naming, and Arrange/Act/Assert structure — applies to all repos in this system.
+---
+
 # Skill: TDD Cycle
 
 ## Purpose

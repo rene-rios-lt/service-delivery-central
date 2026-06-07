@@ -1,3 +1,7 @@
+---
+description: Unit vs integration test level requirements, value-add criteria, and duplication checks — used during AI Review to evaluate whether the test suite is fit for purpose.
+---
+
 # Skill: Test Quality
 
 ## Purpose
@@ -75,7 +79,7 @@ If yes to all three, one of them is redundant. Flag it.
 
 Every acceptance criterion bullet in the story must be traceable to at least one test. This is a strict requirement, not a guideline.
 
-Cross-reference with the `ac-coverage.md` skill to produce the mapping table during AI Review.
+Cross-reference with the `ac-coverage` skill to produce the mapping table during AI Review.
 
 ---
 

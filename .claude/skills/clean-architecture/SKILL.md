@@ -1,3 +1,7 @@
+---
+description: Layer dependency rules for Backend (Domain/Application/Infrastructure/Api), Frontend (Core/UI/Hosts), and Simulator — what belongs where and what boundary violations look like.
+---
+
 # Skill: Clean Architecture
 
 ## Purpose

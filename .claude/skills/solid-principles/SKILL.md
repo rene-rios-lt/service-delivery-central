@@ -1,3 +1,7 @@
+---
+description: All five SOLID principles mapped per layer for Backend (Domain/Application/Infrastructure/Api), Frontend, and Simulator — violation signals and fixes.
+---
+
 # Skill: SOLID Principles
 
 ## Purpose
