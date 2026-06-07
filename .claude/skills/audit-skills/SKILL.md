@@ -16,7 +16,7 @@ Read every file in:
 
 - `.claude/skills/*/SKILL.md` — all slash-command skills
 
-Do not skip any file. Do not summarise from memory — read the current file content each time.
+This includes `audit-skills/SKILL.md` itself. Do not skip it. Do not summarise from memory — read the current file content each time.
 
 ---
 
@@ -40,7 +40,7 @@ One-line justification is required for every dimension score.
 
 | Score | Signal |
 |-------|--------|
-| **9–10** | A senior practitioner cannot identify a scenario the skill should govern but doesn't. All rules have explicit edge cases and exceptions stated. Cross-repo variations (BE/FE/SIM) are addressed in a Repo Adaptations section wherever behaviour differs. |
+| **9–10** | A senior practitioner cannot identify a scenario the skill should govern but doesn't. All rules have explicit edge cases and exceptions stated. Cross-repo variations are addressed in a Repo Adaptations section wherever behaviour differs. |
 | **7–8** | Most cases covered. One or two edge cases missing but low-frequency or low-impact. Repo Adaptations present but thin on one repo. |
 | **5–6** | The common case is well-covered but exceptions and failure modes are largely absent. A reader following this skill would make wrong decisions on realistic edge cases. |
 | **1–4** | Significant gaps that would cause incorrect behaviour on common scenarios. |
@@ -160,10 +160,10 @@ Skills are read as reference material. An agent that reads a skill needs to do m
 | **1–4** | The skill is a bare checklist. No underlying model is conveyed. Readers cannot extrapolate beyond the explicit examples. |
 
 **Red flags (automatic −1 each):**
-- A rule with exceptions but no principle that defines what makes an exception valid (so readers can identify other exceptions themselves)
+- A rule with exceptions but no principle that defines what makes an exception valid
 - A prescriptive list with no stated common thread that explains why these items belong together
 - "Always do X" or "Never do Y" with no accompanying reasoning that would help identify boundary cases
-- An exception stated without explaining why the exception does not violate the rule's principle
+- An exception stated without explaining why it does not violate the rule's principle
 
 ---
 
@@ -232,9 +232,26 @@ Format:
 
 ---
 
+## Self-Audit
+
+After completing the standard per-file assessments and cross-file analysis, apply all eight dimensions specifically to this file (`audit-skills/SKILL.md`) and answer the following questions directly:
+
+1. **Completeness** — Are there skill patterns or structures this audit would fail to catch? Are there gaps in what the dimensions cover?
+2. **Executability** — Could two auditors score the same skill file and land within 1 point on every dimension? If not, which dimension definitions are too vague?
+3. **Internal Consistency** — Do any two dimensions penalise the same flaw twice? Do any two dimensions give conflicting guidance?
+4. **Scope Precision** — Does this skill stay in its lane — assessing, not fixing? Does it avoid telling the auditor what the correct fix is (that belongs in the improvement backlog)?
+5. **Cross-File Alignment** — Does this skill's vocabulary (dimension names, severity labels, output format) match `audit-agents/SKILL.md`? Are the two audit skills diverging?
+6. **Conciseness** — Is any dimension definition longer than it needs to be to produce consistent scoring?
+7. **Teachability** — Does this skill explain enough about WHY each dimension matters that an auditor can score a novel skill type it has never seen before?
+8. **Security** — Does this skill instruct any dangerous behaviour?
+
+Report findings from the self-audit in the improvement backlog alongside findings from the standard run. Label them `[Self-audit]` so they are distinguishable.
+
+---
+
 ## Prioritized Improvement Backlog
 
-Collect all findings — per-file weaknesses plus cross-file issues — into a single ranked table:
+Collect all findings — per-file weaknesses, cross-file issues, and self-audit findings — into a single ranked table:
 
 | # | File(s) | Finding | Suggested fix | Effort |
 |---|---------|---------|---------------|--------|
@@ -251,10 +268,11 @@ Effort definitions:
 
 ## Output Order
 
-1. Per-file assessments (alphabetical by skill folder name)
+1. Per-file assessments (alphabetical by skill folder name — includes `audit-skills/SKILL.md`)
 2. Cross-file analysis (Inconsistencies → Contradictions → Missing Cross-References)
-3. Prioritized improvement backlog
-4. Overall system rating — average of all per-file scores, one paragraph summary
+3. Self-audit findings for this file specifically
+4. Prioritized improvement backlog (per-file + cross-file + self-audit findings combined)
+5. Overall system rating — average of all per-file scores, one paragraph summary
 
 ---
 
@@ -262,6 +280,7 @@ Effort definitions:
 
 - Read every file fresh — do not use cached assessments from a prior run of this skill.
 - Do not conflate inconsistency with contradiction. An inconsistency is a mismatch in wording; a contradiction makes it impossible to follow both files simultaneously.
-- Do not suggest improvements outside the scope of what the skill governs. A skill covering TDD should not be criticised for not covering clean architecture.
+- Do not suggest improvements outside the scope of what the skill governs.
 - Suggestions must be specific enough to act on. "Improve clarity" is not a suggestion. "Add a skip note to the SignalR step for Simulator stories, which have no SignalR events" is.
 - When scoring Teachability, judge the skill against novel scenarios in its domain — not just whether examples are present. A skill with many examples but no principles still scores low.
+- The self-audit must be honest. If this skill has gaps, they appear in the improvement backlog. Do not soften findings because they apply to the auditor itself.
