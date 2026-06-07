@@ -105,6 +105,14 @@ Define how each of the five SOLID principles applies in this specific codebase, 
 
 ---
 
+## Value Objects and Domain Events
+
+**Value objects (SRP):** Value objects are immutable by design — their state cannot change after construction. This satisfies SRP structurally: a value object has one reason to change (the definition of the value it represents). No additional SRP analysis is required for well-formed value objects.
+
+**Domain events (ISP):** Domain events should have a single clear trigger and carry only the data the subscriber needs. Do not attach the entire aggregate to the event payload. If two subscribers need different fields, consider two separate events rather than one event with a superset payload.
+
+---
+
 ## Repo Adaptations
 
 SOLID applies in all repos. The vocabulary differs per repo — map the principles to the actual constructs used.
@@ -118,16 +126,6 @@ SOLID applies in all repos. The vocabulary differs per repo — map the principl
 | L | Every service implementation in a host's `Services/` folder must fully honour its `Core/Interfaces/` contract. No silent no-ops. If a platform cannot support a feature, return a typed "unsupported" result — do not silently return null. |
 | I | Interfaces in `Core/Interfaces/` are narrow per capability (e.g. `IAuthService`, `IVehicleService`). A component that only reads vehicles should not depend on an interface that also creates and deletes them. |
 | D | Components depend on interfaces from Core, never on concrete implementations from host `Services/` folders. Register concretes in `MauiProgram.cs` or `Program.cs`. |
-
----
-
-## Value Objects and Domain Events
-
-**Value objects (SRP):** Value objects are immutable by design — their state cannot change after construction. This satisfies SRP structurally: a value object has one reason to change (the definition of the value it represents). No additional SRP analysis is required for well-formed value objects.
-
-**Domain events (ISP):** Domain events should have a single clear trigger and carry only the data the subscriber needs. Do not attach the entire aggregate to the event payload. If two subscribers need different fields, consider two separate events rather than one event with a superset payload.
-
----
 
 ### Simulator (`service-delivery-simulator`)
 
