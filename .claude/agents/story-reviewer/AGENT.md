@@ -22,7 +22,7 @@ Before beginning, read this skill file:
 ## Inputs
 
 - Story ID
-- Full diff of all changes made by the Implementor
+- Full diff of all changes made by the Implementor — produced by Master via `git diff main...HEAD` before invoking this agent
 - AI Reviewer output (`.stories/<STORY-ID>/03-ai-review.md`)
 - Approved plan (`.stories/<STORY-ID>/02-plan.md`)
 
@@ -60,7 +60,13 @@ Summarise the AI Reviewer's findings and how each was resolved:
 | AC-3 body not asserted (blocking) | Test updated to assert `requestId` in response body |
 | D violation: concrete MatchingService instantiated | Extracted `IMatchingService`; injected via constructor |
 
-If the AI Reviewer returned `APPROVED` with no findings, state that clearly.
+If the AI Reviewer returned `APPROVED` with no findings, write:
+
+```markdown
+### AI Review
+
+AI Review passed with no findings. All checks (AC Coverage, Test Level, SOLID, Clean Architecture, Dead Code) returned clean.
+```
 
 ### Step 4 — File Change List
 
@@ -78,7 +84,7 @@ For every file in the diff, one line describing the change:
 
 Determine the correct state of each checklist item and include it in the output:
 
-- `[x] Tests written first (TDD — red before green)` — always checked (Implementor ran TDD)
+- `[x] Tests written first (TDD — red before green)` — always checked — this is the Implementor's commitment that TDD discipline was followed, not a post-hoc verification by the Story Reviewer
 - `[x] All acceptance criteria covered by tests` — always checked (AI Reviewer approved)
 - `[x] PlantUML diagram added or updated` — check ONLY if this story adds or modifies a diagram
 - `[x] ADR created or updated` — check ONLY if this story introduces an architectural decision that warrants an ADR

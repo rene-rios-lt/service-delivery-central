@@ -49,7 +49,9 @@ Produce a 5-column mapping table. Use this format consistently — in planning o
 | AC-3 | Returns 401 for invalid credentials | `GivenAnInvalidCredential_WhenLoginCalled_ThenReturns401` | Integration | Covered |
 | AC-4 | JWT expiry configured via appsettings.json | `GivenDefaultConfig_WhenAppStarts_ThenJwtExpiryIsSet` | Integration | Config |
 
-Valid Status values: **Covered**, **Partial** (covered at one level but not both where required), **Config** (configuration-only AC — see below), **UNCOVERED** (blocking).
+Valid Status values: **Planned** (planning phase — test not yet written), **Covered** (review phase — test exists and passes), **Partial** (covered at one level but not both where required), **Config** (configuration-only AC — see below), **UNCOVERED** (blocking).
+
+> The example table above uses **Covered** because it represents review-phase output. In planning-phase output (Story Planner), all Status values are **Planned**.
 
 ---
 
@@ -59,6 +61,7 @@ Valid Status values: **Covered**, **Partial** (covered at one level but not both
 - Ensure that the method name reads as a plain-English specification of the behaviour.
 - Distinguish unit-level tests (Application.Tests) from integration-level tests (Api.Tests) in the table.
 - Any AC you cannot translate into a specific test method name is a signal that the AC is too vague — flag it for the Evaluator.
+- Use **Planned** as the Status value for every row in the planning table. Tests do not exist yet; "Covered" would be misleading.
 
 ## When Reviewing (Story AI Reviewer)
 
@@ -71,11 +74,13 @@ Valid Status values: **Covered**, **Partial** (covered at one level but not both
 
 ## Configuration ACs
 
-Some AC bullets describe a configuration value rather than a runtime behaviour (e.g. "JWT expiry configured via appsettings.json"). These cannot be tested with a unit test asserting business logic. Cover them with an integration test that reads the configuration and asserts the key is present and correctly typed. Mark the status as **Config** in the table — this is not a blocker.
+Some AC bullets describe a configuration value rather than a runtime behaviour (e.g. "JWT expiry configured via appsettings.json"). These cannot be tested with a unit test asserting business logic. Cover them with an integration test that reads the configuration and asserts the key is present and correctly typed. Mark the status as **Config**. Config ACs are not hard UNCOVERED blockers, but they must still have an integration test. If the integration test is missing at AI Review, flag it as "Config — test missing" — an advisory finding that must be resolved before APPROVED.
 
 ## SignalR Event ACs
 
 AC bullets that require a SignalR event to be sent (e.g. "broadcasts `RepAssigned` to the requester via `RequesterHub`") must be covered by integration tests in `Api.Tests` using `WebApplicationFactory` with a real SignalR hub connection. A unit test that only verifies a mock hub method was called does not count — the test must assert the event payload was received by a connected test client. Mark these as **Partial** if only mock verification exists.
+
+For the reasoning behind why mock-only SignalR assertions are flagged as Partial rather than Covered — and for the side-effect exception that applies to other mock-verify scenarios — see the test-quality skill (`../.claude/skills/test-quality/SKILL.md`, Value-Add Check section).
 
 ---
 

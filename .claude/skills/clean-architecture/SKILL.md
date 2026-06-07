@@ -20,6 +20,8 @@ Domain  ←  Application  ←  Infrastructure
 
 Dependencies flow inward only. A layer may reference layers closer to the centre, never further out.
 
+> **Arrow legend:** `A ← B` means "B depends on A" — B may reference A's types; A must not reference B. The arrow points toward the dependency, not toward the dependent.
+
 | Layer | Project | May reference |
 |-------|---------|--------------|
 | Domain | `ServiceDelivery.Domain` | Nothing outside .NET BCL |
@@ -85,7 +87,7 @@ Dependencies flow inward only. A layer may reference layers closer to the centre
 
 **Hard rules:**
 - No business logic. Controllers call Application handlers — nothing else.
-- DI wiring is the only reason Infrastructure is referenced here.
+- Infrastructure is referenced in `Program.cs` for three purposes only: DI registration of concrete types, EF Core migration setup, and health check registrations. No other Api code (controllers, middleware, filters) may reference Infrastructure.
 - No direct repository access.
 
 ---
@@ -99,6 +101,19 @@ Dependencies flow inward only. A layer may reference layers closer to the centre
 | `new ConcreteRepository()` inside a handler | DI violation (D in SOLID) | Inject the interface; register the concrete at the composition root |
 | Repository interface defined in Infrastructure | Wrong layer for abstraction | Move interface to Domain |
 | Infrastructure package imported in Application | Application → Infrastructure boundary | Define a thin interface in Application; implement in Infrastructure |
+
+---
+
+## Cross-Cutting Concerns Placement
+
+| Concern | Where it belongs |
+|---------|-----------------|
+| Logging (`ILogger<T>`) | Injected anywhere via DI — no placement restriction |
+| FluentValidation validators | Application: `Common/Validators/` |
+| Global exception handling (`ProblemDetails`, `UseExceptionHandler`) | Api middleware — registered in `Program.cs` |
+| MediatR pipeline behaviours (validation, logging) | Application: `Common/Behaviors/` |
+
+Do not place validators in Domain (they are application-level orchestration concerns, not domain invariants). Do not place global exception middleware in Application — it belongs at the Api boundary.
 
 ---
 

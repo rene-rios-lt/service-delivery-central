@@ -22,6 +22,8 @@ Define how each of the five SOLID principles applies in this specific codebase, 
 
 **How to spot a violation:** if you can describe a class with "and" — "it validates the request and sends the SignalR event and updates the database" — it has more than one responsibility.
 
+> **Qualifier:** the "and" smell applies when responsibilities would change for *different reasons*. A domain aggregate that validates state, transitions state, and raises domain events is cohesive — all three change for the same domain reason. Ask: "if business rule A changed, would I also modify this class for an unrelated reason B?" If yes, split. If no, the class is cohesive.
+
 **Fix:** extract each responsibility into its own class with a focused interface.
 
 ---
@@ -81,7 +83,7 @@ Define how each of the five SOLID principles applies in this specific codebase, 
 
 **In Domain:** entities do not have constructors that accept concrete infrastructure types.
 
-**In Api:** `Program.cs` is the composition root — the only place where concrete classes are registered against interfaces. This is the one place where `new` on infrastructure types is permitted.
+**In Api:** `Program.cs` is the composition root — the only place where concrete types are *registered* against interfaces. The DI container performs the actual instantiation. Do not manually call `new ConcreteType()` in application code — register the concrete in `Program.cs` and let the container inject it.
 
 **How to spot a violation:**
 - `new` on any infrastructure type (EF `DbContext`, `HttpClient`, `SignalRHubContext`) inside a Domain or Application class.
@@ -99,7 +101,7 @@ Define how each of the five SOLID principles applies in this specific codebase, 
 | O | Existing handler modified to add unrelated capability | New file under `Features/<Name>/` |
 | L | `NotImplementedException` or silent no-op in production | Fully implement the method |
 | I | Handler depends on a large interface, uses 1–2 methods | Split interface to what the caller actually needs |
-| D | `new ConcreteType()` inside Domain or Application | Inject the interface; register in `Program.cs` |
+| D | `new ConcreteType()` inside Domain or Application | Inject the interface; register the concrete in `Program.cs` (container instantiates, not you) |
 
 ---
 
@@ -116,6 +118,16 @@ SOLID applies in all repos. The vocabulary differs per repo — map the principl
 | L | Every service implementation in a host's `Services/` folder must fully honour its `Core/Interfaces/` contract. No silent no-ops. If a platform cannot support a feature, return a typed "unsupported" result — do not silently return null. |
 | I | Interfaces in `Core/Interfaces/` are narrow per capability (e.g. `IAuthService`, `IVehicleService`). A component that only reads vehicles should not depend on an interface that also creates and deletes them. |
 | D | Components depend on interfaces from Core, never on concrete implementations from host `Services/` folders. Register concretes in `MauiProgram.cs` or `Program.cs`. |
+
+---
+
+## Value Objects and Domain Events
+
+**Value objects (SRP):** Value objects are immutable by design — their state cannot change after construction. This satisfies SRP structurally: a value object has one reason to change (the definition of the value it represents). No additional SRP analysis is required for well-formed value objects.
+
+**Domain events (ISP):** Domain events should have a single clear trigger and carry only the data the subscriber needs. Do not attach the entire aggregate to the event payload. If two subscribers need different fields, consider two separate events rather than one event with a superset payload.
+
+---
 
 ### Simulator (`service-delivery-simulator`)
 

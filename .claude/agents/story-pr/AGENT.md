@@ -23,7 +23,7 @@ Write a PR creation record to `.stories/<STORY-ID>/05-pr.md` in the working repo
 - PR URL
 - Branch name
 - Commit SHA
-- Timestamp
+- Timestamp — obtain with: `date -u +"%Y-%m-%dT%H:%M:%SZ"`
 
 ---
 
@@ -52,7 +52,14 @@ git status
 
 If any staged file is not in the story's change list, unstage it.
 
-### Step 3 — Commit
+### Step 3 — Derive the commit summary
+
+Before writing the commit message:
+1. Read the story title from `docs/stories/<repo>.md` in the central repo.
+2. Read the plan's one-line responsibility summary from `.stories/<STORY-ID>/02-plan.md` (Responsibility column of the most central new file).
+3. Compose: `[STORY-ID] <imperative verb> <what> — <why in 5–8 words>`.
+
+### Step 4 — Commit
 
 Commit with the standard message format:
 
@@ -89,13 +96,24 @@ EOF
 )"
 ```
 
-### Step 4 — Push
+### Step 5 — Push
 
 ```bash
 git push -u origin <branch-name>
 ```
 
-### Step 5 — Create PR
+### Step 5.5 — Check for existing PR
+
+Before creating a PR, check whether one already exists for this branch:
+
+```bash
+gh pr list --head <branch-name> --json url,number
+```
+
+- If a PR exists: report its URL to Master and skip Step 6. Do not run `gh pr create`.
+- If no PR exists: continue to Step 6.
+
+### Step 6 — Create PR
 
 Use `gh pr create` with the Story Reviewer's output as the body. Always specify `--head` and `--base`:
 
@@ -107,7 +125,7 @@ gh pr create \
   --body "$(cat .stories/BE-010/04-review-package.md)"
 ```
 
-### Step 6 — Verify the PR checklist
+### Step 7 — Verify the PR checklist
 
 The Story Reviewer's output includes a PR Checklist section with the correct boxes already marked. Verify it is present in the PR body. If `gh pr create` truncated or dropped it, update the PR body:
 
@@ -115,7 +133,7 @@ The Story Reviewer's output includes a PR Checklist section with the correct box
 gh pr edit <PR-NUMBER> --body "$(cat .stories/<STORY-ID>/04-review-package.md)"
 ```
 
-### Step 7 — Report
+### Step 8 — Report
 
 Return the PR URL to Master.
 
