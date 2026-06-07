@@ -1,0 +1,80 @@
+# Skill: TDD Cycle
+
+## Purpose
+
+Define the red-green-refactor discipline precisely as it applies in this codebase. Every agent that writes production code must follow this cycle without exception.
+
+---
+
+## The Cycle
+
+### Red — Write a failing test
+
+1. Pick **one** AC bullet. Write **one** test method that would fail if that behaviour does not exist.
+2. Run the test suite. The new test must fail.
+3. Confirm the failure is an **assertion failure** — not a compile error, not a missing dependency. A compile error means the test is not yet testing anything; fix the structure first.
+4. Do not write another test until this one is green.
+
+### Green — Write the minimum production code
+
+1. Write the smallest amount of production code that makes the failing test pass.
+2. No more. If the test passes with a hardcoded return value, that is fine — the next test will force the real implementation.
+3. Do not add code that is not driven by the currently failing test.
+4. Run the full test suite. All previously passing tests must still pass.
+
+### Refactor — Clean up without breaking tests
+
+1. Rename variables and methods for clarity.
+2. Extract private helpers if a method is doing more than one thing.
+3. Remove duplication introduced during the Green phase.
+4. Run the full test suite after every change. All tests must stay green throughout.
+5. Do not change behaviour during refactor — only structure.
+
+Repeat for the next AC bullet.
+
+---
+
+## Test Method Naming
+
+All test methods must follow `GivenA_When_Then`:
+
+```
+GivenAServiceRequest_WhenSubmitted_ThenStatusIsPending
+GivenAJobOffer_WhenDeclined_ThenRepIsExcludedFromFutureMatching
+GivenARepOnSite_WhenRedirectAttempted_ThenReturns422
+```
+
+- `GivenA` — the starting state or precondition
+- `When` — the action or event
+- `Then` — the expected outcome
+
+---
+
+## Test Structure
+
+Every test must follow Arrange / Act / Assert with each section clearly separated by a blank line:
+
+```csharp
+[Fact]
+public async Task GivenAValidCredential_WhenLoginCalled_ThenJwtIsReturned()
+{
+    // Arrange
+    var command = new LoginCommand { Username = "rep1", Password = "pass" };
+
+    // Act
+    var result = await _handler.Handle(command, CancellationToken.None);
+
+    // Assert
+    result.Token.Should().NotBeNullOrEmpty();
+}
+```
+
+---
+
+## Hard Rules
+
+- Never write production code for a behaviour that has no failing test first.
+- Never write two tests before going green on the first.
+- Never let a test pass for the wrong reason (e.g. swallowed exception, wrong assertion).
+- Never skip the refactor phase — accumulating debt here breaks the next Red phase.
+- A feature is not done until every AC bullet has a passing test.
