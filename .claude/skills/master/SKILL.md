@@ -89,6 +89,13 @@ Present the plan to the developer.
 
 > "Plan ready for review. Approve to begin implementation, or provide feedback to revise the plan."
 
+If the plan's **Dependency Gaps** section contains any entries, surface each gap explicitly before pausing:
+
+> "The plan identified [N] dependency gap(s):
+> - [Interface] — [method needed] — [action required]
+>
+> Decide for each before approving: (a) include the missing method in this story's scope — add it to the file list and interfaces section, (b) block this story until the upstream story lands the method, or (c) proceed knowing the build will fail until the gap is resolved."
+
 Do not proceed until explicit approval is given. If feedback is provided, pass it back to the Planner and repeat until approved.
 
 ### 5. Implementor
