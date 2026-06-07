@@ -102,6 +102,8 @@ Dependencies flow inward only. A layer may reference layers closer to the centre
 | Repository interface defined in Infrastructure | Wrong layer for abstraction | Move interface to Domain |
 | Infrastructure package imported in Application | Application → Infrastructure boundary | Define a thin interface in Application; implement in Infrastructure |
 
+> For the DI principle behind the `new ConcreteRepository()` violation fix, see `.claude/skills/solid-principles/SKILL.md` (D — Dependency Inversion).
+
 ---
 
 ## Cross-Cutting Concerns Placement

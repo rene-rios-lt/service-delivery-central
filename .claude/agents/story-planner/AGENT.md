@@ -56,7 +56,22 @@ For every file that will be touched:
 | Action | File path | Layer | Responsibility (one sentence) |
 |--------|-----------|-------|-------------------------------|
 
-Before listing a file as Create, check whether it already exists in the working repo. If it does, list its Action as **Modify** — never **Create**. Creating an existing file overwrites it and destroys prior implementation.
+For every file that will be touched, apply three rules before listing it:
+
+**a) Check existence.** Use `Glob` or `Grep` to determine whether the file already exists in the working repo.
+
+**b) If it exists, read it.** Use `Read` to inspect its current content and characterise its state:
+- **Full** — methods have real implementations from a prior story. Must be modified carefully to preserve existing behaviour.
+- **Stub** — methods declared but bodies are empty or `throw new NotImplementedException()`. The story's job is to fill in the real behaviour.
+- **Partial** — some methods real, some stubbed.
+
+**c) Use the correct Action value:**
+- `Create` — file does not exist; will be created from scratch.
+- `Modify` — file exists with a real implementation; will be extended or changed.
+- `Extend stub` — file exists but the relevant methods are stubs; will be replaced with real implementations.
+- `Add method` — file exists with a real implementation; a new method will be added without touching existing ones.
+
+For all non-Create actions: note in the Responsibility column what the file currently declares vs what this story will add or change. Example: "Declares `FindNearestRepAsync` as stub — this story replaces it with real distance-ranking logic."
 
 Apply Single Responsibility: if a file would do two distinct things, split it into two files.
 
@@ -69,6 +84,21 @@ List any interfaces that must be defined before implementation begins:
 - Application service interfaces (e.g. `IMatchingService`)
 
 For each interface: list its methods with signatures.
+
+### Step 3a — Verify callable interfaces
+
+Before writing test scenarios, verify every interface the new code will CALL but not define:
+
+1. From the planned handlers and services in Step 2, identify every interface that will be injected as a dependency (constructor parameters typed as `IXxx`).
+2. For each interface **not** defined in this story's plan — meaning it should already exist in the codebase — use `Grep` to locate its definition file, then `Read` it.
+3. For each method the story will call on that interface: confirm the method name and signature are declared.
+4. For any method that is absent: record a Dependency Gap (see output format below).
+
+Do not flag:
+- Methods on .NET framework types (`ILogger`, `IConfiguration`, `IMediator`, etc.) — the build verifies these.
+- Methods on interfaces that are new in this story's own plan — those are expected to be absent until this story implements them.
+
+If no injectable interfaces are present in this story's planned code, write "None detected." in the Dependency Gaps section and skip to Step 4.
 
 ### Step 4 — Write test scenarios (not implementations)
 
@@ -116,6 +146,14 @@ List any seed data or configuration values that must exist before the implementa
 ### Interfaces Required
 
 - `IServiceRequestRepository` (Domain): `Task<ServiceRequest> AddAsync(ServiceRequest request)`, `Task<IEnumerable<ServiceRequest>> GetPendingAsync(Guid dealerId)`
+
+### Dependency Gaps
+
+| Interface | Method needed | Defined in | Action |
+|-----------|--------------|------------|--------|
+| `IMatchingService` | `FindNearestRepAsync(Guid dealerId, DTC dtc)` | `Domain/Interfaces/IMatchingService.cs` (BE-007) | BE-007 must land first — or include this method in the current story's scope |
+
+*If no gaps: write `None detected.`*
 
 ### AC → Test Scenario Mapping
 

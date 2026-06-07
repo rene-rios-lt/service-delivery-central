@@ -40,7 +40,7 @@ One-line justification is required for every dimension score.
 
 | Score | Signal |
 |-------|--------|
-| **9–10** | A senior practitioner cannot identify a scenario the skill should govern but doesn't. All rules have explicit edge cases and exceptions stated. Cross-repo variations are addressed in a Repo Adaptations section wherever behaviour differs. |
+| **9–10** | A senior practitioner (a reader with two or more years of production experience in the domain the skill governs) cannot identify a scenario the skill should govern but doesn't. All rules have explicit edge cases and exceptions stated. Cross-repo variations are addressed in a Repo Adaptations section wherever behaviour differs. |
 | **7–8** | Most cases covered. One or two edge cases missing but low-frequency or low-impact. Repo Adaptations present but thin on one repo. |
 | **5–6** | The common case is well-covered but exceptions and failure modes are largely absent. A reader following this skill would make wrong decisions on realistic edge cases. |
 | **1–4** | Significant gaps that would cause incorrect behaviour on common scenarios. |
@@ -50,6 +50,7 @@ One-line justification is required for every dimension score.
 - Cross-repo variation unaddressed where the rule differs across BE/FE/SIM
 - A concept referenced but not defined within the skill or cross-referenced to where it is defined
 - No Repo Adaptations section when the skill's rules differ by repo (every skill in this system is required to have one)
+- Missing `description:` frontmatter field (required by CLAUDE.md for all skill files)
 
 ---
 
@@ -164,6 +165,10 @@ Skills are read as reference material. An agent that reads a skill needs to do m
 - A prescriptive list with no stated common thread that explains why these items belong together
 - "Always do X" or "Never do Y" with no accompanying reasoning that would help identify boundary cases
 - An exception stated without explaining why it does not violate the rule's principle
+
+> **Note on overlap with Completeness (Dimension 1):** a missing principle can trigger red flags in both dimensions — Completeness if the gap prevents correct application to known cases, Teachability if it prevents extrapolation to novel ones. When both apply, assign the finding to the dimension whose definition most specifically describes the gap.
+
+> **Scoring guidance:** to apply this dimension, construct two scenarios not explicitly listed in the skill — one typical and one boundary case. Ask: does reasoning from the skill's stated principles produce the correct answer for each, without requiring rules not present in the file? If yes, score 9–10. If the typical case is answerable but the boundary case requires guessing, score 7–8.
 
 ---
 
@@ -284,3 +289,4 @@ Effort definitions:
 - Suggestions must be specific enough to act on. "Improve clarity" is not a suggestion. "Add a skip note to the SignalR step for Simulator stories, which have no SignalR events" is.
 - When scoring Teachability, judge the skill against novel scenarios in its domain — not just whether examples are present. A skill with many examples but no principles still scores low.
 - The self-audit must be honest. If this skill has gaps, they appear in the improvement backlog. Do not soften findings because they apply to the auditor itself.
+- For the equivalent audit of agent files, see `.claude/skills/audit-agents/SKILL.md`.

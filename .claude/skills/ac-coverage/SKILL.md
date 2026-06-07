@@ -58,9 +58,9 @@ Valid Status values: **Planned** (planning phase — test not yet written), **Co
 ## When Planning (Story Planner)
 
 - Work through every AC bullet and write a named test method for each.
-- Ensure that the method name reads as a plain-English specification of the behaviour.
+- Ensure that the method name reads as a plain-English specification of the behaviour. Test method names must follow the `GivenA_When_Then` convention — see `.claude/skills/tdd-cycle/SKILL.md`.
 - Distinguish unit-level tests (Application.Tests) from integration-level tests (Api.Tests) in the table.
-- Any AC you cannot translate into a specific test method name is a signal that the AC is too vague — flag it for the Evaluator.
+- Any AC you cannot translate into a specific test method name is a signal that the AC is too vague — add a note in the planning output under **AC Concerns**: `[AC-N]: AC is too vague to map to a test — [brief description]. Refer back to Evaluator.`
 - Use **Planned** as the Status value for every row in the planning table. Tests do not exist yet; "Covered" would be misleading.
 
 ## When Reviewing (Story AI Reviewer)
@@ -90,3 +90,23 @@ For the reasoning behind why mock-only SignalR assertions are flagged as Partial
 - "The happy path is tested" is not sufficient if the AC also specifies error conditions.
 - A test that exists in the wrong test project (e.g. a database persistence test in `Application.Tests` using mocks) does not count as an integration test for that criterion.
 - Configuration ACs marked **Config** are not blockers, but they must still have an integration test.
+
+---
+
+## Repo Adaptations
+
+### Backend (`service-delivery-backend`)
+
+All sections of this skill apply in full: Configuration ACs, SignalR Event ACs, the `WebApplicationFactory` integration test requirement, and `Api.Tests`.
+
+### Frontend (`service-delivery-frontend`)
+
+- **SignalR Event ACs** — Frontend stories do not publish SignalR events directly; skip the SignalR Event ACs section.
+- **Configuration ACs** — Apply as written; Frontend uses `appsettings.json` equivalents configured in `MauiProgram.cs` (Desktop/Mobile) or `Program.cs` (Web).
+- **Test project** — All tests live in `ServiceDelivery.Client.Tests`; references to `Api.Tests` and `WebApplicationFactory` do not apply.
+
+### Simulator (`service-delivery-simulator`)
+
+- **SignalR Event ACs** — The Simulator consumes SignalR events (it does not host hubs); skip the SignalR Event ACs section unless an AC specifically verifies that the Simulator reacts correctly to a received event.
+- **Configuration ACs** — Apply as written; Simulator uses `appsettings.json` via `SimulatorOptions`.
+- **Test project** — All tests live in `ServiceDelivery.Simulator.Tests`; references to `Api.Tests` and `WebApplicationFactory` do not apply.
