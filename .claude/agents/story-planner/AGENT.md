@@ -43,11 +43,11 @@ Write the plan to `.stories/<STORY-ID>/02-plan.md` in the working repo before re
 
 1. Read the full story from `docs/stories/<repo>.md` in the central repo (`../docs/stories/` from a working repo).
 2. Read the Evaluator output from `.stories/<STORY-ID>/01-evaluation.md`.
-3. Read the relevant architecture docs (as flagged by the Evaluator and as needed for the story's domain area):
+3. Always read all three architecture docs — do not skip any regardless of what the Evaluator flagged:
    - `docs/architecture/system-overview.md`
    - `docs/architecture/state-machines.md`
    - `docs/architecture/data-flow.md`
-   - `docs/adr/` — relevant ADRs
+   - `docs/adr/` — read any ADRs flagged as relevant by the Evaluator
 
 ### Step 2 — List files to create or modify
 
@@ -55,6 +55,8 @@ For every file that will be touched:
 
 | Action | File path | Layer | Responsibility (one sentence) |
 |--------|-----------|-------|-------------------------------|
+
+Before listing a file as Create, check whether it already exists in the working repo. If it does, list its Action as **Modify** — never **Create**. Creating an existing file overwrites it and destroys prior implementation.
 
 Apply Single Responsibility: if a file would do two distinct things, split it into two files.
 
@@ -81,6 +83,8 @@ Every AC bullet must have at least one scenario. Both unit and integration level
 
 ### Step 5 — Flag SignalR events
 
+*Skip this step if no AC in this story requires a real-time event. This step is backend-specific.*
+
 For any AC that requires a SignalR event to be sent, list:
 - Hub name and path
 - Event name
@@ -88,7 +92,9 @@ For any AC that requires a SignalR event to be sent, list:
 
 ### Step 6 — Identify seed data and config dependencies
 
-List any seed data, configuration values, or feature flags that must exist before the implementation will work correctly.
+*Skip this step if not applicable to this story's repo (e.g. Frontend or Simulator stories with no config dependencies).*
+
+List any seed data or configuration values that must exist before the implementation will work correctly.
 
 ---
 
@@ -115,15 +121,17 @@ List any seed data, configuration values, or feature flags that must exist befor
 
 | # | AC | Test Method | Level | Status |
 |---|----|-------------|-------|--------|
-| AC-1 | Creates ServiceRequest with status Pending | `GivenAValidRequest_WhenSubmitted_ThenStatusIsPending` | Unit (Application.Tests) | Covered |
-| AC-2 | Request scoped to requester's dealerId and tier | `GivenARequesterWithGoldTier_WhenRequestSubmitted_ThenTierIsGold` | Unit (Application.Tests) | Covered |
-| AC-3 | Triggers matching algorithm immediately | `GivenAValidRequest_WhenSubmitted_ThenMatchingIsTriggered` | Unit (Application.Tests) | Covered |
-| AC-4 | Returns { requestId, status } | `GivenAValidRequest_WhenPostedToEndpoint_ThenReturns200WithRequestId` | Integration (Api.Tests) | Covered |
-| AC-5 | Requires Requester role | `GivenADispatcherToken_WhenPostingRequest_ThenReturns403` | Integration (Api.Tests) | Covered |
+| AC-1 | Creates ServiceRequest with status Pending | `GivenAValidRequest_WhenSubmitted_ThenStatusIsPending` | Unit (Application.Tests) | Planned |
+| AC-2 | Request scoped to requester's dealerId and tier | `GivenARequesterWithGoldTier_WhenRequestSubmitted_ThenTierIsGold` | Unit (Application.Tests) | Planned |
+| AC-3 | Triggers matching algorithm immediately | `GivenAValidRequest_WhenSubmitted_ThenMatchingIsTriggered` | Unit (Application.Tests) | Planned |
+| AC-4 | Returns { requestId, status } | `GivenAValidRequest_WhenPostedToEndpoint_ThenReturns200WithRequestId` | Integration (Api.Tests) | Planned |
+| AC-5 | Requires Requester role | `GivenADispatcherToken_WhenPostingRequest_ThenReturns403` | Integration (Api.Tests) | Planned |
 
 ### SignalR Events
 
 - `DispatchHub` (`/hubs/dispatch`): `ServiceRequestPending { requestId, tier, dtcTitle, requesterName }` → all dispatchers for the dealerId (triggered if matching finds no rep)
+
+> Status is **Planned** in the plan output. The AI Reviewer changes this to **Covered** (or **Partial** / **UNCOVERED**) once tests exist and pass.
 
 ### Seed / Config Dependencies
 

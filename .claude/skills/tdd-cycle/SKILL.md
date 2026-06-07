@@ -73,6 +73,34 @@ public async Task GivenAValidCredential_WhenLoginCalled_ThenJwtIsReturned()
 }
 ```
 
+> **Note on comments:** the `// Arrange`, `// Act`, `// Assert` section-separator comments are an intentional exception to the system-wide no-comments rule. They mark test structure, not implementation detail. They are required in all test methods.
+
+---
+
+## Parameterized Tests
+
+When multiple AC bullets differ only in input values (e.g. Bronze / Silver / Gold tier, or multiple HTTP error codes), use `[Theory]` + `[InlineData]` to avoid duplicating test structure while keeping each case explicit:
+
+```csharp
+[Theory]
+[InlineData("Bronze", 1)]
+[InlineData("Silver", 2)]
+[InlineData("Gold", 3)]
+public async Task GivenATierRequest_WhenSubmitted_ThenTierLevelIsCorrect(string tier, int expectedLevel)
+{
+    // Arrange
+    var command = new SubmitRequestCommand { Tier = tier };
+
+    // Act
+    var result = await _handler.Handle(command, CancellationToken.None);
+
+    // Assert
+    result.TierLevel.Should().Be(expectedLevel);
+}
+```
+
+Use this pattern only when the logic path is identical and only the data varies. If behaviour differs per case, write separate named test methods.
+
 ---
 
 ## Hard Rules
@@ -80,7 +108,7 @@ public async Task GivenAValidCredential_WhenLoginCalled_ThenJwtIsReturned()
 - Never write production code for a behaviour that has no failing test first.
 - Never write two tests before going green on the first.
 - Never let a test pass for the wrong reason (e.g. swallowed exception, wrong assertion).
-- Never skip the refactor phase — accumulating debt here breaks the next Red phase.
+- Never skip the refactor phase — accumulating debt here breaks the next Red phase. "Never skip" means never skip the *inspection*: if the code is already clean after Green, inspect it, confirm no change is needed, and record that confirmation. A cycle that produces no code change is valid when the code is already clean.
 - A feature is not done until every AC bullet has a passing test.
 
 ---

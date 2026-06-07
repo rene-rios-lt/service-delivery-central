@@ -42,6 +42,15 @@ Find the story in `docs/stories/<repo>.md` in the central repo (match prefix: `B
 
 Read the full story: title, narrative, and every acceptance criterion bullet.
 
+If the story file does not exist or the story ID is not found within it, immediately return:
+
+```
+BLOCKED
+1. [Story not found] No story with ID <STORY-ID> was found in docs/stories/<repo>.md. Confirm the story ID and repo mapping are correct.
+```
+
+Do not proceed to further steps.
+
 ### Step 2 — Check upstream dependencies
 
 Read `docs/stories/execution-plan.md`. Find the story's phase and identify its upstream dependency phases and stories.
@@ -70,6 +79,10 @@ Red flags:
 - "Performance should be acceptable" — no measurable criterion
 
 If any AC is vague, flag it with the specific bullet text and a suggested rewrite.
+
+Also check for structural AC problems:
+- **Conflicting bullets:** two bullets that require mutually exclusive outcomes for the same condition (e.g. "returns 200" and "returns 201" for identical inputs). Flag both and describe the conflict.
+- **Duplicate bullets:** two bullets that describe the same testable behaviour in different words. Flag both and suggest merging.
 
 ### Step 4 — Check referenced docs
 

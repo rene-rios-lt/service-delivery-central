@@ -28,7 +28,7 @@ Any story that touches the Application or Infrastructure layers requires tests a
 
 - Test a unit's interaction with a **real dependency**.
 - Use an in-memory database, test containers, or a real test HTTP server (`WebApplicationFactory`).
-- Slower — acceptable, but not needlessly bloated.
+- Slower — acceptable, but not needlessly bloated. A single integration test should complete within 5 seconds. If it consistently exceeds this, investigate: is it fetching more data than needed? Is the test database over-seeded? Scope test data to the minimum required for the assertion.
 - Live in `ServiceDelivery.Infrastructure.Tests` and `ServiceDelivery.Api.Tests`.
 
 **What they verify:** EF Core queries produce correct results, endpoints return correct status codes, SignalR events are sent to the right groups.
@@ -48,6 +48,15 @@ Each test must assert something that would **catch a real regression**. Evaluate
   ```
 
 - Trivial getter: the test only asserts that a property returns the value it was constructed with — no logic involved.
+
+**Exception — fire-and-forget side effects:** mock-verify is acceptable as the *primary* assertion when the behaviour under test is a side effect with no return value or observable state change (e.g. sending an email, publishing a domain event, broadcasting a SignalR message in a unit test). Verifying the call IS the correct assertion. These are not flagged as low-value.
+
+```csharp
+// Acceptable — sending an email is a side effect with no return value to assert on
+mockEmailService.Verify(e => e.SendAsync(It.Is<Email>(m => m.To == "rep@example.com")), Times.Once);
+```
+
+For the criteria that distinguish Partial from Covered on SignalR AC bullets specifically, see the ac-coverage skill (`../.claude/skills/ac-coverage/SKILL.md`, SignalR Event ACs section).
 
 - Happy-path only with no edge case coverage: if the story's AC includes a `409`, `400`, or `422` scenario, a test that only covers the success path is incomplete.
 
@@ -89,7 +98,18 @@ A story that touches only the Domain layer (e.g. a pure value object, an entity 
 
 ---
 
-## Checklist for AI Review
+## AI Review Quick Reference
+
+This is a quick reference. Each item is governed by its own skill — consult the linked skill before raising a finding.
+
+| Checklist item | Governing skill |
+|----------------|----------------|
+| Unit and integration tests present | this skill (Two Required Levels) |
+| Every test asserts on state or output | this skill (Value-Add Check) |
+| No duplicate tests | this skill (Duplication Check) |
+| Every AC maps to a test | ac-coverage skill |
+| `GivenA_When_Then` naming | tdd-cycle skill |
+| Arrange / Act / Assert structure | tdd-cycle skill |
 
 For each test file, verify:
 

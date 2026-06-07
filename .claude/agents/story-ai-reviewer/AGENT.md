@@ -43,6 +43,10 @@ Write findings to `.stories/<STORY-ID>/03-ai-review.md` in the working repo befo
 
 Run each check in order. A finding in any check does not stop the remaining checks — complete all checks before producing the output.
 
+**Finding severity:**
+- **Blocking** — prevents APPROVED. Must be resolved before the Implementor cycle closes. Checks 0, 1, 2, 5, 6, 7, and 8 produce blocking findings.
+- **Advisory** — flagged but does not prevent APPROVED. Checks 3 and 4 produce advisory findings. Advisory findings are listed in the APPROVED output under a separate "Advisory Notes" section.
+
 ### Check 0 — Run the tests
 
 Before reviewing the diff, run the test suite to confirm all tests pass:
@@ -70,14 +74,14 @@ Apply the level check using the repo-appropriate projects (see the test-quality 
 
 If the required test level is missing, flag it as a blocking finding.
 
-### Check 3 — Test Value
+### Check 3 — Test Value *(Advisory)*
 
 For each test method in the diff:
 - Does it assert on state or output? (high value)
 - Does it only assert that a mock was called, with no state or return value assertion? (low value — flag it)
 - Is it a trivial getter test with no logic? (low value — flag it)
 
-### Check 4 — Test Duplication
+### Check 4 — Test Duplication *(Advisory)*
 
 For each pair of tests in the same file:
 - Same method called, same inputs, same assertion? → one is a duplicate — flag it with both method names.
@@ -95,7 +99,7 @@ For each new class and method in the production diff:
 - **O:** Does the change modify an existing handler or class to add an unrelated capability? → flag it.
 - **L:** Does any method have `throw new NotImplementedException()` or a silent no-op? → flag it.
 - **I:** Does any constructor accept a large interface when only 1–2 methods are used? → flag it.
-- **D:** Does any Domain or Application class instantiate a concrete Infrastructure type? → flag it.
+- **D:** Does any Domain or Application class instantiate a concrete dependency directly (using `new`) instead of receiving it via constructor injection? → flag it. This includes infrastructure types (repositories, DbContext, HttpClient) and any other replaceable dependency.
 
 ### Check 7 — Clean Architecture
 
@@ -111,7 +115,7 @@ Flag patterns:
 
 ### Check 8 — Dead Code / Speculative Additions
 
-For each new method or class in the production diff that is not referenced by a test or the story's AC:
+For each new method or class in the production diff that is not referenced by any production code or test:
 - Flag it as speculative — it was added without a failing test driving it.
 
 ---

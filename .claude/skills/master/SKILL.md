@@ -20,6 +20,16 @@ Invoked with a story ID:
 
 ---
 
+## Working Repo Resolution
+
+| Story prefix | Working repo directory |
+|-------------|------------------------|
+| `BE-` | `service-delivery-backend/` |
+| `SIM-` | `service-delivery-simulator/` |
+| `FE-` | `service-delivery-frontend/` |
+
+---
+
 ## Lifecycle
 
 ### 1. Display the story
@@ -31,7 +41,20 @@ Read `docs/stories/<repo>.md` in the central repo (match story prefix: `BE-` →
 In the working repo for this story, at the start of every execution:
 1. Delete `.stories/<STORY-ID>/` if it exists (clean slate).
 2. Create `.stories/<STORY-ID>/`.
-3. Create the feature branch: `git checkout -b feature/<STORY-ID>-<kebab-case-title>` where the title comes from the story heading, lowercased and hyphenated. Example: story "BE-010 — Submit a service request" → `feature/BE-010-submit-service-request`. If the branch already exists, check it out and verify it is not behind `main`.
+3. Create the feature branch (title from the story heading, lowercased and hyphenated):
+   ```bash
+   git checkout -b feature/<STORY-ID>-<kebab-case-title>
+   ```
+   Example: story "BE-010 — Submit a service request" → `feature/BE-010-submit-service-request`.
+   If the branch already exists (prior failed run), check it out instead:
+   ```bash
+   git checkout feature/<STORY-ID>-<kebab-case-title>
+   ```
+   Then verify it is not behind `main`:
+   ```bash
+   git log main..HEAD
+   ```
+   If unexpected commits are present, report to the developer before continuing.
 
 ### 3. Evaluator
 
@@ -62,7 +85,13 @@ Report test results: number of tests passing, any failures.
 
 ### 6. AI Reviewer
 
-Invoke the **story-ai-reviewer** agent with the story ID and the full diff from the Implementor.
+Produce the diff:
+
+```bash
+git diff main...HEAD
+```
+
+Invoke the **story-ai-reviewer** agent with the story ID and this diff. Pass this same diff to the Story Reviewer in Step 7 — do not regenerate it.
 
 Present the full findings to the developer.
 
@@ -76,6 +105,8 @@ Present the full findings to the developer.
 - If sent back: pass the AI Reviewer's findings as additional constraints to the Implementor. Re-run the Implementor. Re-run the AI Reviewer. Present the new findings. Pause again.
 
 Repeat until the developer approves.
+
+**Loop limit:** if the AI Reviewer returns BLOCKED for 3 consecutive cycles on the same story without any finding being resolved, stop. Surface all unresolved findings to the developer with a recommendation to revisit the plan. Do not invoke the Implementor a 4th time automatically.
 
 ### 7. Story Reviewer
 
@@ -113,14 +144,6 @@ ServiceDelivery/              ← central repo root (this repo)
 
 From any working repo, the central repo root is at `../` (one level up).
 Skills are at `../.claude/skills/<name>/SKILL.md` from a working repo.
-
-## Working Repo Resolution
-
-| Story prefix | Working repo directory |
-|-------------|------------------------|
-| `BE-` | `service-delivery-backend/` |
-| `SIM-` | `service-delivery-simulator/` |
-| `FE-` | `service-delivery-frontend/` |
 
 ---
 
