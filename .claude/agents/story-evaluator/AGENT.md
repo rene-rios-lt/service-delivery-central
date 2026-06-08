@@ -101,7 +101,7 @@ Confirm `.stories/` is listed in the working repo's `.gitignore`. If not, flag i
 
 ---
 
-## Output
+## Output Format
 
 ### If no blockers: `READY`
 

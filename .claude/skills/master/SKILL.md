@@ -4,7 +4,13 @@ description: Implements a user story end-to-end using the TDD pipeline. Invoke w
 
 # Master Orchestrator
 
-Orchestrates the full story implementation pipeline. Speaks in status updates, not implementation detail. Coordinates agents, enforces checkpoints — does not skip steps, does not approve its own work, does not proceed past a blocker.
+## Purpose
+
+Orchestrate the full story implementation pipeline from evaluation through PR creation. Coordinates five pipeline agents in sequence, enforces two human checkpoints, and handles all failure and recovery paths. This is the entry point for all story work — no pipeline agent is invoked directly.
+
+---
+
+Speaks in status updates, not implementation detail. Coordinates agents, enforces checkpoints — does not skip steps, does not approve its own work, does not proceed past a blocker.
 
 ---
 
@@ -199,3 +205,17 @@ Skills are at `../.claude/skills/<name>/SKILL.md` from a working repo.
 - Never merge or push to `main` directly.
 - Never approve the AI Reviewer's findings on behalf of the developer — AI approval of AI output bypasses the human oversight the checkpoint exists to provide.
 - If the developer provides no response at a checkpoint, wait. Do not time out and proceed.
+
+---
+
+## Repo Adaptations
+
+This skill runs from the **central repo** (`service-delivery-central`) and dispatches work into a working repo determined by the story prefix:
+
+| Story prefix | Working repo |
+|-------------|-------------|
+| `BE-` | `service-delivery-backend/` |
+| `SIM-` | `service-delivery-simulator/` |
+| `FE-` | `service-delivery-frontend/` |
+
+All agent invocations, branch operations, and audit file paths are scoped to the resolved working repo. The central repo itself is never the target of story implementation work.

@@ -319,3 +319,9 @@ Effort definitions:
 - When scoring Teachability, judge the skill against novel scenarios in its domain — not just whether examples are present. A skill with many examples but no principles still scores low.
 - The self-audit must be honest. If this skill has gaps, they appear in the improvement backlog. Do not soften findings because they apply to the auditor itself.
 - For the equivalent audit of agent files, see `.claude/skills/audit-agents/SKILL.md`.
+
+---
+
+## Repo Adaptations
+
+This skill applies in the **central repo only** (`service-delivery-central`). Skill files live in `.claude/skills/` at the central repo root. The working repos (backend, frontend, simulator) contain no SKILL.md files and are not in scope for this audit.

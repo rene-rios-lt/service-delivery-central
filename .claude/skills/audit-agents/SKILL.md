@@ -353,3 +353,9 @@ Effort definitions:
 - Do not suggest improvements outside the scope of what the agent governs. An agent that covers implementation should not be criticised for not covering PR creation.
 - Suggestions must be specific enough to act on. "Improve clarity" is not a suggestion. "Add a definition of 'behavioral finding' vs 'structural finding' to the When Sent Back section" is.
 - For the equivalent audit of skill files, see `.claude/skills/audit-skills/SKILL.md`.
+
+---
+
+## Repo Adaptations
+
+This skill applies in the **central repo only** (`service-delivery-central`). Agent files live in `.claude/agents/` at the central repo root. The working repos (backend, frontend, simulator) contain no AGENT.md files and are not in scope for this audit.
