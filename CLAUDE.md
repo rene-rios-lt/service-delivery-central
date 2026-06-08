@@ -131,6 +131,7 @@ Skills are Claude Code slash commands — each lives in `.claude/skills/<name>/S
 | `audit-agents/` | `/audit-agents` | Full audit of all pipeline agents — ratings across 9 dimensions, strengths, weaknesses, inconsistencies, contradictions, improvement backlog |
 | `audit-skills/` | `/audit-skills` | Full audit of all pipeline skills — ratings across 8 dimensions, strengths, weaknesses, inconsistencies, contradictions, improvement backlog |
 | `validate-ai-system/` | `/validate-ai-system` | Pipeline health check — required sections, resolvable Required Reading paths, intact cross-references in all AGENT.md and SKILL.md files |
+| `ship-it/` | `/ship-it` | Branch, commit, push, PR, and merge in one shot — lands all pending local changes on main |
 
 ### AI Agents (`.claude/agents/`)
 
