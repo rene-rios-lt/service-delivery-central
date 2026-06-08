@@ -1,6 +1,6 @@
 # System Overview
 
-> **Source diagram:** [`system-architecture.puml`](system-architecture.puml) — component diagram showing the 4-repo structure, REST and SignalR communication channels.
+> **Source diagram:** [`system-overview.puml`](system-overview.puml) — component diagram showing the 4-repo structure, REST and SignalR communication channels.
 
 ## What This System Does
 
