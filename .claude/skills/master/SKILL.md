@@ -92,9 +92,18 @@ Present the plan to the developer.
 If the plan's **Dependency Gaps** section contains any entries, surface each gap explicitly before pausing:
 
 > "The plan identified [N] dependency gap(s):
-> - [Interface] — [method needed] — [action required]
+> - [Interface] — [method needed] — defined in [file] — [upstream story]
 >
-> Decide for each before approving: (a) include the missing method in this story's scope — add it to the file list and interfaces section, (b) block this story until the upstream story lands the method, or (c) proceed knowing the build will fail until the gap is resolved."
+> Decide for each before approving: (a) include the missing method in this story's scope, (b) block this story until the upstream story lands the method, or (c) proceed knowing the build will fail until the gap is resolved."
+
+**When the developer chooses option (a) for one or more gaps:**
+
+For each resolved gap, record a **Dependency Gap Resolution** containing:
+- The interface file path (from the Planner's Dependency Gaps table)
+- The method signature to add (from the Dependency Gaps table)
+- The concrete implementation file(s) of that interface — use Grep to locate classes that implement the interface if not already identified by the Planner
+
+Pass all Dependency Gap Resolutions to the Implementor invocation alongside the story ID and plan path. The Implementor will add the interface method signatures and NotImplementedException stubs before starting the AC TDD cycle.
 
 Do not proceed until explicit approval is given. If feedback is provided, pass it back to the Planner and repeat until approved.
 

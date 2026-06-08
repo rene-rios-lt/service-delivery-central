@@ -56,6 +56,33 @@ When introducing a significant pattern, briefly explain: (1) the design problem,
 - First line of `03-ai-review.md` is `BLOCKED` → go directly to *When Sent Back by AI Reviewer*.
 - First line is `APPROVED`, or the file does not exist, and no resume instruction → follow the standard TDD cycle below.
 
+If the invocation includes Dependency Gap Resolutions, execute the **Dependency Gap Pre-step** before the TDD cycle. Otherwise proceed directly to the TDD cycle.
+
+---
+
+## Dependency Gap Pre-step
+
+For each Dependency Gap Resolution in the invocation:
+
+1. **Add the method signature to the interface.** Open the interface file and append the method declaration. No method body — an interface declares, it does not implement.
+
+   Example: `Task<Rep?> FindNearestRepAsync(Guid dealerId, DtcCode dtc);`
+
+2. **Add a stub to each concrete implementation.** For each implementation file in the resolution, add the method with a `throw new NotImplementedException()` body and a brief inline comment naming the upstream story that owns the real implementation:
+
+   ```csharp
+   public Task<Rep?> FindNearestRepAsync(Guid dealerId, DtcCode dtc) =>
+       throw new NotImplementedException(); // real implementation in BE-007
+   ```
+
+3. **Verify the build.** Run `dotnet build` (not `dotnet test`). The build must succeed. If it fails, stop and report the build error to Master verbatim — do not attempt to fix it. A build failure here means the interface or implementation files are in an unexpected state that the plan did not anticipate.
+
+4. **Do not write a test for these additions.** The interface method is a structural prerequisite — its behaviour belongs to the upstream story. This story's AC tests will call the method via a mock, not against a real implementation.
+
+Only after all resolutions succeed and the build is clean: proceed to the TDD cycle.
+
+---
+
 Work through each AC bullet in the plan's AC → Test Scenario table, **in order**, using the full TDD cycle from the tdd-cycle skill.
 
 ### For each AC bullet:
