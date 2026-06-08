@@ -104,6 +104,31 @@ Invoke the **story-implementor** agent with the story ID and the approved plan.
 
 Report test results: number of tests passing, any failures.
 
+#### Implementor Failure Recovery
+
+The Implementor stops and reports to Master in two cases. Do not attempt to re-invoke the Implementor without following the recovery path below.
+
+**Case 1 — Compile error exhausted (3 attempts on same test)**
+
+The Implementor reports: the AC number, the test file path, and the exact compile error.
+
+1. Display the compile error and test file path to the developer verbatim.
+2. Pause with:
+
+   > "The Implementor could not compile the test for [AC-N] after 3 attempts. Fix the test file at [path] manually — the error is above. When ready, signal to resume."
+
+3. When the developer signals ready: re-invoke the Implementor with the story ID, the approved plan, and the explicit instruction **"Resume from AC-[N] — test now compiles, begin at Green."**
+4. The Implementor will verify the test now compiles-and-fails, then run Green → Refactor for AC-N and continue through the remaining ACs.
+5. If the Implementor reports the same compile error again on the resumed invocation, stop. Surface the error to the developer with: "Compile error persists after manual fix attempt. Revisit the plan — the test structure may be fundamentally incompatible with the current file list."
+
+**Case 2 — Wrong branch**
+
+The Implementor reports: the actual branch name found, the expected branch name.
+
+1. Display: "Branch verification failed — Implementor found `[actual]` instead of `[expected]`. Correct the branch state before continuing."
+2. Pause. Wait for the developer to fix the branch state (e.g. `git checkout feature/<STORY-ID>-<title>`).
+3. When the developer signals ready: re-invoke the Implementor from the beginning — it will re-verify the branch as its first action. No other recovery is needed; no AC progress is lost because no production code was written on the wrong branch.
+
 ### 6. AI Reviewer
 
 Invoke the **story-ai-reviewer** agent with the story ID and the path to `.stories/<STORY-ID>/02-plan.md`. The agent produces its own diff internally — do not run `git diff` here.

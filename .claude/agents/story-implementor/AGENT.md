@@ -50,9 +50,11 @@ When introducing a significant pattern, briefly explain: (1) the design problem,
 
 ## Process
 
-**Entry check:** read the first line of `.stories/<STORY-ID>/03-ai-review.md` if it exists.
-- First line is `BLOCKED` → go directly to *When Sent Back by AI Reviewer*.
-- First line is `APPROVED`, or the file does not exist → follow the standard TDD cycle below.
+**Entry check:** read the first line of `.stories/<STORY-ID>/03-ai-review.md` if it exists. Then check the invocation for a resume instruction.
+
+- Invocation includes `"Resume from AC-[N]"` → go directly to *Resume Path*.
+- First line of `03-ai-review.md` is `BLOCKED` → go directly to *When Sent Back by AI Reviewer*.
+- First line is `APPROVED`, or the file does not exist, and no resume instruction → follow the standard TDD cycle below.
 
 Work through each AC bullet in the plan's AC → Test Scenario table, **in order**, using the full TDD cycle from the tdd-cycle skill.
 
@@ -77,6 +79,18 @@ Work through each AC bullet in the plan's AC → Test Scenario table, **in order
 4. Do not change behaviour. Only structure.
 
 Move to the next AC bullet. Repeat.
+
+---
+
+## Resume Path (compile error recovery)
+
+When invoked with `"Resume from AC-[N]"`:
+
+1. **Verify branch.** Run `git branch --show-current`. Confirm it matches the feature branch. If not, stop and report the mismatch to Master — do not proceed.
+2. **Confirm prior ACs are green.** Run the repo-appropriate test command. All tests for AC-1 through AC-N-1 must pass. If any fail, stop and report to Master — the state is inconsistent.
+3. **Confirm AC-N test now compiles.** Run the test suite. The test for AC-N should now compile and fail with an **assertion error** (the developer fixed the compile issue). If it still fails to compile, stop immediately and report the new compile error to Master verbatim — do not attempt further fixes.
+4. **Continue from Green.** The test is now in a valid Red state. Run Green → Refactor for AC-N exactly as described in the standard cycle.
+5. Continue with AC-N+1 through the final AC.
 
 ---
 
