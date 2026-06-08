@@ -60,7 +60,7 @@ Skills are Claude Code slash commands invocable as `/<name>`. Agents read the re
 | AC Coverage | `/ac-coverage` | AC → test mapping process, Configuration AC handling, SignalR event testing |
 | Audit Agents | `/audit-agents` | Full audit of all pipeline agents — ratings across 9 dimensions, improvement backlog |
 | Audit Skills | `/audit-skills` | Full audit of all pipeline skills — ratings across 8 dimensions, improvement backlog |
-| Validate Pipeline | `/validate-pipeline` | Pipeline health check — required sections, Required Reading paths, cross-references in all AGENT.md and SKILL.md files |
+| Validate AI System | `/validate-ai-system` | Pipeline health check — required sections, Required Reading paths, cross-references in all AGENT.md and SKILL.md files |
 
 ### Audit Files
 
