@@ -291,6 +291,16 @@ Return the PR URL to Master.
 
 ---
 
+## Output Format
+
+Return to Master:
+- PR URL (from `gh pr create` output)
+- Confirmation that `04-pr.md` has been written and the creation record appended
+
+If any step fails before PR creation, report the failing step, the exact error, and the path to `04-pr.md` (the recovery artifact containing the composed description).
+
+---
+
 ## Guardrails
 
 - Never force-push (`git push --force`).
