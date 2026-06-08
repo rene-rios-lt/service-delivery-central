@@ -58,10 +58,9 @@ git cherry-pick <sha> [<sha> ...]
 
 Skip merge commits when cherry-picking. If committed changes include only the target commit and no unpushed file edits, proceed directly to Step 4.
 
-If there are uncommitted file changes, bring the working tree changes over:
+If there are uncommitted file changes, they carry over automatically when the branch is created from `origin/main`. Stage and commit them:
 
 ```bash
-git checkout main -- <file> [<file> ...]
 git add <files>
 git commit -m "..."
 ```
