@@ -50,9 +50,38 @@ When introducing a significant pattern, briefly explain: (1) the design problem,
 
 ## Process
 
-**Entry check:** read the first line of `.stories/<STORY-ID>/03-ai-review.md` if it exists.
-- First line is `BLOCKED` → go directly to *When Sent Back by AI Reviewer*.
-- First line is `APPROVED`, or the file does not exist → follow the standard TDD cycle below.
+**Entry check:** read the first line of `.stories/<STORY-ID>/03-ai-review.md` if it exists. Then check the invocation for a resume instruction.
+
+- Invocation includes `"Resume from AC-[N]"` → go directly to *Resume Path*.
+- First line of `03-ai-review.md` is `BLOCKED` → go directly to *When Sent Back by AI Reviewer*.
+- First line is `APPROVED`, or the file does not exist, and no resume instruction → follow the standard TDD cycle below.
+
+If the invocation includes Dependency Gap Resolutions, execute the **Dependency Gap Pre-step** before the TDD cycle. Otherwise proceed directly to the TDD cycle.
+
+---
+
+## Dependency Gap Pre-step
+
+For each Dependency Gap Resolution in the invocation:
+
+1. **Add the method signature to the interface.** Open the interface file and append the method declaration. No method body — an interface declares, it does not implement.
+
+   Example: `Task<Rep?> FindNearestRepAsync(Guid dealerId, DtcCode dtc);`
+
+2. **Add a stub to each concrete implementation.** For each implementation file in the resolution, add the method with a `throw new NotImplementedException()` body and a brief inline comment naming the upstream story that owns the real implementation:
+
+   ```csharp
+   public Task<Rep?> FindNearestRepAsync(Guid dealerId, DtcCode dtc) =>
+       throw new NotImplementedException(); // real implementation in BE-007
+   ```
+
+3. **Verify the build.** Run `dotnet build` (not `dotnet test`). The build must succeed. If it fails, stop and report the build error to Master verbatim — do not attempt to fix it. A build failure here means the interface or implementation files are in an unexpected state that the plan did not anticipate.
+
+4. **Do not write a test for these additions.** The interface method is a structural prerequisite — its behaviour belongs to the upstream story. This story's AC tests will call the method via a mock, not against a real implementation.
+
+Only after all resolutions succeed and the build is clean: proceed to the TDD cycle.
+
+---
 
 Work through each AC bullet in the plan's AC → Test Scenario table, **in order**, using the full TDD cycle from the tdd-cycle skill.
 
@@ -77,6 +106,18 @@ Work through each AC bullet in the plan's AC → Test Scenario table, **in order
 4. Do not change behaviour. Only structure.
 
 Move to the next AC bullet. Repeat.
+
+---
+
+## Resume Path (compile error recovery)
+
+When invoked with `"Resume from AC-[N]"`:
+
+1. **Verify branch.** Run `git branch --show-current`. Confirm it matches the feature branch. If not, stop and report the mismatch to Master — do not proceed.
+2. **Confirm prior ACs are green.** Run the repo-appropriate test command. All tests for AC-1 through AC-N-1 must pass. If any fail, stop and report to Master — the state is inconsistent.
+3. **Confirm AC-N test now compiles.** Run the test suite. The test for AC-N should now compile and fail with an **assertion error** (the developer fixed the compile issue). If it still fails to compile, stop immediately and report the new compile error to Master verbatim — do not attempt further fixes.
+4. **Continue from Green.** The test is now in a valid Red state. Run Green → Refactor for AC-N exactly as described in the standard cycle.
+5. Continue with AC-N+1 through the final AC.
 
 ---
 
