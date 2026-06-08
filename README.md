@@ -61,6 +61,7 @@ Skills are Claude Code slash commands invocable as `/<name>`. Agents read the re
 | Audit Agents | `/audit-agents` | Full audit of all pipeline agents — ratings across 9 dimensions, improvement backlog |
 | Audit Skills | `/audit-skills` | Full audit of all pipeline skills — ratings across 8 dimensions, improvement backlog |
 | Validate AI System | `/validate-ai-system` | Pipeline health check — required sections, Required Reading paths, cross-references in all AGENT.md and SKILL.md files |
+| Ship It | `/ship-it` | Branch, commit, push, PR, and merge in one shot |
 
 ### Audit Files
 
