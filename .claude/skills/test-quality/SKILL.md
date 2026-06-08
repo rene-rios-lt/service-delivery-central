@@ -147,6 +147,17 @@ All tests live in `ServiceDelivery.Client.Tests`. There is no separate integrati
 
 Both ViewModel unit tests and component tests are required for any story that adds a ViewModel AND a component. A story that only adds a component does not need a ViewModel test if no ViewModel is involved.
 
+**High-value component tests** assert that:
+- A specific rendered element (button, status chip, label) reflects a ViewModel property value.
+- A user interaction (button click, form submit) triggers the correct ViewModel method or state change.
+- Conditional rendering shows or hides an element based on ViewModel state.
+
+**Low-value component tests** — flag these:
+- Asserts only that a ViewModel method was called, with no assertion on the rendered output.
+- Asserts markup structure (e.g. the component renders a `div`) with no behavioural content.
+
+**SignalR client-side ACs:** stories that require the UI to update on a received SignalR event are covered by ViewModel unit tests that simulate the event callback directly (calling the handler method that the hub `On<T>` registration would invoke), plus component tests that assert the re-render. A test that only verifies the `On<T>` registration was wired up — not that the rendered output changed — is flagged as low-value. For the canonical test pattern, see the Frontend section of `.claude/skills/tdd-cycle/SKILL.md`.
+
 ### Simulator (`service-delivery-simulator`)
 
 All tests live in `ServiceDelivery.Simulator.Tests`. Unit tests for workers and services use mocked `IBackendApiClient` and `ISignalRClient`. There are no integration tests (the Simulator is integration-tested end-to-end by running it against the real backend). The two-level rule does not apply — unit-level tests only.

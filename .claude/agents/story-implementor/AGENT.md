@@ -168,6 +168,8 @@ When all findings are resolved and all tests pass, report to Master:
 
 ## Output Format
 
+### Normal completion
+
 - All tests passing (repo-appropriate test command exits 0).
 - Production code in the correct layers (matching the plan's file list).
 - Test files alongside production code.
@@ -176,4 +178,21 @@ When all findings are resolved and all tests pass, report to Master:
 Report to Master:
 - Number of tests added this cycle
 - Total passing test count
-- Any test that is still failing (this should never happen — fix before reporting)
+
+### Compile-Error Stop Report
+
+When stopping due to a 3-attempt compile error on AC-N, report to Master in this exact format:
+
+```
+COMPILE ERROR STOP
+
+Completed: AC-1 through AC-[N-1] — [N-1] tests passing
+Stuck: AC-[N] — [GivenA_WhenB_ThenC test method name]
+Test file: [relative path to test file]
+
+Compile error (attempt 3):
+[exact error output verbatim — do not summarise or truncate]
+```
+
+Resume instruction for Master to pass to the next Implementor invocation once the developer has fixed the compile error:
+`"Resume from AC-[N] — test now compiles, begin at Green."`

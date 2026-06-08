@@ -40,7 +40,7 @@ Read the changed files and diffs to understand what the changes do. Do not ask t
 **Commit message:**
 - Subject line: `<type>: <imperative summary>`
 - Body: 1–2 sentences of context if needed (skip if the subject is self-explanatory)
-- Always append: `Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>`
+- Always append: `Co-Authored-By: Claude Code <noreply@anthropic.com>`
 
 ---
 
