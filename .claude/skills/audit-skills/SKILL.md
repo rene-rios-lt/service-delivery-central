@@ -20,6 +20,34 @@ This includes `audit-skills/SKILL.md` itself. Do not skip it. Do not summarise f
 
 ---
 
+## Structural Integrity Check
+
+Before rating quality, verify that every skill file is structurally complete. A file missing a required section cannot be meaningfully rated on that section — record the gap and note the affected dimension scores as unreliable.
+
+For each SKILL.md, check:
+
+**Frontmatter:**
+- `description:` field present and non-empty
+
+**Required body sections:**
+- `## Purpose`
+- `## Repo Adaptations`
+
+**Skill cross-references:** for each `.claude/skills/<name>/SKILL.md` reference anywhere in the file body, confirm the path resolves.
+
+Report all gaps in a table before any per-file assessment:
+
+| File | Gap |
+|------|-----|
+| `ac-coverage/SKILL.md` | Missing section: `## Repo Adaptations` |
+| `tdd-cycle/SKILL.md` | Broken cross-reference: `.claude/skills/ac-coverge/SKILL.md` |
+
+If no gaps: write `Structural integrity: all skill files pass.` and proceed.
+
+Every structural gap is automatically added to the improvement backlog. Missing section: Low effort. Broken cross-reference: Low effort.
+
+---
+
 ## Per-File Assessment
 
 For every skill file, produce:
@@ -273,11 +301,12 @@ Effort definitions:
 
 ## Output Order
 
-1. Per-file assessments (alphabetical by skill folder name — includes `audit-skills/SKILL.md`)
-2. Cross-file analysis (Inconsistencies → Contradictions → Missing Cross-References)
-3. Self-audit findings for this file specifically
-4. Prioritized improvement backlog (per-file + cross-file + self-audit findings combined)
-5. Overall system rating — average of all per-file scores, one paragraph summary
+1. Structural integrity check results
+2. Per-file assessments (alphabetical by skill folder name — includes `audit-skills/SKILL.md`)
+3. Cross-file analysis (Inconsistencies → Contradictions → Missing Cross-References)
+4. Self-audit findings for this file specifically
+5. Prioritized improvement backlog (per-file + cross-file + self-audit + structural findings combined)
+6. Overall system rating — average of all per-file scores, one paragraph summary
 
 ---
 
