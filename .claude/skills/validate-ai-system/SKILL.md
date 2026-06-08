@@ -1,12 +1,12 @@
 ---
-description: Validates all pipeline AGENT.md and SKILL.md files for required sections, resolvable Required Reading paths, and intact cross-references. Run before and after any agent or skill edit to catch drift before a story run.
+description: Validates all AI system AGENT.md and SKILL.md files for required sections, resolvable Required Reading paths, and intact cross-references. Run before and after any agent or skill edit to catch drift before a story run.
 ---
 
-# Skill: Validate Pipeline
+# Skill: Validate Ai System
 
 ## Purpose
 
-Detect pipeline drift before a story run discovers it. A broken Required Reading path, a missing `## Output Format` section, or a cross-reference pointing to a renamed skill folder will not produce a visible error — the agent silently skips the missing content or fills the gap with unconstrained output. This skill makes those failures visible and actionable.
+Detect AI system drift before a story run discovers it. A broken Required Reading path, a missing `## Output Format` section, or a cross-reference pointing to a renamed skill folder will not produce a visible error — the agent silently skips the missing content or fills the gap with unconstrained output. This skill makes those failures visible and actionable.
 
 Run this skill before and after any edit to an AGENT.md or SKILL.md file.
 
@@ -14,7 +14,7 @@ Run this skill before and after any edit to an AGENT.md or SKILL.md file.
 
 ## Process
 
-### Step 1 — Locate all pipeline files
+### Step 1 — Locate all Ai System files
 
 Run from the central repo root (`service-delivery-central/`):
 
@@ -108,13 +108,13 @@ Flag mismatches or collisions as **Audit File Conflicts**.
 **If no findings:**
 
 ```
-Pipeline validation passed — no structural gaps, unresolvable paths, broken cross-references, or audit file conflicts.
+Ai System validation passed — no structural gaps, unresolvable paths, broken cross-references, or audit file conflicts.
 ```
 
 **If findings exist:**
 
 ```
-PIPELINE VALIDATION FAILED
+AI SYSTEM VALIDATION FAILED
 
 Structural Gaps:
   story-evaluator/AGENT.md — missing section: ## Output Format
