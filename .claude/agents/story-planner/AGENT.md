@@ -43,11 +43,17 @@ Write the plan to `.stories/<STORY-ID>/02-plan.md` in the working repo before re
 
 1. Read the full story from `docs/stories/<repo>.md` in the central repo (`../docs/stories/` from a working repo).
 2. Read the Evaluator output from `.stories/<STORY-ID>/01-evaluation.md`.
-3. Always read all three architecture docs — do not skip any regardless of what the Evaluator flagged:
-   - `docs/architecture/system-overview.md`
-   - `docs/architecture/state-machines.md`
-   - `docs/architecture/data-flow.md`
+3. Read architecture docs based on the story's repo prefix. `system-overview.md` is always required; the others are conditional:
+
+   | Doc | BE | FE | SIM |
+   |-----|----|----|-----|
+   | `docs/architecture/system-overview.md` | ✓ | ✓ | ✓ |
+   | `docs/architecture/state-machines.md` | ✓ | ✓ | — |
+   | `docs/architecture/data-flow.md` | ✓ | — | ✓ |
+
    - `docs/adr/` — read any ADRs flagged as relevant by the Evaluator
+
+   If the Evaluator explicitly flagged a doc as relevant, read it regardless of the table above.
 
 ### Step 2 — List files to create or modify
 

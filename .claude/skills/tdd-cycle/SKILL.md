@@ -140,13 +140,95 @@ dotnet test tests/ServiceDelivery.Application.Tests  # unit only
 
 Testing libraries: xUnit, Moq, FluentAssertions, WebApplicationFactory.
 
+#### SignalR Integration Tests
+
+SignalR integration tests live in `Api.Tests`. A unit test that only verifies a mock hub method was called is `Partial`, not `Covered` — the test must assert the event payload was received by a connected test client. See `.claude/skills/ac-coverage/SKILL.md`, SignalR Event ACs.
+
+Use `TaskCompletionSource<T>` to capture the event without an arbitrary delay:
+
+```csharp
+[Fact]
+public async Task GivenAServiceRequest_WhenSubmitted_ThenDispatchersReceiveServiceRequestPendingEvent()
+{
+    // Arrange
+    await using var app = new CustomWebApplicationFactory();
+    var client = app.CreateClient();
+
+    var tcs = new TaskCompletionSource<ServiceRequestPendingPayload>();
+    var connection = new HubConnectionBuilder()
+        .WithUrl($"{client.BaseAddress}hubs/dispatch", opts =>
+            opts.HttpMessageHandlerFactory = _ => app.Server.CreateHandler())
+        .Build();
+    connection.On<ServiceRequestPendingPayload>("ServiceRequestPending", tcs.SetResult);
+    await connection.StartAsync();
+
+    // Act
+    await client.PostAsJsonAsync("/service-requests", new SubmitRequestDto { /* ... */ });
+
+    // Assert
+    var payload = await tcs.Task.WaitAsync(TimeSpan.FromSeconds(5));
+    payload.RequestId.Should().NotBeEmpty();
+    payload.Tier.Should().Be(ServiceTier.Gold);
+    await connection.StopAsync();
+}
+```
+
+- `CustomWebApplicationFactory` inherits `WebApplicationFactory<Program>` and seeds required test data.
+- `opts.HttpMessageHandlerFactory = _ => app.Server.CreateHandler()` routes the hub connection through the in-process test server — no real network.
+- `WaitAsync(TimeSpan.FromSeconds(5))` bounds the test; if the event is never sent, the test fails with `TimeoutException` rather than hanging.
+- Assert on the event **payload fields**, not just that the method was called.
+
+---
+
 ### Frontend (`service-delivery-frontend`)
 
 ```bash
 dotnet test tests/ServiceDelivery.Client.Tests
 ```
 
-Testing libraries: xUnit, bUnit (Razor component testing). `Render<TComponent>()` is the bUnit entry point. Arrange/Act/Assert structure applies — Act is typically `cut.Find("button").Click()` or a service method call; Assert is `cut.Find("p").MarkupMatches(...)` or a ViewModel property assertion.
+Testing libraries: xUnit, bUnit, Moq.
+
+**Cycle order:** complete the ViewModel unit cycle first (pure C# — no bUnit needed), then add the component test Red step. Never write a component test before the ViewModel it depends on is green.
+
+**ViewModel unit test** — standard xUnit, no rendering:
+
+```csharp
+[Fact]
+public async Task GivenARepAssignedPayload_WhenHandled_ThenViewModelStatusUpdatesToEnRoute()
+{
+    // Arrange
+    var vm = new ServiceRequestViewModel(Mock.Of<IDispatchHubService>());
+
+    // Act
+    await vm.HandleRepAssignedAsync(new RepAssignedPayload { RequestId = Guid.NewGuid() });
+
+    // Assert
+    vm.Status.Should().Be("En Route");
+}
+```
+
+**Component test** — bUnit renders the Razor component in an isolated `TestContext`:
+
+```csharp
+[Fact]
+public void GivenAViewModelWithStatusEnRoute_WhenRendered_ThenStatusChipShowsEnRoute()
+{
+    // Arrange
+    using var ctx = new TestContext();
+    ctx.Services.AddSingleton(Mock.Of<IDispatchHubService>());
+    var vm = new ServiceRequestViewModel(...) { Status = "En Route" };
+
+    // Act
+    var cut = ctx.Render<ServiceRequestCard>(p => p.Add(c => c.ViewModel, vm));
+
+    // Assert
+    cut.Find("[data-testid='status-chip']").TextContent.Should().Be("En Route");
+}
+```
+
+**SignalR client-side ACs:** when a story requires a component to update on a received SignalR event, test via the ViewModel — call the ViewModel's event handler directly (simulating the hub callback), assert the ViewModel property changed, then assert the component re-renders. Do not spin up a real hub connection inside a component test.
+
+**MAUI lifecycle:** host-specific lifecycle (`OnAppearing`, `OnDisappearing`) lives in the thin host projects and is not directly tested. Keep lifecycle handlers to a single line delegating to a ViewModel method — the ViewModel method is what gets tested.
 
 ### Simulator (`service-delivery-simulator`)
 
