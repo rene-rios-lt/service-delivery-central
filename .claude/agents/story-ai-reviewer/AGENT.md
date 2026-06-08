@@ -104,7 +104,7 @@ For each test method:
 For each new class and method in the production diff:
 - **S:** Can the class be described with "and"? → flag it.
 - **O:** Does the change modify an existing handler or class to add an unrelated capability? → flag it.
-- **L:** Does any method have `throw new NotImplementedException()` or a silent no-op? → flag it.
+- **L:** Does any method have `throw new NotImplementedException()` or a silent no-op? → flag it. **Exception:** skip methods whose only body is `throw new NotImplementedException()` and whose inline comment matches `// real implementation in [STORY-ID]` — these are approved Dependency Gap stubs added by the Implementor's pre-step and are deliberately left for an upstream story.
 - **I:** Does any constructor accept a large interface when only 1–2 methods are used? → flag it.
 - **D:** Does any Domain or Application class instantiate a concrete dependency directly (using `new`) instead of receiving it via constructor injection? → flag it. This includes infrastructure types (repositories, DbContext, HttpClient) and any other replaceable dependency.
 
