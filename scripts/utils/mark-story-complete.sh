@@ -29,15 +29,18 @@ if [ -n "$pr_num" ] && [ -n "$repo" ]; then
   branch=$(gh pr view "$pr_num" --repo "$repo" --json headRefName -q '.headRefName' 2>/dev/null || true)
 fi
 
-# Fallback: try each working repo
+# Fallback: try each working repo — only accept if branch contains a story ID
 if [ -z "$branch" ] && [ -n "$pr_num" ]; then
   for repo_dir in \
     "$CENTRAL_REPO/service-delivery-backend" \
     "$CENTRAL_REPO/service-delivery-frontend" \
     "$CENTRAL_REPO/service-delivery-simulator"; do
     if [ -d "$repo_dir" ]; then
-      branch=$(cd "$repo_dir" && gh pr view "$pr_num" --json headRefName -q '.headRefName' 2>/dev/null || true)
-      [ -n "$branch" ] && break
+      candidate=$(cd "$repo_dir" && gh pr view "$pr_num" --json headRefName -q '.headRefName' 2>/dev/null || true)
+      if echo "$candidate" | grep -qE '(BE|FE|SIM)-[0-9]+'; then
+        branch="$candidate"
+        break
+      fi
     fi
   done
 fi
