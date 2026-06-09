@@ -1,0 +1,18 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "Bash(gh pr merge *)",
+            "command": "/Users/rrios/dev/ServiceDelivery/scripts/utils/mark-story-complete.sh",
+            "timeout": 15,
+            "statusMessage": "Updating execution plan..."
+          }
+        ]
+      }
+    ]
+  }
+}
