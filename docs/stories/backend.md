@@ -94,7 +94,7 @@
 - Vehicle transitions `Claimed → Unclaimed` regardless of which rep claimed it
 - Affected rep's session closed
 - Requires Dispatcher role
-- If the affected rep is online, they receive a SignalR notification via `DispatchHub`
+- If the affected rep is online, they receive a SignalR notification via `RepHub`
 
 ---
 
