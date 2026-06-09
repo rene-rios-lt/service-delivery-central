@@ -25,9 +25,9 @@
 |-------|------|-------------|
 | ~~BE-003~~ | ~~Backend~~ | ~~`GET /vehicles` (Dispatcher)~~ |
 | ~~BE-004~~ | ~~Backend~~ | ~~`GET /vehicles/available` (ServiceRep)~~ |
-| BE-005 | Backend | `POST /vehicles/{id}/claim` |
-| BE-006 | Backend | `POST /vehicles/{id}/release` |
-| BE-007 | Backend | `POST /vehicles/{id}/force-release` (Dispatcher) |
+| ~~BE-005~~ | ~~Backend~~ | ~~`POST /vehicles/{id}/claim`~~ |
+| ~~BE-006~~ | ~~Backend~~ | ~~`POST /vehicles/{id}/release`~~ |
+| ~~BE-007~~ | ~~Backend~~ | ~~`POST /vehicles/{id}/force-release` (Dispatcher)~~ |
 | BE-008 | Backend | `POST /vehicles/{id}/position` + 15-mile detection + SignalR fan-out |
 | SIM-001 | Simulator | Authenticate and store JWT |
 | SIM-002 | Simulator | Connect to RepHub via SignalR |
