@@ -23,7 +23,7 @@
 
 | Story | Repo | Description |
 |-------|------|-------------|
-| BE-003 | Backend | `GET /vehicles` (Dispatcher) |
+| ~~BE-003~~ | ~~Backend~~ | ~~`GET /vehicles` (Dispatcher)~~ |
 | BE-004 | Backend | `GET /vehicles/available` (ServiceRep) |
 | BE-005 | Backend | `POST /vehicles/{id}/claim` |
 | BE-006 | Backend | `POST /vehicles/{id}/release` |
