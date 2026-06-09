@@ -88,3 +88,11 @@ From the repo root:
 ```
 
 This will kill any existing instance on port 5023, start the Blazor WASM web app, and open it in your browser at `http://localhost:5023`.
+
+### Run all backend tests
+
+```bash
+./scripts/local/test-backend.sh
+```
+
+Runs `dotnet test` across all backend test projects (Domain, Application, Infrastructure, Api, Architecture).
