@@ -12,7 +12,7 @@
 | ~~BE-024~~ | ~~Backend~~ | ~~Seed all POC data: 10 DTCs, 8 vehicles, 20 users, 1 simulator account~~ |
 | ~~BE-001~~ | ~~Backend~~ | ~~`POST /auth/login` — JWT with role, tier, dealerId~~ |
 | ~~BE-002~~ | ~~Backend~~ | ~~`GET /users/me`~~ |
-| BE-025 | Backend | Wire all 4 SignalR hubs (VehiclePositionHub, DispatchHub, RepHub, RequesterHub) |
+| ~~BE-025~~ | ~~Backend~~ | ~~Wire all 4 SignalR hubs (VehiclePositionHub, DispatchHub, RepHub, RequesterHub)~~ |
 
 **Exit criteria:** `POST /auth/login` returns a valid JWT; all 4 hub endpoints are reachable.
 
