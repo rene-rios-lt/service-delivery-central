@@ -117,7 +117,7 @@ Do not proceed until explicit approval is given. If feedback is provided, pass i
 
 Invoke the **story-implementor** agent with the story ID and the approved plan.
 
-Report test results: number of tests passing, any failures.
+Report test results: number of tests passing, any failures. The Implementor writes `.stories/<STORY-ID>/03-implementation.md` on completion — confirm it exists before proceeding.
 
 #### Implementor Failure Recovery
 
@@ -146,7 +146,7 @@ The Implementor reports: the actual branch name found, the expected branch name.
 
 ### 6. AI Reviewer
 
-Invoke the **story-ai-reviewer** agent with the story ID and the path to `.stories/<STORY-ID>/02-plan.md`. The agent produces its own diff internally — do not run `git diff` here.
+Invoke the **story-ai-reviewer** agent with the story ID, the path to `.stories/<STORY-ID>/02-plan.md`, and the path to `.stories/<STORY-ID>/03-implementation.md`. The agent produces its own diff internally — do not run `git diff` here.
 
 Present the findings to the developer. On the first review cycle this is the full findings. On subsequent cycles it is a delta (resolved vs still-open findings).
 
@@ -165,7 +165,7 @@ Repeat until the developer approves.
 
 ### 7. PR Agent
 
-Invoke the **story-pr** agent with: story ID, branch name, path to `.stories/<STORY-ID>/03-ai-review.md`, and path to `../docs/stories/<repo>.md`.
+Invoke the **story-pr** agent with: story ID, branch name, path to `.stories/<STORY-ID>/04-ai-review.md`, path to `.stories/<STORY-ID>/03-implementation.md`, and path to `../docs/stories/<repo>.md`.
 
 Report the PR URL to the developer.
 

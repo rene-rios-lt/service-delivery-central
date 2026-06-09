@@ -148,9 +148,9 @@ Agents are Claude Code subagents — each runs in an isolated context window wit
 |--------|-------|--------------------|
 | `story-evaluator/` | 1 — Evaluate | `01-evaluation.md` |
 | `story-planner/` | 2 — Plan | `02-plan.md` |
-| `story-implementor/` | 3 — Implement | none — writes production code and tests |
-| `story-ai-reviewer/` | 4 — AI Review | `03-ai-review.md` |
-| `story-pr/` | 5 — PR | `04-pr.md` |
+| `story-implementor/` | 3 — Implement | `03-implementation.md` |
+| `story-ai-reviewer/` | 4 — AI Review | `04-ai-review.md` |
+| `story-pr/` | 5 — PR | `05-pr.md` |
 
 ### Audit Files (`.stories/`)
 

@@ -23,7 +23,7 @@ Before beginning, read this skill file:
 
 - Story ID (e.g. `BE-010`)
 - Feature branch name (e.g. `feature/BE-010-submit-service-request`)
-- AI Reviewer output (`.stories/<STORY-ID>/03-ai-review.md`, produced by `../.claude/agents/story-ai-reviewer/AGENT.md`)
+- AI Reviewer output (`.stories/<STORY-ID>/04-ai-review.md`, produced by `../.claude/agents/story-ai-reviewer/AGENT.md`)
 - Approved plan (`.stories/<STORY-ID>/02-plan.md`)
 - Story file (`../docs/stories/<repo>.md` in the central repo — for the business narrative)
 
@@ -33,7 +33,7 @@ Before beginning, read this skill file:
 
 ## Audit Output
 
-Write all output to `.stories/<STORY-ID>/04-pr.md` in the working repo:
+Write all output to `.stories/<STORY-ID>/05-pr.md` in the working repo:
 - Before running any git commands: write the composed PR description (recoverable if a later step fails).
 - After PR creation: overwrite the file to append the creation record (PR URL, branch, commit SHA, timestamp).
 
@@ -43,7 +43,7 @@ Write all output to `.stories/<STORY-ID>/04-pr.md` in the working repo:
 
 ### Step 1 — Compose PR description
 
-Produce the PR description and write it to `.stories/<STORY-ID>/04-pr.md` before running any git commands.
+Produce the PR description and write it to `.stories/<STORY-ID>/05-pr.md` before running any git commands.
 
 **1a — Plain-English summary**
 
@@ -54,11 +54,11 @@ Write 2–3 sentences describing:
 
 **1b — AC → Test Mapping Table**
 
-Extract the AC → test mapping from `03-ai-review.md` (the AI Reviewer already produced this table). Reproduce it in the 5-column ac-coverage skill format, including the test level (unit / integration) for each entry.
+Extract the AC → test mapping from `04-ai-review.md` (the AI Reviewer already produced this table). Reproduce it in the 5-column ac-coverage skill format, including the test level (unit / integration) for each entry.
 
 **1c — AI Review Summary**
 
-If `03-ai-review.md` contains a `BLOCKED` result, stop and report to Master — do not produce a PR description or run any git commands. The Implementor must resolve all blockers and the AI Reviewer must return `APPROVED` before proceeding.
+If `04-ai-review.md` contains a `BLOCKED` result, stop and report to Master — do not produce a PR description or run any git commands. The Implementor must resolve all blockers and the AI Reviewer must return `APPROVED` before proceeding.
 
 Summarise the AI Reviewer's findings and how each was resolved:
 
@@ -83,7 +83,7 @@ Get the list of changed files:
 git diff --name-only main...HEAD
 ```
 
-For each file in this list, write one line describing the change:
+For each file in this list, write one line describing the change. Use `.stories/<STORY-ID>/03-implementation.md` (the Implementor's audit file) to populate the description — it records the purpose of each file and why modifications were made:
 
 | File | Change |
 |------|--------|
@@ -105,7 +105,7 @@ Determine the correct state of each checklist item:
 
 If a box does not apply, leave it unchecked (`[ ]`).
 
-**Write format** — write `04-pr.md` in this structure before proceeding to Step 2:
+**Write format** — write `05-pr.md` in this structure before proceeding to Step 2:
 
 ```markdown
 ## <STORY-ID> — <Story title>
@@ -246,7 +246,7 @@ gh pr create \
   --title "[BE-010] Submit a service request" \
   --head feature/BE-010-submit-service-request \
   --base main \
-  --body "$(cat .stories/BE-010/04-pr.md)"
+  --body "$(cat .stories/BE-010/05-pr.md)"
 ```
 
 ---
@@ -260,7 +260,7 @@ git rev-parse HEAD
 date -u +"%Y-%m-%dT%H:%M:%SZ"
 ```
 
-Overwrite `04-pr.md` to append a creation record section at the bottom:
+Overwrite `05-pr.md` to append a creation record section at the bottom:
 
 ```markdown
 ---
@@ -280,7 +280,7 @@ Overwrite `04-pr.md` to append a creation record section at the bottom:
 Confirm the PR checklist section is present in the published PR body. If `gh pr create` truncated or dropped it, update the PR body:
 
 ```bash
-gh pr edit <PR-NUMBER> --body "$(cat .stories/<STORY-ID>/04-pr.md)"
+gh pr edit <PR-NUMBER> --body "$(cat .stories/<STORY-ID>/05-pr.md)"
 ```
 
 ---
@@ -295,9 +295,9 @@ Return the PR URL to Master.
 
 Return to Master:
 - PR URL (from `gh pr create` output)
-- Confirmation that `04-pr.md` has been written and the creation record appended
+- Confirmation that `05-pr.md` has been written and the creation record appended
 
-If any step fails before PR creation, report the failing step, the exact error, and the path to `04-pr.md` (the recovery artifact containing the composed description).
+If any step fails before PR creation, report the failing step, the exact error, and the path to `05-pr.md` (the recovery artifact containing the composed description).
 
 ---
 
