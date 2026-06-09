@@ -49,6 +49,9 @@ Azure infrastructure provisioned via Terraform (not active for POC local dev)
 # Launch the web client (kills any existing instance, starts the Blazor WASM app, opens browser)
 ./scripts/local/launchWebPage.sh
 
+# Run all backend tests
+./scripts/local/test-backend.sh
+
 # Bring up the full system locally (once scripts are populated)
 ./scripts/local/start.sh
 
@@ -164,7 +167,7 @@ During story execution, each agent writes a stage file into `.stories/<STORY-ID>
 ### Scripts (`scripts/`)
 - Shell scripts only (`.sh`), written for `bash` or `zsh`
 - Each script must be idempotent — safe to run more than once
-- `scripts/local/` — orchestration only (Docker Compose, service startup/shutdown)
+- `scripts/local/` — orchestration and test runners (Docker Compose, service startup/shutdown, test execution)
 - `scripts/utils/` — reusable helpers (e.g. env setup, token generation) sourced by other scripts
 
 ### Architecture Decision Records (`docs/adr/`)
