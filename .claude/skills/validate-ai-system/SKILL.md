@@ -95,8 +95,9 @@ For each AGENT.md, read its `## Audit Output` section. If it declares an audit f
 1. Confirm the file number matches the expected stage:
    - `01-evaluation.md` → story-evaluator
    - `02-plan.md` → story-planner
-   - `03-ai-review.md` → story-ai-reviewer
-   - `04-pr.md` → story-pr
+   - `03-implementation.md` → story-implementor
+   - `04-ai-review.md` → story-ai-reviewer
+   - `05-pr.md` → story-pr
 2. Confirm no two agents declare the same audit file name.
 
 Flag mismatches or collisions as **Audit File Conflicts**.
