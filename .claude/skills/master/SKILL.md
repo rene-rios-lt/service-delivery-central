@@ -150,11 +150,15 @@ Invoke the **story-ai-reviewer** agent with the story ID, the path to `.stories/
 
 Present the findings to the developer. On the first review cycle this is the full findings. On subsequent cycles it is a delta (resolved vs still-open findings).
 
+The AI Reviewer's verdict (`APPROVED` or `BLOCKED`) is the **input to Checkpoint #2** — it is not the checkpoint decision. Do not invoke the PR agent based on the verdict alone.
+
 ### CHECKPOINT #2 — AI Review
 
-**Pause.** Tell the developer:
+**Pause regardless of verdict.** An `APPROVED` result means the AI found no issues — it does not mean the developer has approved. Tell the developer:
 
 > "AI Review complete. Approve to prepare the PR, or send back to the Implementor with the listed issues."
+
+Do not proceed until the developer explicitly responds.
 
 - If approved: continue.
 - If sent back: pass the AI Reviewer's findings as additional constraints to the Implementor. Re-run the Implementor. Re-run the AI Reviewer — note in the invocation that this is cycle N (so the agent returns a delta). Present the delta findings. Pause again.
@@ -204,6 +208,7 @@ Skills are at `../.claude/skills/<name>/SKILL.md` from a working repo.
 - Never proceed to a later phase if an earlier phase returned a blocking result — downstream agents assume their inputs are valid; a blocking result means the assumption is violated.
 - Never merge or push to `main` directly.
 - Never approve the AI Reviewer's findings on behalf of the developer — AI approval of AI output bypasses the human oversight the checkpoint exists to provide.
+- An `APPROVED` verdict from the AI Reviewer is not developer approval — Checkpoint #2 requires an explicit developer response regardless of the reviewer's verdict.
 - If the developer provides no response at a checkpoint, wait. Do not time out and proceed.
 
 ---
