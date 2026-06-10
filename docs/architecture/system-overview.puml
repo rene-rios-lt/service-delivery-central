@@ -1,4 +1,5 @@
 @startuml system-architecture
+!pragma layout smetana
 title Service Delivery — System Architecture
 
 skinparam package {
