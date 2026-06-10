@@ -210,6 +210,7 @@ Skills are at `../.claude/skills/<name>/SKILL.md` from a working repo.
 - Never approve the AI Reviewer's findings on behalf of the developer — AI approval of AI output bypasses the human oversight the checkpoint exists to provide.
 - An `APPROVED` verdict from the AI Reviewer is not developer approval — Checkpoint #2 requires an explicit developer response regardless of the reviewer's verdict.
 - If the developer provides no response at a checkpoint, wait. Do not time out and proceed.
+- A pause is closed only by an explicit developer response that resolves it. Questions asked, work requested, or fixes made during a pause do not close it — re-state the pause question after any mid-pause work before proceeding.
 
 ---
 
