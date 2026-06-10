@@ -32,7 +32,7 @@
 | ~~SIM-001~~ | ~~Simulator~~ | ~~Authenticate and store JWT~~ |
 | ~~SIM-002~~ | ~~Simulator~~ | ~~Connect to RepHub via SignalR~~ |
 | ~~SIM-003~~ | ~~Simulator~~ | ~~Advance vehicles along Iowa route loops~~ |
-| SIM-004 | Simulator | POST position updates every 3 seconds |
+| ~~SIM-004~~ | ~~Simulator~~ | ~~POST position updates every 3 seconds~~ |
 
 **Exit criteria:** The simulator runs and position updates appear in the backend; `GET /vehicles` reflects current positions.
 
@@ -43,7 +43,7 @@
 
 | Story | Repo | Description |
 |-------|------|-------------|
-| BE-009 | Backend | `GET /dtcs` |
+| ~~BE-009~~ | ~~Backend~~ | ~~`GET /dtcs`~~ |
 | BE-010 | Backend | `POST /service-requests` + trigger matching |
 | BE-011 | Backend | `GET /service-requests` (Dispatcher) |
 | BE-012 | Backend | `GET /service-requests/my-active` (ServiceRep) |
