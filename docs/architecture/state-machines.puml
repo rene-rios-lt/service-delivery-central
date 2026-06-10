@@ -1,5 +1,5 @@
 @startuml rep-state-machine
-hide empty description
+!pragma layout smetana
 title Service Rep State Machine
 
 skinparam state {
@@ -11,8 +11,8 @@ skinparam state {
 state "Offline" as Offline
 state "Available" as Available
 state "En Route" as EnRoute
-state "Within 15 Miles" as Within15Miles #FFF3E0
-state "On Site" as OnSite #FFF3E0
+state "Within 15 Miles" as Within15Miles
+state "On Site" as OnSite
 
 [*] --> Offline
 
@@ -22,30 +22,34 @@ EnRoute --> Within15Miles : Haversine < 15 mi\n[Backend on position update]
 Within15Miles --> OnSite : taps "I've Arrived"\n[Rep]
 OnSite --> Available : taps "Mark Complete"\n[Rep]
 
-EnRoute -[dashed]-> Offline : disconnect / logout\n[SignalR OnDisconnectedAsync]
-Within15Miles -[dashed]-> Offline : disconnect / logout
-OnSite -[dashed]-> Offline : disconnect / logout
-Available -[dashed]-> Offline : explicit logout
+EnRoute --> EnRoute : redirected by dispatcher\n[tier + cooldown rules]
+
+EnRoute --> Offline : disconnect / logout\n[SignalR OnDisconnectedAsync]
+Within15Miles --> Offline : disconnect / logout
+OnSite --> Offline : disconnect / logout
+Available --> Offline : explicit logout
 
 note right of EnRoute
   Redirect allowed by dispatcher
-  subject to tier + cooldown rules
+  subject to tier + cooldown rules.
+  5-minute cooldown after a redirect;
+  Gold tier overrides the cooldown.
 end note
 
 note right of Within15Miles
   PROTECTED
-  No redirect — any tier
+  No redirect, any tier.
 end note
 
 note right of OnSite
   PROTECTED
-  No redirect — any tier
+  No redirect, any tier.
 end note
 
 @enduml
 
 @startuml request-state-machine
-hide empty description
+!pragma layout smetana
 title Service Request State Machine
 
 skinparam state {
@@ -62,17 +66,17 @@ state "Completed" as Completed
 [*] --> Pending : requester submits
 
 Pending --> Assigned : rep accepts job offer
-Assigned --> InProgress : rep taps "I've Arrived"
+Assigned --> InProgress : rep taps "I've Arrived" (On Site)
 InProgress --> Completed : rep taps "Mark Complete"
 Completed --> [*]
 
-Assigned -[dashed]-> Pending : rep redirected\nOR rep goes Offline
-InProgress -[dashed]-> Pending : rep goes Offline mid-job
+Assigned --> Pending : rep redirected\nOR rep goes Offline
+InProgress --> Pending : rep goes Offline mid-job
 
 @enduml
 
 @startuml vehicle-state-machine
-hide empty description
+!pragma layout smetana
 title Vehicle State Machine
 
 skinparam state {
@@ -87,8 +91,8 @@ state "Claimed" as Claimed
 [*] --> Unclaimed : seeded at startup
 
 Unclaimed --> Claimed : rep selects vehicle\n[first-come, first-served]
-Claimed -[dashed]-> Unclaimed : rep logs out and releases
-Claimed -[dashed]-> Unclaimed : dispatcher force-releases
+Claimed --> Unclaimed : rep logs out and releases
+Claimed --> Unclaimed : dispatcher force-releases
 
 note right of Claimed
   Stays claimed if rep disconnects.
@@ -99,7 +103,7 @@ end note
 @enduml
 
 @startuml job-offer-state-machine
-hide empty description
+!pragma layout smetana
 title Job Offer State Machine
 
 skinparam state {
@@ -119,7 +123,7 @@ Pending --> Accepted : rep taps Accept
 Pending --> Declined : rep taps Decline
 Pending --> Expired : 60s elapsed, no response
 
-Accepted --> [*] : request → Assigned
+Accepted --> [*] : request becomes Assigned
 Declined --> [*] : next best rep offered
 Expired --> [*] : treated as Declined\nrep permanently skipped for this job
 
