@@ -1,12 +1,16 @@
 ---
-description: Branch, commit, push, PR, and merge in one shot. Invoke as /ship-it to land all staged or unstaged local changes on main.
+description: Branch, commit, push, PR, and merge in one shot — for out-of-pipeline changes (docs, config, housekeeping). Story work goes through /master, which handles commits and PRs via the story-pr agent.
 ---
 
 # Skill: Ship It
 
 ## Purpose
 
-Automate the full local-to-merged workflow: create a feature branch, commit all pending changes, push, open a PR, and merge it — without the developer having to issue five separate instructions.
+Automate the full local-to-merged workflow for changes that live **outside the story pipeline**: doc fixes, config updates, ADR additions, execution-plan housekeeping, or any change that doesn't warrant a full evaluate → plan → implement → review cycle.
+
+For story work (`BE-`, `FE-`, `SIM-` prefixed), use `/master` instead — the `story-pr` agent at the end of that pipeline handles branching, committing, pushing, and PR creation with a structured description.
+
+Invoke `/ship-it` when there are pending local changes (uncommitted or unpushed) that need to land on `main` without going through the full story pipeline.
 
 ---
 
@@ -123,4 +127,6 @@ Report the PR URL to the developer.
 
 ## Repo Adaptations
 
-This skill applies to any repo in the Service Delivery system. Branch protection requiring PRs is enforced on all four repos — the branch-and-PR path is always required, never a direct push.
+This skill applies to any repo in the Service Delivery system, including the **central repo** (`service-delivery-central`). Branch protection requiring PRs is enforced on all four repos — the branch-and-PR path is always required, never a direct push.
+
+**Central repo working directory:** `/Users/rrios/dev/ServiceDelivery/` (one level above the working repos). When invoked from the central repo, assess changes there — do not descend into `service-delivery-backend/`, `service-delivery-frontend/`, or `service-delivery-simulator/` subdirectories, as those are separate git repos.
