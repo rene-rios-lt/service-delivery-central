@@ -31,7 +31,7 @@
 | ~~BE-008~~ | ~~Backend~~ | ~~`POST /vehicles/{id}/position` + 15-mile detection + SignalR fan-out~~ |
 | ~~SIM-001~~ | ~~Simulator~~ | ~~Authenticate and store JWT~~ |
 | ~~SIM-002~~ | ~~Simulator~~ | ~~Connect to RepHub via SignalR~~ |
-| SIM-003 | Simulator | Advance vehicles along Iowa route loops |
+| ~~SIM-003~~ | ~~Simulator~~ | ~~Advance vehicles along Iowa route loops~~ |
 | SIM-004 | Simulator | POST position updates every 3 seconds |
 
 **Exit criteria:** The simulator runs and position updates appear in the backend; `GET /vehicles` reflects current positions.
