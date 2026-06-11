@@ -175,8 +175,8 @@
 
 **Acceptance Criteria:**
 - Returns full detail: `requestId`, `requesterName`, `tier`, `dtcTitle`, `requesterLocation { lat, lng }`, `status`, `assignedRep`, `createdAt`, `offerHistory[]`
-- Scoped to the authenticated user's `dealerId`
-- Returns `404` if not found or out of scope
+- Access is role-scoped (own-only): a **Dispatcher** may retrieve any request in their `dealerId`; a **Requester** may retrieve only requests where they are the requester; a **ServiceRep** may retrieve only requests assigned to them
+- Returns `404` if not found or out of scope — out-of-scope is indistinguishable from not-found, so request IDs cannot be probed
 
 ---
 

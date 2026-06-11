@@ -1,23 +1,22 @@
 # Parallel Tracks
 
-> 33 stories remain across 3 repos. This document shows which work can proceed simultaneously so multiple developers can make progress without blocking each other.
+> 32 stories remain across 3 repos. This document shows which work can proceed simultaneously so multiple developers can make progress without blocking each other.
 
-**Status snapshot:** Phases 1–2 complete; Phase 3 partially complete (BE-013 and BE-014 still pending). 18 of 51 stories done.
+**Status snapshot:** Phases 1–2 complete; Phase 3 partially complete (BE-014 still pending). 19 of 51 stories done.
 
 ---
 
 ## Start Now — No Blockers
 
-These four stories have all dependencies satisfied today:
+These three stories have all dependencies satisfied today:
 
 | Story | Repo | Description | Why unblocked |
 |-------|------|-------------|---------------|
-| **BE-013** | Backend | `GET /service-requests/{id}` | BE-011 (list requests) is done |
 | **BE-014** | Backend | Matching algorithm | BE-010 (POST requests) is done |
 | **FE-001** | Frontend | Login screen → route by role | BE-001 (POST /auth/login) is done |
 | **FE-002** | Frontend | JWT expiry detection | BE-001 done; pure client-side logic |
 
-BE-013 and BE-014 are independent of each other and can be worked simultaneously. FE-001 and FE-002 are also independent and can be worked simultaneously. All four can run in parallel across two devs.
+BE-014 is independent of the frontend work. FE-001 and FE-002 are also independent of each other. All three can run in parallel across two devs. *(BE-013 — `GET /service-requests/{id}` — is now done.)*
 
 ---
 
@@ -27,8 +26,7 @@ BE-013 and BE-014 are independent of each other and can be worked simultaneously
 TIME ──────────────────────────────────────────────────────────────────►
 
 TRACK A: BACKEND ─────────────────────────────────────────────────────
- [NOW]  BE-013 ┐
- [NOW]  BE-014 ┘ → Phase 4 ─────────────────────────────────────
+ [NOW]  BE-014 → Phase 4 ───────────────────────────────────────
                   BE-015 ┐                                       │
                   BE-016 │ (parallel within phase)               │
                   BE-017 │                                       │
@@ -68,10 +66,10 @@ Each wave unlocks the next. Stories within the same wave are independent and can
 
 | Story | Description | Depends on |
 |-------|-------------|------------|
-| BE-013 | `GET /service-requests/{id}` | BE-011 ✓ |
+| ~~BE-013~~ | ~~`GET /service-requests/{id}`~~ — done ✓ | BE-011 ✓ |
 | BE-014 | Matching algorithm: filter → sort → tiebreaker → job offer | BE-010 ✓ |
 
-**Both can run in parallel.** BE-014 is the more critical story — it unlocks all of Phase 4.
+**BE-013 is done.** BE-014 remains and is the more critical story — it unlocks all of Phase 4.
 
 ---
 
@@ -195,10 +193,10 @@ SIM-005 can begin once Phase 4 backend is in progress (implement the handler, te
 
 | Track | Stories | Remaining |
 |-------|---------|-----------|
-| Track A — Backend | 11 | BE-013, BE-014, BE-015–018, BE-019–020, BE-023, BE-021–022 |
+| Track A — Backend | 10 | BE-014, BE-015–018, BE-019–020, BE-023, BE-021–022 |
 | Track C — Simulator | 3 | SIM-005, SIM-006, SIM-007 |
 | Track B — Frontend Auth | 2 | FE-001, FE-002 |
 | Track B — ServiceRep | 8 | FE-007–FE-014 |
 | Track B — Requester | 5 | FE-015–FE-019 |
 | Track B — Dispatcher | 4 | FE-003–FE-006 |
-| **Total** | **33** | |
+| **Total** | **32** | |
