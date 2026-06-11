@@ -1,7 +1,7 @@
 # Frontend User Stories
 
 > **Repo:** `service-delivery-frontend`
-> These stories cover all three persona views (Dispatcher, ServiceRep, Requester) across Desktop, Mobile, and Web.
+> These stories cover all three persona views (Dispatcher, ServiceRep, Requester). Platform support differs per persona — **Dispatcher: Desktop + Web · ServiceRep: Mobile · Requester: Desktop + Web + Mobile** (see [Persona Platform Support](../architecture/system-overview.md#persona-platform-support)).
 
 ---
 
@@ -16,7 +16,7 @@
 - Login screen shown on app launch if no valid JWT is stored
 - On success: JWT stored; role claim read; user routed to the correct view (Dispatcher / ServiceRep / Requester)
 - On failure: error message shown inline; login form remains
-- Works identically on Desktop, Mobile, and Web
+- Behaves identically on every platform the signed-in persona supports (Dispatcher: Desktop/Web; ServiceRep: Mobile; Requester: Desktop/Web/Mobile — see Persona Platform Support)
 - No role-selection screen — routing is automatic based on JWT
 
 ---
