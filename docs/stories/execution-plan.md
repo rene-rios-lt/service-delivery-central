@@ -47,7 +47,7 @@
 | ~~BE-010~~ | ~~Backend~~ | ~~`POST /service-requests` + trigger matching~~ |
 | ~~BE-011~~ | ~~Backend~~ | ~~`GET /service-requests` (Dispatcher)~~ |
 | ~~BE-012~~ | ~~Backend~~ | ~~`GET /service-requests/my-active` (ServiceRep)~~ |
-| BE-013 | Backend | `GET /service-requests/{id}` |
+| ~~BE-013~~ | ~~Backend~~ | ~~`GET /service-requests/{id}`~~ |
 | BE-014 | Backend | Matching algorithm: filter → sort → tiebreaker → issue job offer |
 
 **Exit criteria:** Submitting a request via API results in a `JobOfferReceived` event on the backend's RepHub; offer visible via `GET /job-offers/pending`.
