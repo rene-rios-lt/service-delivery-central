@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Shared Component Library</title>
+<link rel="stylesheet" href="../design-system.css">
+<style>
+  .ks { max-width: 1180px; margin: 0 auto; padding: 28px 28px 48px; }
+  .ks h1 { font-size: 24px; margin: 0 0 4px; }
+  .ks__lead { color: var(--sd-text-2); font-size: 14px; margin: 0 0 26px; }
+  .ks__grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+  .ks__panel { background: var(--sd-surface); border: 1px solid var(--sd-border); border-radius: var(--sd-radius); box-shadow: var(--sd-elev-1); padding: 18px; }
+  .ks__panel h3 { margin: 0 0 14px; font-size: 13px; text-transform: uppercase; letter-spacing: .6px; color: var(--sd-text-3); }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
+  .swatch { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: var(--sd-text-2); }
+  .swatch i { width: 52px; height: 52px; border-radius: 12px; box-shadow: var(--sd-elev-1); }
+</style>
+</head>
+<body>
+<div class="sd-appbar">
+  <div class="sd-appbar__logo">🧩</div>
+  <div>
+    <div class="sd-appbar__title">Shared Component Library</div>
+    <div class="sd-appbar__sub">One source of truth · used across every persona & platform</div>
+  </div>
+</div>
+
+<div class="ks">
+  <h1>Design System</h1>
+  <p class="ks__lead">Every mockup screen is composed from these components and tokens. Change a token here and the whole product changes consistently — mirrors the MudBlazor theme strategy in ADR-0007.</p>
+
+  <div class="ks__grid">
+
+    <div class="ks__panel">
+      <h3>Rep-state colors (map markers)</h3>
+      <div class="row">
+        <div class="swatch"><i style="background:var(--sd-state-available)"></i>Available</div>
+        <div class="swatch"><i style="background:var(--sd-state-enroute)"></i>En Route</div>
+        <div class="swatch"><i style="background:var(--sd-state-within15)"></i>Within 15</div>
+        <div class="swatch"><i style="background:var(--sd-state-onsite)"></i>On Site</div>
+        <div class="swatch"><i style="background:var(--sd-state-offline)"></i>Offline</div>
+      </div>
+      <div class="row" style="margin-top:8px;">
+        <div class="sd-marker sd-marker--available" style="position:relative; left:0; top:0; transform:none;"><div class="sd-marker__pin"></div></div>
+        <div class="sd-marker sd-marker--enroute" style="position:relative; left:0; top:0; transform:none;"><div class="sd-marker__pin"></div></div>
+        <div class="sd-marker sd-marker--within15" style="position:relative; left:0; top:0; transform:none;"><div class="sd-marker__pin"></div></div>
+        <div class="sd-marker sd-marker--onsite" style="position:relative; left:0; top:0; transform:none;"><div class="sd-marker__pin"></div></div>
+        <div class="sd-marker sd-marker--offline" style="position:relative; left:0; top:0; transform:none;"><div class="sd-marker__pin"></div></div>
+      </div>
+    </div>
+
+    <div class="ks__panel">
+      <h3>Tier badges</h3>
+      <div class="row">
+        <span class="sd-badge sd-badge--bronze">Bronze</span>
+        <span class="sd-badge sd-badge--silver">Silver</span>
+        <span class="sd-badge sd-badge--gold"><span class="sd-badge__icon">★</span>Gold</span>
+      </div>
+      <h3 style="margin-top:18px;">State chips</h3>
+      <div class="row">
+        <span class="sd-chip sd-chip--available"><span class="sd-chip__dot"></span>Available</span>
+        <span class="sd-chip sd-chip--enroute"><span class="sd-chip__dot"></span>En Route</span>
+        <span class="sd-chip sd-chip--within15"><span class="sd-chip__dot"></span>Within 15 mi</span>
+        <span class="sd-chip sd-chip--onsite"><span class="sd-chip__dot"></span>On Site</span>
+        <span class="sd-chip sd-chip--pending">Pending</span>
+      </div>
+    </div>
+
+    <div class="ks__panel">
+      <h3>Buttons</h3>
+      <div class="row">
+        <button class="sd-btn sd-btn--primary">Primary</button>
+        <button class="sd-btn sd-btn--success">Accept</button>
+        <button class="sd-btn sd-btn--danger">Danger</button>
+      </div>
+      <div class="row">
+        <button class="sd-btn sd-btn--outline">Outline</button>
+        <button class="sd-btn sd-btn--ghost">Ghost</button>
+        <button class="sd-btn sd-btn--primary" disabled>Disabled</button>
+      </div>
+    </div>
+
+    <div class="ks__panel">
+      <h3>Countdown · Spinner · ETA</h3>
+      <div class="row" style="gap:20px;">
+        <div class="sd-countdown" style="--val:42; --max:60; width:74px; height:74px;"><div class="sd-countdown__num" style="font-size:24px;">42</div></div>
+        <div class="sd-countdown sd-countdown--urgent" style="--val:7; --max:60; width:74px; height:74px;"><div class="sd-countdown__num" style="font-size:24px;">7</div></div>
+        <div class="sd-spinner"></div>
+        <div class="sd-eta"><span class="sd-eta__num">9 min</span><span class="sd-eta__lbl">ETA</span></div>
+      </div>
+    </div>
+
+    <div class="ks__panel">
+      <h3>Request queue card</h3>
+      <div class="sd-reqcard sd-reqcard--gold">
+        <div class="sd-reqcard__row">
+          <span class="sd-reqcard__name">Marcus Webb</span>
+          <span class="sd-badge sd-badge--gold"><span class="sd-badge__icon">★</span>Gold</span>
+          <span class="sd-reqcard__spacer"></span>
+          <span class="sd-chip sd-chip--pending">Pending</span>
+        </div>
+        <div class="sd-reqcard__dtc">P0700 · Transmission Control Fault</div>
+        <div class="sd-reqcard__meta">Unassigned · 1 min ago</div>
+      </div>
+    </div>
+
+    <div class="ks__panel">
+      <h3>Banner · List item</h3>
+      <div class="sd-banner" style="margin-bottom:12px;">
+        <span class="sd-banner__icon">⚠️</span><span>Rep went offline — request re-queued</span>
+        <span class="sd-banner__spacer"></span><span class="sd-banner__close">✕</span>
+      </div>
+      <div class="sd-listitem">
+        <div class="sd-listitem__icon">🚐</div>
+        <div><div class="sd-listitem__title">IA-4471 · Transit 350</div>
+          <div class="sd-equip"><span>Hydraulics</span><span>Coolant</span><span>+4</span></div></div>
+        <div class="sd-listitem__spacer"></div>
+        <button class="sd-btn sd-btn--primary" style="padding:8px 14px; font-size:12.5px;">Claim</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

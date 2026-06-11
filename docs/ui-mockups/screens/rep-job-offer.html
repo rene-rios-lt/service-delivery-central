@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Service Rep — Job Offer</title>
+<link rel="stylesheet" href="../design-system.css">
+<style>
+  html, body { height: 100%; }
+  .phone { height: 100vh; display: flex; flex-direction: column; background: var(--sd-bg); }
+  .offer { flex: 1; display: flex; flex-direction: column; padding: 18px 16px; }
+  .offer__count { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 6px 0 18px; }
+  .offer__count small { font-size: 12px; font-weight: 650; color: var(--sd-state-onsite); text-transform: uppercase; letter-spacing: .5px; }
+  .offer__card { background: var(--sd-surface); border-radius: var(--sd-radius); box-shadow: var(--sd-elev-2); border: 1px solid var(--sd-border); overflow: hidden; }
+  .offer__map { height: 150px; position: relative; }
+  .offer__info { padding: 16px; }
+  .offer__name { font-size: 20px; font-weight: 750; }
+  .offer__dtc { font-size: 14px; color: var(--sd-text-2); margin-top: 2px; }
+  .offer__stats { display: flex; gap: 10px; margin-top: 14px; }
+  .offer__stat { flex: 1; background: var(--sd-surface-2); border: 1px solid var(--sd-border); border-radius: 12px; padding: 11px; text-align: center; }
+  .offer__stat b { font-size: 19px; font-weight: 750; display: block; }
+  .offer__stat span { font-size: 11px; color: var(--sd-text-3); font-weight: 650; text-transform: uppercase; letter-spacing: .4px; }
+  .offer__actions { display: flex; gap: 12px; margin-top: auto; padding-top: 18px; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="sd-appbar">
+    <div class="sd-appbar__logo">🚐</div>
+    <div>
+      <div class="sd-appbar__title">Incoming Job Offer</div>
+      <div class="sd-appbar__sub">Vehicle IA-4471</div>
+    </div>
+    <div class="sd-appbar__spacer"></div>
+    <div class="sd-avatar">RA</div>
+  </div>
+
+  <div class="offer">
+    <div class="offer__count">
+      <div class="sd-countdown sd-countdown--urgent" style="--val:8; --max:60;">
+        <div class="sd-countdown__num">8</div>
+      </div>
+      <small>Expiring — respond now</small>
+    </div>
+
+    <div class="offer__card">
+      <div class="offer__map">
+        <div class="sd-map">
+          <div class="sd-map__roads">
+            <i style="left:0; top:55%; width:100%; height:6px;"></i>
+            <i style="left:45%; top:0; width:6px; height:100%;"></i>
+          </div>
+          <div class="sd-pin-dest" style="left:50%; top:48%;"></div>
+        </div>
+      </div>
+      <div class="offer__info">
+        <div class="sd-flex sd-aic sd-gap8">
+          <span class="offer__name">Marcus</span>
+          <span class="sd-badge sd-badge--gold"><span class="sd-badge__icon">★</span>Gold</span>
+        </div>
+        <div class="offer__dtc">P0700 · Transmission Control Fault</div>
+        <div class="offer__stats">
+          <div class="offer__stat"><b>12.4</b><span>miles</span></div>
+          <div class="offer__stat"><b>13</b><span>min ETA</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="offer__actions">
+      <button class="sd-btn sd-btn--ghost sd-btn--block sd-btn--lg">Decline</button>
+      <button class="sd-btn sd-btn--success sd-btn--block sd-btn--lg">Accept</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>

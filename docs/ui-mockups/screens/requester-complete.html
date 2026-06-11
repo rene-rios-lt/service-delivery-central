@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Requester — Service Complete</title>
+<link rel="stylesheet" href="../design-system.css">
+<style>
+  html, body { height: 100%; }
+  .req { min-height: 100vh; display: flex; flex-direction: column; }
+  .req__stage { flex: 1; display: grid; place-items: center; padding: 24px 16px; }
+  .done { text-align: center; max-width: 380px; display: flex; flex-direction: column; align-items: center; gap: 18px; }
+  .done__check { width: 84px; height: 84px; border-radius: 50%; background: rgba(46,158,91,.13); color: var(--sd-state-available); display: grid; place-items: center; font-size: 42px; }
+  .done h1 { font-size: 23px; margin: 0; }
+  .done p { color: var(--sd-text-2); font-size: 14.5px; margin: 0; line-height: 1.5; }
+  .done__actions { width: 100%; display: flex; flex-direction: column; gap: 10px; margin-top: 6px; }
+</style>
+</head>
+<body>
+<div class="req">
+  <div class="sd-appbar">
+    <div class="sd-appbar__logo">📍</div>
+    <div>
+      <div class="sd-appbar__title">Service Delivery</div>
+      <div class="sd-appbar__sub">Request closed</div>
+    </div>
+    <div class="sd-appbar__spacer"></div>
+    <div class="sd-avatar">MW</div>
+  </div>
+
+  <div class="req__stage">
+    <div class="done">
+      <div class="done__check">✓</div>
+      <div>
+        <h1>Your service is complete.</h1>
+        <p>Jordan Tran resolved your Transmission Control Fault. Thanks for using Service Delivery.</p>
+      </div>
+      <div class="done__actions">
+        <button class="sd-btn sd-btn--primary sd-btn--block sd-btn--lg">Submit a new request</button>
+        <button class="sd-btn sd-btn--ghost sd-btn--block">Done</button>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

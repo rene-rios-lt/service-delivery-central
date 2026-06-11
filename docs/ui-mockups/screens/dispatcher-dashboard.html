@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Dispatcher — Fleet Dashboard</title>
+<link rel="stylesheet" href="../design-system.css">
+<style>
+  html, body { height: 100%; }
+  .dash { height: calc(100vh - 60px); display: flex; gap: 18px; padding: 18px; }
+  .dash__main { flex: 1; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .dash__map { flex: 1; border-radius: var(--sd-radius); overflow: hidden; box-shadow: var(--sd-elev-2); border: 1px solid var(--sd-border); position: relative; }
+  .dash__queue { width: 384px; display: flex; flex-direction: column; gap: 12px; }
+  .queue__head { display: flex; align-items: center; justify-content: space-between; }
+  .queue__count { background: var(--sd-primary-soft); color: var(--sd-primary); font-weight: 700; font-size: 12px; padding: 3px 10px; border-radius: 999px; }
+  .queue__list { display: flex; flex-direction: column; gap: 12px; overflow: auto; padding-right: 2px; }
+</style>
+</head>
+<body>
+
+<div class="sd-appbar">
+  <div class="sd-appbar__logo">🛰️</div>
+  <div>
+    <div class="sd-appbar__title">Service Delivery</div>
+    <div class="sd-appbar__sub">Fleet Command — Iowa</div>
+  </div>
+  <div class="sd-appbar__spacer"></div>
+  <div class="sd-appbar__action">🔔</div>
+  <div class="sd-avatar">DM</div>
+</div>
+
+<div class="dash">
+  <!-- LEFT: alert banner + live fleet map -->
+  <div class="dash__main">
+    <div class="sd-banner">
+      <span class="sd-banner__icon">⚠️</span>
+      <span>R. Alvarez went offline — <b>Hydraulic Pressure Loss</b> request re-queued</span>
+      <span class="sd-banner__spacer"></span>
+      <span class="sd-banner__close">✕</span>
+    </div>
+
+    <div class="dash__map">
+      <div class="sd-map">
+        <div class="sd-map__roads">
+          <i style="left:0; top:42%; width:100%; height:7px;"></i>
+          <i style="left:0; top:70%; width:100%; height:5px;"></i>
+          <i style="left:28%; top:0; width:6px; height:100%;"></i>
+          <i style="left:62%; top:0; width:7px; height:100%;"></i>
+          <i style="left:10%; top:18%; width:46%; height:4px; transform:rotate(18deg);"></i>
+          <i style="left:48%; top:55%; width:40%; height:4px; transform:rotate(-12deg);"></i>
+        </div>
+        <div class="sd-map__water" style="left:74%; top:60%; width:120px; height:80px;"></div>
+        <div class="sd-map__label" style="left:30%; top:30%;">Des Moines</div>
+        <div class="sd-map__label" style="left:66%; top:24%;">Cedar Rapids</div>
+        <div class="sd-map__label" style="left:14%; top:64%;">Council Bluffs</div>
+
+        <!-- vehicle markers, color = rep state -->
+        <div class="sd-marker sd-marker--available" style="left:22%; top:35%;"><div class="sd-marker__pin"></div></div>
+        <div class="sd-marker sd-marker--available" style="left:48%; top:24%;"><div class="sd-marker__pin"></div></div>
+        <div class="sd-marker sd-marker--within15" style="left:40%; top:62%;"><div class="sd-marker__pin"></div></div>
+        <div class="sd-marker sd-marker--onsite" style="left:70%; top:46%;"><div class="sd-marker__pin"></div></div>
+        <div class="sd-marker sd-marker--offline" style="left:58%; top:72%;"><div class="sd-marker__pin"></div></div>
+
+        <!-- selected marker popover -->
+        <div class="sd-marker sd-marker--enroute" style="left:55%; top:45%;"><div class="sd-marker__pin"></div></div>
+        <div class="sd-popover" style="left:55%; top:45%;">
+          <div class="sd-popover__name">J. Tran · <span class="sd-chip sd-chip--enroute" style="vertical-align:middle;"><span class="sd-chip__dot"></span>En Route</span></div>
+          <div class="sd-popover__line">Vehicle <b>IA-4471</b></div>
+          <div class="sd-popover__line">→ Hydraulic Pressure Loss <span class="sd-badge sd-badge--silver" style="vertical-align:middle;">Silver</span></div>
+        </div>
+
+        <div class="sd-legend">
+          <div class="sd-legend__row"><span class="sd-legend__dot" style="background:var(--sd-state-available)"></span>Available</div>
+          <div class="sd-legend__row"><span class="sd-legend__dot" style="background:var(--sd-state-enroute)"></span>En Route</div>
+          <div class="sd-legend__row"><span class="sd-legend__dot" style="background:var(--sd-state-within15)"></span>Within 15 mi</div>
+          <div class="sd-legend__row"><span class="sd-legend__dot" style="background:var(--sd-state-onsite)"></span>On Site</div>
+          <div class="sd-legend__row"><span class="sd-legend__dot" style="background:var(--sd-state-offline)"></span>Offline</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: active request queue -->
+  <div class="dash__queue">
+    <div class="queue__head">
+      <div class="sd-section-label" style="margin:0;">Active Requests</div>
+      <div class="queue__count">7 active</div>
+    </div>
+    <div class="queue__list">
+
+      <div class="sd-reqcard sd-reqcard--gold">
+        <div class="sd-reqcard__row">
+          <span class="sd-reqcard__name">Marcus Webb</span>
+          <span class="sd-badge sd-badge--gold"><span class="sd-badge__icon">★</span>Gold</span>
+          <span class="sd-reqcard__spacer"></span>
+          <span class="sd-chip sd-chip--pending">Pending</span>
+        </div>
+        <div class="sd-reqcard__dtc">P0700 · Transmission Control Fault</div>
+        <div class="sd-reqcard__row">
+          <span class="sd-reqcard__meta">Unassigned · 1 min ago</span>
+          <span class="sd-reqcard__spacer"></span>
+          <button class="sd-btn sd-btn--primary" style="padding:7px 14px; font-size:12.5px;">Redirect →</button>
+        </div>
+      </div>
+
+      <div class="sd-reqcard sd-reqcard--silver">
+        <div class="sd-reqcard__row">
+          <span class="sd-reqcard__name">Dana Cole</span>
+          <span class="sd-badge sd-badge--silver">Silver</span>
+          <span class="sd-reqcard__spacer"></span>
+          <span class="sd-chip sd-chip--enroute"><span class="sd-chip__dot"></span>Assigned</span>
+        </div>
+        <div class="sd-reqcard__dtc">C1234 · Hydraulic Pressure Loss</div>
+        <div class="sd-reqcard__meta">J. Tran · En Route · 4 min ago</div>
+      </div>
+
+      <div class="sd-reqcard sd-reqcard--silver">
+        <div class="sd-reqcard__row">
+          <span class="sd-reqcard__name">Priya Nair</span>
+          <span class="sd-badge sd-badge--silver">Silver</span>
+          <span class="sd-reqcard__spacer"></span>
+          <span class="sd-chip sd-chip--within15"><span class="sd-chip__dot"></span>Assigned</span>
+        </div>
+        <div class="sd-reqcard__dtc">B0010 · Coolant Sensor Failure</div>
+        <div class="sd-reqcard__meta">L. Osei · Within 15 mi · 9 min ago</div>
+      </div>
+
+      <div class="sd-reqcard sd-reqcard--bronze">
+        <div class="sd-reqcard__row">
+          <span class="sd-reqcard__name">Sam Ortiz</span>
+          <span class="sd-badge sd-badge--bronze">Bronze</span>
+          <span class="sd-reqcard__spacer"></span>
+          <span class="sd-chip sd-chip--onsite"><span class="sd-chip__dot"></span>In Progress</span>
+        </div>
+        <div class="sd-reqcard__dtc">P0420 · Catalyst Efficiency Low</div>
+        <div class="sd-reqcard__meta">K. Boyd · On Site · 22 min ago</div>
+      </div>
+
+      <div class="sd-reqcard sd-reqcard--bronze">
+        <div class="sd-reqcard__row">
+          <span class="sd-reqcard__name">Erin Fox</span>
+          <span class="sd-badge sd-badge--bronze">Bronze</span>
+          <span class="sd-reqcard__spacer"></span>
+          <span class="sd-chip sd-chip--pending">Pending</span>
+        </div>
+        <div class="sd-reqcard__dtc">U0100 · Lost Comm w/ ECM</div>
+        <div class="sd-reqcard__meta">Unassigned · 3 min ago</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
