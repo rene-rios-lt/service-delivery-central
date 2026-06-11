@@ -12,7 +12,7 @@ Service Delivery is an "Uber for service reps" — a fleet dispatch platform tha
 |------|---------|
 | **Central** (this repo) | Cross-cutting architecture docs, ADRs, AI skills/agents, local dev orchestration |
 | **Backend** | .NET 10 Clean Architecture API — all business logic, SignalR hubs, data model |
-| **Frontend** | .NET MAUI Blazor Hybrid — Desktop, Web, and Mobile views for all three personas |
+| **Frontend** | .NET MAUI Blazor Hybrid — Desktop, Web, and Mobile hosts. Each persona is supported only on a subset of these (see [Persona Platform Support](#persona-platform-support)) |
 | **Simulator** | External service that drives the system with simulated vehicle data for the POC |
 
 ## The Three Personas
@@ -32,6 +32,18 @@ The customer or end-user reporting a fault. Submits a service request with their
 - **Gold** — trumps Silver and Bronze; the only tier that can override the redirect cooldown
 
 Any higher tier can redirect an En Route rep serving a lower-tier request. Reps Within 15 Miles or On Site are protected from redirect by any tier.
+
+## Persona Platform Support
+
+The shared Razor UI is built once and hosted on three platforms, but each persona is **designed and supported only on a subset of them**. The layout differs per platform; the available platforms differ per persona.
+
+| Persona | Desktop | Web | Mobile | Why |
+|---------|:-------:|:---:|:------:|-----|
+| **Dispatcher** | ✅ | ✅ | ❌ | Dense command-center dashboard (live map + request queue side by side) — a desktop/web ergonomic, not a phone one |
+| **Service Rep** | ❌ | ❌ | ✅ | Field technician working from inside a vehicle — mobile only |
+| **Requester** | ✅ | ✅ | ✅ | Customer reporting a fault from any device they happen to have |
+
+Login still routes by JWT role on whichever host the user launches. Supporting a persona on a platform outside this matrix is out of scope for the POC.
 
 ## Tech Stack
 
@@ -71,3 +83,5 @@ The POC operates across the state of Iowa. Eight service vehicles follow pre-det
 - [ADR-0004](../adr/0004-haversine-straight-line-distance.md) — Why Haversine distance
 - [ADR-0005](../adr/0005-simulator-as-external-actor.md) — Why simulator is a separate repo
 - [ADR-0006](../adr/0006-single-dealer-poc-multidealer-ready.md) — Single-dealer POC, multi-dealer data model
+- [ADR-0007](../adr/0007-mudblazor-component-library.md) — MudBlazor component library
+- [ADR-0008](../adr/0008-persona-platform-support.md) — Persona platform support
