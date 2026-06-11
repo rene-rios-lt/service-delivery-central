@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Service Rep — Release Vehicle</title>
+<link rel="stylesheet" href="../design-system.css">
+<style>
+  html, body { height: 100%; }
+  .phone { height: 100vh; display: flex; flex-direction: column; position: relative; background: var(--sd-bg); }
+  .stage { flex: 1; position: relative; }
+  /* faint idle backdrop behind the dialog */
+  .backdrop { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; opacity: .5; }
+  .backdrop__core { width: 64px; height: 64px; border-radius: 50%; background: var(--sd-state-available); display: grid; place-items: center; color: #fff; font-size: 26px; }
+  .sheet-dialog { position: absolute; inset: 0; display: grid; place-items: end center; }
+  .confirm { width: 100%; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="sd-appbar">
+    <div class="sd-appbar__logo">🚐</div>
+    <div>
+      <div class="sd-appbar__title">Service Delivery</div>
+      <div class="sd-appbar__sub">Vehicle IA-4471 · Available</div>
+    </div>
+    <div class="sd-appbar__spacer"></div>
+    <div class="sd-appbar__action">☰</div>
+  </div>
+
+  <div class="stage">
+    <div class="backdrop">
+      <div class="backdrop__core">✓</div>
+      <div style="font-weight:650;">You're available</div>
+    </div>
+
+    <div class="sd-scrim">
+      <div class="sd-dialog" style="width:340px;">
+        <div class="sd-dialog__head">Release vehicle IA-4471?</div>
+        <div class="sd-dialog__body">
+          The vehicle returns to the fleet and becomes available for another rep. You'll be returned to vehicle selection.
+        </div>
+        <div class="sd-dialog__foot">
+          <button class="sd-btn sd-btn--ghost">Cancel</button>
+          <button class="sd-btn sd-btn--danger">Release</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

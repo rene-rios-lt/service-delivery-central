@@ -34,16 +34,23 @@ const JOBS = [
   ['dispatcher-dashboard__desktop-1440x900','dispatcher-dashboard.html',1440, 900],
   ['dispatcher-dashboard__web-1280x800',   'dispatcher-dashboard.html',1280, 800],
   ['dispatcher-redirect__desktop-1440x900','dispatcher-redirect.html', 1440, 900],
+  ['dispatcher-nav__desktop-1440x900',     'dispatcher-nav.html',      1440, 900],
   // Service Rep (Mobile)
   ['rep-vehicle-select__mobile-390x844',   'rep-vehicle-select.html',   390, 844],
+  ['rep-idle__mobile-390x844',             'rep-idle.html',             390, 844],
   ['rep-job-offer__mobile-390x844',        'rep-job-offer.html',        390, 844],
   ['rep-active-job__mobile-390x844',       'rep-active-job.html',       390, 844],
+  ['rep-on-site__mobile-390x844',          'rep-on-site.html',          390, 844],
+  ['rep-nav-drawer__mobile-390x844',       'rep-nav-drawer.html',       390, 844],
+  ['rep-release-vehicle__mobile-390x844',  'rep-release-vehicle.html',  390, 844],
   // Requester (Desktop + Web + Mobile)
   ['requester-submit__web-1280x800',       'requester-submit.html',    1280, 800],
   ['requester-submit__mobile-390x844',     'requester-submit.html',     390, 844],
   ['requester-finding__mobile-390x844',    'requester-finding.html',    390, 844],
   ['requester-tracking__web-1280x800',     'requester-tracking.html',  1280, 800],
   ['requester-tracking__mobile-390x844',   'requester-tracking.html',   390, 844],
+  ['requester-redirect__web-1280x800',     'requester-redirect.html',  1280, 800],
+  ['requester-redirect__mobile-390x844',   'requester-redirect.html',   390, 844],
   ['requester-complete__mobile-390x844',   'requester-complete.html',   390, 844],
 ];
 
