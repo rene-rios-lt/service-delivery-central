@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Service Rep — Active Job</title>
+<link rel="stylesheet" href="../design-system.css">
+<style>
+  html, body { height: 100%; }
+  .phone { height: 100vh; display: flex; flex-direction: column; position: relative; }
+  .phone__map { flex: 1; position: relative; }
+  .map-eta { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); z-index: 3; }
+  .map-state { position: absolute; top: 14px; right: 14px; z-index: 3; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="sd-appbar">
+    <div class="sd-appbar__logo">🧭</div>
+    <div>
+      <div class="sd-appbar__title">Active Job</div>
+      <div class="sd-appbar__sub">Navigating to requester</div>
+    </div>
+    <div class="sd-appbar__spacer"></div>
+    <div class="sd-appbar__action">⋮</div>
+  </div>
+
+  <div class="phone__map">
+    <div class="sd-map">
+      <div class="sd-map__roads">
+        <i style="left:0; top:60%; width:100%; height:7px;"></i>
+        <i style="left:30%; top:0; width:6px; height:100%;"></i>
+        <i style="left:10%; top:20%; width:70%; height:4px; transform:rotate(22deg);"></i>
+      </div>
+      <!-- straight-line route: rep marker centre (28,70) → requester pin (68,32);
+           both endpoints sit at a centre-anchored marker so the line tucks under each -->
+      <svg class="sd-routeline"><line x1="28%" y1="70%" x2="68%" y2="32%"></line></svg>
+      <!-- my position (rep) — centre-anchored so the route connects under the pin -->
+      <div class="sd-marker sd-marker--enroute" style="left:28%; top:70%; transform:translate(-50%,-50%);"><div class="sd-marker__pin"></div></div>
+      <!-- destination (requester) -->
+      <div class="sd-pin-dest" style="left:68%; top:32%;"></div>
+    </div>
+
+    <div class="map-eta">
+      <div class="sd-eta"><span class="sd-eta__num">9 min</span><span class="sd-eta__lbl">ETA · 8.1 mi</span></div>
+    </div>
+    <div class="map-state">
+      <span class="sd-chip sd-chip--enroute"><span class="sd-chip__dot"></span>En Route</span>
+    </div>
+  </div>
+
+  <div class="sd-sheet">
+    <div class="sd-sheet__grip"></div>
+    <div class="sd-flex sd-aic sd-gap12" style="margin-bottom:14px;">
+      <div class="sd-listitem__icon" style="background:var(--sd-primary-soft);">🔧</div>
+      <div style="min-width:0;">
+        <div class="sd-flex sd-aic sd-gap8">
+          <span style="font-weight:700; font-size:16px;">Marcus Webb</span>
+          <span class="sd-badge sd-badge--gold"><span class="sd-badge__icon">★</span>Gold</span>
+        </div>
+        <div class="sd-muted" style="font-size:13.5px; margin-top:2px;">P0700 · Transmission Control Fault</div>
+      </div>
+    </div>
+    <button class="sd-btn sd-btn--primary sd-btn--block sd-btn--lg" disabled>I've Arrived · enables within 15 mi</button>
+  </div>
+</div>
+</body>
+</html>

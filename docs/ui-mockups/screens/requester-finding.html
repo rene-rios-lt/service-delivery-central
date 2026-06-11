@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Requester — Finding a Technician</title>
+<link rel="stylesheet" href="../design-system.css">
+<style>
+  html, body { height: 100%; }
+  .req { min-height: 100vh; display: flex; flex-direction: column; }
+  .req__stage { flex: 1; display: grid; place-items: center; padding: 24px 16px; }
+  .finding { text-align: center; max-width: 380px; display: flex; flex-direction: column; align-items: center; gap: 18px; }
+  .finding__spinner { animation: none; }
+  .finding h1 { font-size: 22px; margin: 0; }
+  .finding p { color: var(--sd-text-2); font-size: 14.5px; margin: 0; line-height: 1.5; }
+  .finding__card { width: 100%; }
+</style>
+</head>
+<body>
+<div class="req">
+  <div class="sd-appbar">
+    <div class="sd-appbar__logo">📍</div>
+    <div>
+      <div class="sd-appbar__title">Request Service</div>
+      <div class="sd-appbar__sub">Transmission Control Fault</div>
+    </div>
+    <div class="sd-appbar__spacer"></div>
+    <div class="sd-avatar">MW</div>
+  </div>
+
+  <div class="req__stage">
+    <div class="finding">
+      <div class="sd-spinner"></div>
+      <div>
+        <h1>Finding your technician…</h1>
+        <p>We're locating the nearest qualified rep for your fault. This usually takes a moment.</p>
+      </div>
+      <div class="sd-card finding__card">
+        <div class="sd-card__body" style="display:flex; align-items:center; gap:12px;">
+          <span class="sd-badge sd-badge--gold"><span class="sd-badge__icon">★</span>Gold</span>
+          <div style="text-align:left;">
+            <div style="font-weight:650; font-size:14px;">Priority service</div>
+            <div class="sd-muted" style="font-size:12.5px;">Gold requests are matched first.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
