@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Dispatcher — Account Menu</title>
+<link rel="stylesheet" href="../design-system.css">
+<style>
+  html, body { height: 100%; }
+  .dash { height: calc(100vh - 60px); display: flex; gap: 18px; padding: 18px; }
+  .dash__main { flex: 1; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .dash__map { flex: 1; border-radius: var(--sd-radius); overflow: hidden; box-shadow: var(--sd-elev-2); border: 1px solid var(--sd-border); position: relative; }
+  .dash__queue { width: 384px; display: flex; flex-direction: column; gap: 12px; }
+  .stage { position: relative; }
+  .menu { position: absolute; top: 56px; right: 16px; width: 240px; background: var(--sd-surface);
+    border: 1px solid var(--sd-border); border-radius: 12px; box-shadow: var(--sd-elev-3); z-index: 30; overflow: hidden; }
+  .menu__head { padding: 14px 16px; border-bottom: 1px solid var(--sd-border); }
+  .menu__name { font-weight: 700; font-size: 14.5px; }
+  .menu__role { font-size: 12px; color: var(--sd-text-2); margin-top: 1px; }
+  .menu__item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; font-size: 14px; font-weight: 600; color: var(--sd-text); }
+  .menu__item .ic { width: 20px; text-align: center; }
+  .menu__item--danger { color: var(--sd-state-onsite); border-top: 1px solid var(--sd-border); }
+  .menu__caret { position: absolute; top: -7px; right: 16px; width: 14px; height: 14px; background: var(--sd-surface); transform: rotate(45deg); border-left: 1px solid var(--sd-border); border-top: 1px solid var(--sd-border); }
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <div class="sd-appbar">
+    <div class="sd-appbar__logo">🛰️</div>
+    <div>
+      <div class="sd-appbar__title">Service Delivery</div>
+      <div class="sd-appbar__sub">Fleet Command — Iowa</div>
+    </div>
+    <div class="sd-appbar__spacer"></div>
+    <div class="sd-appbar__action">🔔</div>
+    <div class="sd-avatar" style="outline:3px solid rgba(255,255,255,.5);">DM</div>
+  </div>
+
+  <div class="dash">
+    <div class="dash__main">
+      <div class="dash__map">
+        <div class="sd-map">
+          <div class="sd-map__roads">
+            <i style="left:0; top:42%; width:100%; height:7px;"></i>
+            <i style="left:28%; top:0; width:6px; height:100%;"></i>
+            <i style="left:62%; top:0; width:7px; height:100%;"></i>
+          </div>
+          <div class="sd-marker sd-marker--available" style="left:22%; top:35%;"><div class="sd-marker__pin"></div></div>
+          <div class="sd-marker sd-marker--enroute" style="left:55%; top:45%;"><div class="sd-marker__pin"></div></div>
+          <div class="sd-marker sd-marker--onsite" style="left:70%; top:46%;"><div class="sd-marker__pin"></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="dash__queue">
+      <div class="sd-section-label">Active Requests</div>
+      <div class="sd-reqcard sd-reqcard--gold">
+        <div class="sd-reqcard__row">
+          <span class="sd-reqcard__name">Marcus Webb</span>
+          <span class="sd-badge sd-badge--gold"><span class="sd-badge__icon">★</span>Gold</span>
+          <span class="sd-reqcard__spacer"></span>
+          <span class="sd-chip sd-chip--pending">Pending</span>
+        </div>
+        <div class="sd-reqcard__dtc">P0700 · Transmission Control Fault</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- account menu open from the avatar -->
+  <div class="menu">
+    <div class="menu__caret"></div>
+    <div class="menu__head">
+      <div class="menu__name">Dana Morales</div>
+      <div class="menu__role">Dispatcher · Iowa fleet</div>
+    </div>
+    <div class="menu__item"><span class="ic">👤</span>Profile</div>
+    <div class="menu__item"><span class="ic">⚙️</span>Settings</div>
+    <div class="menu__item menu__item--danger"><span class="ic">⏻</span>Log out</div>
+  </div>
+</div>
+
+</body>
+</html>

@@ -69,15 +69,27 @@ request queue, the offline alert banner (FE-006), and the redirect confirmation 
 
 <img src="images/dispatcher-redirect__desktop-1440x900.png" alt="Dispatcher redirect dialog" width="900">
 
+### Account menu & logout — FE-021
+
+<img src="images/dispatcher-nav__desktop-1440x900.png" alt="Dispatcher account menu" width="900">
+
 ---
 
 ## Service Rep — Mobile only
 
 Single-task, touch-first field experience. **Not built for desktop/web** (ADR-0008).
 
-| Claim a vehicle (FE-007) | Job offer + countdown (FE-008) | Active job navigation (FE-011/012) |
+| Claim a vehicle (FE-007) | Idle / waiting (FE-020) | Job offer + countdown (FE-008) |
 |:---:|:---:|:---:|
-| <img src="images/rep-vehicle-select__mobile-390x844.png" alt="Rep — claim a vehicle" width="250"> | <img src="images/rep-job-offer__mobile-390x844.png" alt="Rep — job offer with countdown" width="250"> | <img src="images/rep-active-job__mobile-390x844.png" alt="Rep — active job navigation" width="250"> |
+| <img src="images/rep-vehicle-select__mobile-390x844.png" alt="Rep — claim a vehicle" width="250"> | <img src="images/rep-idle__mobile-390x844.png" alt="Rep — idle waiting for offers" width="250"> | <img src="images/rep-job-offer__mobile-390x844.png" alt="Rep — job offer with countdown" width="250"> |
+
+| Active job — En Route (FE-011) | On site (FE-012/013) | Nav drawer · Release vehicle (FE-014/021) |
+|:---:|:---:|:---:|
+| <img src="images/rep-active-job__mobile-390x844.png" alt="Rep — active job navigation" width="250"> | <img src="images/rep-on-site__mobile-390x844.png" alt="Rep — on site" width="250"> | <img src="images/rep-nav-drawer__mobile-390x844.png" alt="Rep — nav drawer" width="250"> |
+
+| Release vehicle confirm (FE-014) | | |
+|:---:|:---:|:---:|
+| <img src="images/rep-release-vehicle__mobile-390x844.png" alt="Rep — release vehicle confirm" width="250"> | | |
 
 ---
 
@@ -96,6 +108,12 @@ Consumer-grade, responsive from phone to desktop. Submit → finding → trackin
 | Web / Desktop | Mobile |
 |:---:|:---:|
 | <img src="images/requester-tracking__web-1280x800.png" alt="Requester tracking — web" width="480"> | <img src="images/requester-tracking__mobile-390x844.png" alt="Requester tracking — mobile" width="230"> |
+
+### Redirect notification — FE-018
+
+| Web / Desktop | Mobile |
+|:---:|:---:|
+| <img src="images/requester-redirect__web-1280x800.png" alt="Requester redirect notification — web" width="480"> | <img src="images/requester-redirect__mobile-390x844.png" alt="Requester redirect notification — mobile" width="230"> |
 
 ### Finding a technician (FE-016) · Service complete (FE-019)
 
@@ -126,3 +144,11 @@ docs/ui-mockups/
 
 Login is shown on Web + Mobile as representative of all hosts. Requester Desktop and Web share the same
 responsive layout (shown once as "Web / Desktop").
+
+## Mapping to user stories
+
+Every screen here maps to one or more frontend user stories. The authoritative
+**[Story ↔ Screen Traceability](../stories/frontend.md#story--screen-traceability)** table lives in the
+frontend stories, where each story also embeds its mockup. New screens added beyond the original brief:
+`rep-idle` (FE-020), `rep-on-site` (FE-012/013), `rep-nav-drawer` + `rep-release-vehicle` (FE-014/021),
+`dispatcher-nav` (FE-021), and `requester-redirect` (FE-018).

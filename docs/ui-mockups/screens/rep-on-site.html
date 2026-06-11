@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Service Rep — On Site</title>
+<link rel="stylesheet" href="../design-system.css">
+<style>
+  html, body { height: 100%; }
+  .phone { height: 100vh; display: flex; flex-direction: column; position: relative; }
+  .phone__map { flex: 1; position: relative; }
+  .map-state { position: absolute; top: 14px; right: 14px; z-index: 3; }
+  .map-here { position: absolute; top: 14px; left: 14px; z-index: 3; background: rgba(255,255,255,.95); border: 1px solid var(--sd-border); border-radius: 999px; padding: 7px 14px; font-size: 12.5px; font-weight: 650; box-shadow: var(--sd-elev-1); }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="sd-appbar">
+    <div class="sd-appbar__logo">🧭</div>
+    <div>
+      <div class="sd-appbar__title">Active Job</div>
+      <div class="sd-appbar__sub">On site — work underway</div>
+    </div>
+    <div class="sd-appbar__spacer"></div>
+    <div class="sd-appbar__action">☰</div>
+  </div>
+
+  <div class="phone__map">
+    <div class="sd-map">
+      <div class="sd-map__roads">
+        <i style="left:0; top:52%; width:100%; height:7px;"></i>
+        <i style="left:46%; top:0; width:6px; height:100%;"></i>
+        <i style="left:12%; top:24%; width:60%; height:4px; transform:rotate(16deg);"></i>
+      </div>
+      <!-- zoomed to current location; no route line (arrived) -->
+      <div class="sd-pin-dest" style="left:50%; top:50%;"></div>
+      <div class="sd-marker sd-marker--onsite" style="left:50%; top:50%; transform:translate(-50%,-50%);"><div class="sd-marker__pin"></div></div>
+    </div>
+
+    <div class="map-here">📍 At requester location</div>
+    <div class="map-state"><span class="sd-chip sd-chip--onsite"><span class="sd-chip__dot"></span>On Site</span></div>
+  </div>
+
+  <div class="sd-sheet">
+    <div class="sd-sheet__grip"></div>
+    <div class="sd-flex sd-aic sd-gap12" style="margin-bottom:14px;">
+      <div class="sd-listitem__icon" style="background:var(--sd-primary-soft);">🔧</div>
+      <div style="min-width:0;">
+        <div class="sd-flex sd-aic sd-gap8">
+          <span style="font-weight:700; font-size:16px;">Marcus Webb</span>
+          <span class="sd-badge sd-badge--gold"><span class="sd-badge__icon">★</span>Gold</span>
+        </div>
+        <div class="sd-muted" style="font-size:13.5px; margin-top:2px;">P0700 · Transmission Control Fault</div>
+      </div>
+    </div>
+    <button class="sd-btn sd-btn--primary sd-btn--block sd-btn--lg">Mark Complete</button>
+  </div>
+</div>
+</body>
+</html>

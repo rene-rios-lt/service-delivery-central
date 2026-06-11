@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Service Rep — Navigation Menu</title>
+<link rel="stylesheet" href="../design-system.css">
+<style>
+  html, body { height: 100%; }
+  .phone { height: 100vh; display: flex; flex-direction: column; position: relative; background: var(--sd-bg); }
+  .stage { flex: 1; position: relative; }
+  .drawer-scrim { position: absolute; inset: 0; background: rgba(20,22,40,.42); z-index: 10; }
+  .drawer { position: absolute; top: 0; right: 0; height: 100%; width: 300px; background: var(--sd-surface);
+    box-shadow: -8px 0 28px rgba(20,22,40,.22); z-index: 11; display: flex; flex-direction: column; }
+  .drawer__head { padding: 22px 18px; background: var(--sd-primary); color: #fff; }
+  .drawer__name { font-weight: 700; font-size: 17px; }
+  .drawer__role { font-size: 12.5px; opacity: .85; margin-top: 2px; }
+  .drawer__vehicle { display: flex; align-items: center; gap: 8px; margin-top: 14px; font-size: 12.5px;
+    background: rgba(255,255,255,.16); padding: 8px 11px; border-radius: 9px; }
+  .drawer__items { padding: 10px 8px; display: flex; flex-direction: column; gap: 2px; }
+  .drawer__item { display: flex; align-items: center; gap: 13px; padding: 13px 14px; border-radius: 10px; font-size: 14.5px; font-weight: 600; color: var(--sd-text); }
+  .drawer__item .ic { width: 22px; text-align: center; font-size: 17px; }
+  .drawer__item--active { background: var(--sd-primary-soft); color: var(--sd-primary); }
+  .drawer__item--danger { color: var(--sd-state-onsite); }
+  .drawer__spacer { flex: 1; }
+  .drawer__div { height: 1px; background: var(--sd-border); margin: 8px 14px; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="sd-appbar">
+    <div class="sd-appbar__logo">🚐</div>
+    <div>
+      <div class="sd-appbar__title">Service Delivery</div>
+      <div class="sd-appbar__sub">Vehicle IA-4471 · Available</div>
+    </div>
+    <div class="sd-appbar__spacer"></div>
+    <div class="sd-appbar__action">✕</div>
+  </div>
+
+  <div class="stage">
+    <div class="drawer-scrim"></div>
+    <div class="drawer">
+      <div class="drawer__head">
+        <div class="drawer__name">Rosa Alvarez</div>
+        <div class="drawer__role">Service Rep</div>
+        <div class="drawer__vehicle">🚐 IA-4471 · <span class="sd-chip sd-chip--available" style="background:rgba(255,255,255,.22); color:#fff; padding:2px 9px;"><span class="sd-chip__dot" style="background:#fff;"></span>Available</span></div>
+      </div>
+      <div class="drawer__items">
+        <div class="drawer__item drawer__item--active"><span class="ic">🏠</span>Waiting for offers</div>
+        <div class="drawer__item"><span class="ic">📋</span>Job history</div>
+        <div class="drawer__item"><span class="ic">❓</span>Help &amp; support</div>
+        <div class="drawer__div"></div>
+        <div class="drawer__item drawer__item--danger"><span class="ic">🅿️</span>Release vehicle</div>
+        <div class="drawer__item drawer__item--danger"><span class="ic">⏻</span>Log out</div>
+      </div>
+      <div class="drawer__spacer"></div>
+      <div style="padding:14px 18px; font-size:11.5px; color:var(--sd-text-3);">Releasing returns IA-4471 to the fleet. Disabled while a job is in progress.</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

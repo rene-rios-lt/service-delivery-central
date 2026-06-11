@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Service Rep — Idle / Waiting</title>
+<link rel="stylesheet" href="../design-system.css">
+<style>
+  html, body { height: 100%; }
+  .phone { height: 100vh; display: flex; flex-direction: column; background: var(--sd-bg); }
+  .idle { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 24px 18px; text-align: center; }
+  .idle__halo { width: 132px; height: 132px; border-radius: 50%; display: grid; place-items: center;
+    background: radial-gradient(circle, rgba(46,158,91,.18) 0%, rgba(46,158,91,.05) 60%, transparent 70%); }
+  .idle__core { width: 70px; height: 70px; border-radius: 50%; background: var(--sd-state-available);
+    display: grid; place-items: center; color: #fff; font-size: 30px; box-shadow: 0 6px 18px rgba(46,158,91,.4); }
+  .idle h1 { font-size: 22px; margin: 0; }
+  .idle p { color: var(--sd-text-2); font-size: 14.5px; margin: 0; }
+  .idle__card { width: 100%; max-width: 360px; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="sd-appbar">
+    <div class="sd-appbar__logo">🚐</div>
+    <div>
+      <div class="sd-appbar__title">Service Delivery</div>
+      <div class="sd-appbar__sub">Vehicle IA-4471 · On shift</div>
+    </div>
+    <div class="sd-appbar__spacer"></div>
+    <div class="sd-appbar__action">☰</div>
+    <div class="sd-avatar">RA</div>
+  </div>
+
+  <div class="idle">
+    <div class="idle__halo"><div class="idle__core">✓</div></div>
+    <div>
+      <h1>You're available</h1>
+      <p>Waiting for the next job offer…</p>
+    </div>
+    <span class="sd-chip sd-chip--available"><span class="sd-chip__dot"></span>Available</span>
+
+    <div class="sd-card idle__card">
+      <div class="sd-card__body" style="display:flex; align-items:center; gap:12px; text-align:left;">
+        <div class="sd-listitem__icon">🚐</div>
+        <div style="min-width:0;">
+          <div class="sd-listitem__title">IA-4471 · Transit 350</div>
+          <div class="sd-equip">
+            <span>Hydraulics</span><span>Coolant</span><span>Diagnostics</span><span>+3</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p style="font-size:12.5px; color:var(--sd-text-3);">Today · 3 jobs completed</p>
+  </div>
+</div>
+</body>
+</html>
