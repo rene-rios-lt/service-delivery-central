@@ -32,8 +32,9 @@ Record the full list. Any agent folder that contains no AGENT.md, and any skill 
 For each AGENT.md, verify the following are present:
 
 **Frontmatter (YAML block at the top of the file):**
+- `name:` — non-empty string (kebab-case, matches the agent folder name)
 - `description:` — non-empty string
-- `allowed-tools:` — non-empty list
+- `tools:` — non-empty, comma- or space-separated tool list
 
 **Body sections (must exist as Markdown headers):**
 - A top-level heading (`# <Name>`) followed by a persona paragraph — describes who the agent is and how it approaches its work

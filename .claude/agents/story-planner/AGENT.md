@@ -1,6 +1,7 @@
 ---
-description: Produces the implementation plan — files to create or modify, interfaces required, and a complete AC-to-test-scenario mapping. Output is reviewed by the developer at Checkpoint 1.
-allowed-tools: [Read, Write, Glob, Grep]
+name: story-planner
+description: Internal stage of the /master story pipeline — invoke only via /master or when the user explicitly names this agent; do not auto-delegate. Produces the implementation plan — files to create or modify, interfaces required, and a complete AC-to-test-scenario mapping. Output is reviewed by the developer at Checkpoint 1.
+tools: Read, Write, Glob, Grep
 ---
 
 # Story Planner

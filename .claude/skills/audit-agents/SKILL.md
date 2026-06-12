@@ -27,8 +27,9 @@ Before rating quality, verify that every agent file is structurally complete. A 
 For each AGENT.md, check:
 
 **Frontmatter:**
+- `name:` field present and non-empty (kebab-case, matches the agent folder)
 - `description:` field present and non-empty
-- `allowed-tools:` field present and non-empty
+- `tools:` field present and non-empty
 
 **Required body sections:**
 - Top-level heading (`# <Name>`) followed by a persona paragraph
@@ -85,7 +86,7 @@ One-line justification is required for every dimension score.
 - Cross-repo variation (BE/FE/SIM) unaddressed where agent behaviour differs
 - A step that says "as needed" or "if applicable" with no criteria for when it applies
 - Any of the six required sections missing: Persona, Required Reading, Inputs, Audit Output, Process, Output Format
-- Missing `description:` or `allowed-tools:` frontmatter fields
+- Missing `description:` or `tools:` frontmatter fields
 
 ---
 
@@ -217,15 +218,15 @@ This dimension unifies two concerns that fail together:
 
 | Score | Signal |
 |-------|--------|
-| **9–10** | `allowed-tools` is minimal — no tool listed that isn't required by a named process step. Prompt injection guard is present and correctly scoped. Irreversible actions (commit, push, PR creation, file deletion) are preceded by an explicit confirmation condition. No path through the file leads to `--force`, `--no-verify`, or a direct push to `main`. |
-| **7–8** | One excess tool in `allowed-tools` or one irreversible action with a weak but present guard. No injection surface unaddressed. |
-| **5–6** | Missing prompt injection guard on a file that reads external content, or one irreversible action with no guard. `allowed-tools` contains tools that serve no documented step. |
-| **1–4** | The file can be trivially manipulated into a destructive action, or `allowed-tools` grants broad access (e.g. unrestricted Bash) without justification. |
+| **9–10** | `tools` is minimal — no tool listed that isn't required by a named process step. Prompt injection guard is present and correctly scoped. Irreversible actions (commit, push, PR creation, file deletion) are preceded by an explicit confirmation condition. No path through the file leads to `--force`, `--no-verify`, or a direct push to `main`. |
+| **7–8** | One excess tool in `tools` or one irreversible action with a weak but present guard. No injection surface unaddressed. |
+| **5–6** | Missing prompt injection guard on a file that reads external content, or one irreversible action with no guard. `tools` contains tools that serve no documented step. |
+| **1–4** | The file can be trivially manipulated into a destructive action, or `tools` grants broad access (e.g. unrestricted Bash) without justification. |
 
 **Red flags (automatic −2 each — security issues are weighted double):**
 - No prompt injection guard on an agent that reads story files, diffs, or review packages
 - An irreversible action (force-push, branch delete, direct main commit) with no guard
-- `Bash` in `allowed-tools` without a documented step that requires it
+- `Bash` in `tools` without a documented step that requires it
 - Any instruction that could cause `--no-verify` or `--force` without explicit developer authorisation
 
 > **Gate rule (Security):** if Security scores below 6, the overall rating is capped at 7 regardless of all other scores.
@@ -240,18 +241,18 @@ Subagents run in isolated context windows. Each invocation starts clean — no m
 
 | Score | Signal |
 |-------|--------|
-| **9–10** | Every instruction is compatible with a clean-context, isolated subagent. No assumed prior state. All context the agent needs is either in Required Reading or passed as explicit named Inputs. Output is addressed to the orchestrator, not the user. Every tool called in a process step appears in `allowed-tools`. |
+| **9–10** | Every instruction is compatible with a clean-context, isolated subagent. No assumed prior state. All context the agent needs is either in Required Reading or passed as explicit named Inputs. Output is addressed to the orchestrator, not the user. Every tool called in a process step appears in `tools`. |
 | **7–8** | One minor assumption that a well-configured invocation would satisfy — e.g. an implicit reference to the story ID that is passed as an input even if not explicitly named as such. |
-| **5–6** | One or more instructions that silently fail for subagents: assumes prior context, asks the user a question directly, or calls a tool not in `allowed-tools`. |
+| **5–6** | One or more instructions that silently fail for subagents: assumes prior context, asks the user a question directly, or calls a tool not in `tools`. |
 | **1–4** | The file fundamentally cannot execute as a subagent — it requires conversational context, user interaction, or capabilities that isolated subagents do not have. |
 
 **Red flags (automatic −2 each — silent runtime failures are weighted double):**
 - "refer back to your earlier [decision / analysis / output]" — subagents have no prior context
 - Any instruction to "ask the user", "confirm with the developer", or "wait for input"
-- A tool called in a process step that is absent from `allowed-tools`
+- A tool called in a process step that is absent from `tools`
 - Context assumed from a prior agent that is not listed as an explicit named Input
 - An instruction that depends on the subagent knowing which story or repo it is operating in, when that is not passed as an explicit input
-- Missing `allowed-tools:` frontmatter — tool access is unconstrained at load time, making the agent's actual tool scope undefined
+- Missing `tools:` frontmatter — tool access is unconstrained at load time, making the agent's actual tool scope undefined
 
 > **Gate rule (Subagent Compatibility):** if Subagent Compatibility scores below 6, the overall rating is capped at 7 regardless of all other scores. A file that cannot execute as a subagent is not fit for purpose.
 
