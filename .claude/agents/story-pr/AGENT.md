@@ -22,7 +22,7 @@ Before beginning, read this skill file:
 ## Inputs
 
 - Story ID (e.g. `BE-010`)
-- Feature branch name (e.g. `feature/BE-010-submit-service-request`)
+- Feature branch name (e.g. `feature/BE-010-submit-service-request`; a `BUG-` story uses a `fix/` branch, e.g. `fix/BUG-001-rephub-force-release-event`)
 - AI Reviewer output (`.stories/<STORY-ID>/04-ai-review.md`, produced by `../.claude/agents/story-ai-reviewer/AGENT.md`)
 - Approved plan (`.stories/<STORY-ID>/02-plan.md`)
 - Story file (`../docs/stories/<repo>.md` in the central repo — for the business narrative)
