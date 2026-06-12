@@ -100,7 +100,7 @@ A dispatcher cannot recover a stuck/offline rep's vehicle through the UI, despit
 
 ## BUG-006 — README Skills table omits the `master` skill
 
-- **Status:** Open · **Severity:** Medium · **Area:** Central docs — README · **Related:** `README.md`, `CLAUDE.md`
+- **Status:** Fixed · **Severity:** Medium · **Area:** Central docs — README · **Related:** `README.md`, `CLAUDE.md`
 - **Issue:** `README.md:54-64` lists 9 skills and omits `master`, which `CLAUDE.md:126-137` and the filesystem include.
 - **Fix:** Add a `master` row to the README Skills table.
 - **Done when:** The README Skills table lists all 10 skills.
