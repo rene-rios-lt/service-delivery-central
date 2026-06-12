@@ -98,3 +98,23 @@ This will kill any existing instance on port 5023, start the Blazor WASM web app
 ```
 
 Runs `dotnet test` across all backend test projects (Domain, Application, Infrastructure, Api, Architecture).
+
+### Run all simulator tests
+
+```bash
+./scripts/local/test-simulator.sh
+```
+
+Runs `dotnet test` against the simulator repo.
+
+### Run the full test suite
+
+```bash
+./scripts/local/test-all.sh
+```
+
+Runs the backend and simulator test suites in sequence.
+
+### `mark-story-complete.sh` (automated)
+
+`scripts/utils/mark-story-complete.sh` is not run by hand. A PostToolUse hook fires it after `gh pr merge` succeeds; it extracts the story/bug ID from the merged branch name and crosses that row out in `docs/stories/execution-plan.md`.

@@ -53,7 +53,7 @@
 | ~~[**BUG-003**](bug.md)~~ | ~~Central~~ | ~~**Bug** — FE-011 cross-references FE-016 for `RedirectReceived`; should be FE-018.~~ |
 | ~~[**BUG-004**](bug.md)~~ | ~~Central~~ | ~~**Bug** — Phase 3 exit criterion requires `GET /job-offers/pending` (BE-015, Phase 4); reword to BE-014's `JobOfferReceived`.~~ |
 | ~~[**BUG-005**](bug.md)~~ | ~~Central~~ | ~~**Bug** — `data-flow.puml` emits "Almost There (Within15Miles)" on the OnSite step; should be "Arrived".~~ |
-| [**BUG-006**](bug.md) | Central | **Bug** — README Skills table omits the `master` skill. |
+| ~~[**BUG-006**](bug.md)~~ | ~~Central~~ | ~~**Bug** — README Skills table omits the `master` skill.~~ |
 | [**BUG-007**](bug.md) | Central | **Bug** — `test-all.sh`, `test-simulator.sh`, `mark-story-complete.sh` exist but are undocumented. |
 | [**BUG-008**](bug.md) | Central | **Bug** — CLAUDE.md says ship-it "lands all pending changes"; the skill scopes to out-of-pipeline only. |
 | [**BUG-009**](bug.md) | Central | **Bug** — story-implementor hardcodes `dotnet test` instead of the repo-appropriate command (breaks FE/SIM). |
