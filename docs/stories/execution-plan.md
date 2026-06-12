@@ -48,7 +48,7 @@
 | ~~[BE-011](backend.md)~~ | ~~Backend~~ | ~~`GET /service-requests` (Dispatcher)~~ |
 | ~~[BE-012](backend.md)~~ | ~~Backend~~ | ~~`GET /service-requests/my-active` (ServiceRep)~~ |
 | ~~[BE-013](backend.md)~~ | ~~Backend~~ | ~~`GET /service-requests/{id}`~~ |
-| [**BUG-001**](bug.md) | Backend | **Bug** — `BE-025`'s `RepHub` event list omits the force-release notification that `BE-007` promises. Add a session-revoked event (e.g. `VehicleForceReleased`) to `BE-025` and name it in `BE-007`'s AC. |
+| ~~[**BUG-001**](bug.md)~~ | ~~Backend~~ | ~~**Bug** — `BE-025`'s `RepHub` event list omits the force-release notification that `BE-007` promises. Add a session-revoked event (e.g. `VehicleForceReleased`) to `BE-025` and name it in `BE-007`'s AC.~~ |
 | [**BUG-002**](bug.md) | Frontend | **Bug** — No frontend story for the Dispatcher force-release action that `BE-007` backs (`FE-006` references it but defines no UI). Add new story **FE-022** (force-release: button → confirm dialog → `POST /vehicles/{id}/force-release`) and cross-reference it from `FE-006`. |
 | [**BUG-003**](bug.md) | Central | **Bug** — FE-011 cross-references FE-016 for `RedirectReceived`; should be FE-018. |
 | [**BUG-004**](bug.md) | Central | **Bug** — Phase 3 exit criterion requires `GET /job-offers/pending` (BE-015, Phase 4); reword to BE-014's `JobOfferReceived`. |
