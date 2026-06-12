@@ -8,7 +8,7 @@
 
 ## BUG-001 — `RepHub` is missing the force-release notification event
 
-- **Status:** Open
+- **Status:** Fixed
 - **Severity:** Medium
 - **Repo / Area:** Backend — SignalR infrastructure (`BE-025`), Vehicles (`BE-007`)
 - **Related stories:** `BE-007`, `BE-025`
