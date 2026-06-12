@@ -94,7 +94,7 @@
 - Vehicle transitions `Claimed → Unclaimed` regardless of which rep claimed it
 - Affected rep's session closed
 - Requires Dispatcher role
-- If the affected rep is online, they receive a `VehicleForceReleased { vehicleId, byDispatcher: true, reason? }` notification via `RepHub` (see BE-025), prompting their client to clear any active job and return to vehicle selection
+- If the affected rep is online, they receive a `VehicleForceReleased { vehicleId, registration }` notification via `RepHub` (see BE-025), prompting their client to clear any active job and return to vehicle selection
 
 ---
 
@@ -382,4 +382,4 @@
 - Hub connections scoped to `dealerId` — cross-dealer leakage is not possible
 - Individual rep and requester events targeted by `userId` connection group, not broadcast to all
 - `RepHub` event payloads:
-  - `VehicleForceReleased { vehicleId, byDispatcher: true, reason? }` — published to the affected rep when a Dispatcher force-releases their claimed vehicle (see BE-007). The rep client clears any active job and returns to vehicle selection.
+  - `VehicleForceReleased { vehicleId, registration }` — published to the affected rep when a Dispatcher force-releases their claimed vehicle (see BE-007). The rep client clears any active job and returns to vehicle selection.
