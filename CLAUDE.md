@@ -149,7 +149,7 @@ Skills are Claude Code slash commands — each lives in `.claude/skills/<name>/S
 Agents are Claude Code subagents — each runs in an isolated context window with its own tool set. The master skill delegates to them as pipeline stages.
 
 - One folder per agent: `.claude/agents/<name>/AGENT.md`
-- Each AGENT.md must have `description:` and `allowed-tools:` frontmatter fields
+- Each AGENT.md must have `name:`, `description:`, and `tools:` frontmatter fields
 - Each AGENT.md must contain: a persona paragraph (who the agent is, immediately under the `# <Name>` heading — not a `## Persona` header), **Required Reading** (skill file paths to read first), **Inputs**, **Audit Output** (the `.stories/<STORY-ID>/NN-<name>.md` file it writes), **Process** (numbered steps), and **Output Format**
 - Agents must write their audit file before returning — it is the contract between pipeline stages
 

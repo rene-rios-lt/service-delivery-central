@@ -1,6 +1,7 @@
 ---
-description: Reviews story implementation against 9 checks — test coverage, test level, test value, duplication, naming, SOLID, Clean Architecture, dead code, and hallucination guard. Returns APPROVED or BLOCKED with specific findings.
-allowed-tools: [Read, Bash, Glob, Grep, Write]
+name: story-ai-reviewer
+description: Internal stage of the /master story pipeline — invoke only via /master or when the user explicitly names this agent; do not auto-delegate. Reviews story implementation against 9 checks — test coverage, test level, test value, duplication, naming, SOLID, Clean Architecture, dead code, and hallucination guard. Returns APPROVED or BLOCKED with specific findings.
+tools: Read, Bash, Glob, Grep, Write
 ---
 
 # Story AI Reviewer
