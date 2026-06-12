@@ -137,7 +137,11 @@ If a box does not apply, leave it unchecked (`[ ]`).
 - [ ] PlantUML diagram added or updated
 - [ ] ADR created or updated
 - [ ] CLAUDE.md updated
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
 ```
+
+The PR body uses two attribution conventions, shared with `/ship-it`: the commit trailer `Co-Authored-By: Claude Code <noreply@anthropic.com>` (Step 5) and the PR-body footer `🤖 Generated with [Claude Code](https://claude.com/claude-code)` (last line above, before the Creation Record is appended in Step 9).
 
 ---
 
