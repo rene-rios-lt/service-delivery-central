@@ -190,7 +190,7 @@
 **Acceptance Criteria:**
 - **Filter 1:** Reps must belong to the same `dealerId` as the request
 - **Filter 2:** Rep's vehicle must carry the equipment required by the request's DTC
-- **Filter 3:** Rep must be in state `Available` or `EnRoute` (not `Offline`, `Within15Miles`, or `OnSite`)
+- **Filter 3:** Rep must be in state `Available` (not `EnRoute`, `Offline`, `Within15Miles`, or `OnSite`). Automatic matching offers jobs only to free reps; reassigning an `EnRoute` rep to a higher-priority request is a dispatcher-only action via redirect (see BE-022), which enforces the tier, cooldown, and proximity protections
 - **Filter 4:** Reps previously declined or whose offer expired for this request are excluded
 - **Sort:** Ascending Haversine distance from rep's last known position to requester's location
 - **Tiebreaker:** If distances are equal, the rep who has been `Available` the longest wins
@@ -352,7 +352,7 @@
 **so that** the system is ready to demo without manual setup.
 
 **Acceptance Criteria:**
-- **10 DTCs** with codes, titles, and required equipment mappings (as defined in `docs/domain-model.md`)
+- **10 DTCs** with codes, titles, and required equipment mappings (per the seed-data spec in `docs/architecture/system-overview.md`)
 - **8 vehicles** with registration numbers and correct equipment combinations covering all DTC requirements
 - **2 Dispatchers** (dealer A)
 - **8 ServiceReps** (dealer A) with varied equipment authorisations
@@ -374,7 +374,7 @@
 | Hub | Path | Publishes | Subscribes |
 |-----|------|-----------|------------|
 | `VehiclePositionHub` | `/hubs/position` | `VehiclePositionUpdated` | All dispatchers |
-| `DispatchHub` | `/hubs/dispatch` | `ServiceRequestPending`, `ServiceRequestAssigned`, `ServiceRequestCompleted`, `RepStateChanged`, `RepOfflineMidJob`, `FleetPositionUpdate` | All dispatchers |
+| `DispatchHub` | `/hubs/dispatch` | `ServiceRequestPending`, `ServiceRequestAssigned`, `ServiceRequestCompleted`, `RepStateChanged`, `RepOfflineMidJob` | All dispatchers |
 | `RepHub` | `/hubs/rep` | `JobOfferReceived`, `JobOfferExpired`, `RedirectReceived` | Individual rep (by connection); Simulator service account |
 | `RequesterHub` | `/hubs/requester` | `RepAssigned`, `RepPositionUpdated`, `RepRedirected`, `ServiceCompleted` | Individual requester (by connection) |
 

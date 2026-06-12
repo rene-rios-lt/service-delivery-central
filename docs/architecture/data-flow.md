@@ -1,8 +1,6 @@
 # Data Flow
 
-> **Source diagrams:** [`data-flow.puml`](data-flow.puml) — contains sequence diagrams for position updates and all 4 request lifecycle flows: normal request, no qualified rep available, priority redirect, and rep offline.
->
-> **Implemented subset:** [`completed-data-flow.puml`](completed-data-flow.puml) — the same flows trimmed to only the paths currently implemented in code (auth, position pipeline, request submission, and vehicle claim/release), with notes marking where each flow stops and a coverage summary of what is not yet built.
+> **Source diagram:** [`data-flow.puml`](data-flow.puml) — contains sequence diagrams for position updates and all 4 request lifecycle flows: normal request, no qualified rep available, priority redirect, and rep offline.
 
 ## Real-Time Position Updates
 
@@ -30,7 +28,7 @@ Requester submits request
          ▼
 Backend: find nearest qualified rep
 (Haversine distance, equipment match,
- Available or En Route state,
+ Available state only,
  tiebreaker: longest Available)
          │
          ▼

@@ -6,8 +6,9 @@ This directory contains the full user story backlog for the Service Delivery sys
 |------|----------|
 | [`simulator.md`](simulator.md) | 7 stories — SIM-001 to SIM-007 |
 | [`backend.md`](backend.md) | 25 stories — BE-001 to BE-025 |
-| [`frontend.md`](frontend.md) | 19 stories — FE-001 to FE-019 |
-| [`execution-plan.md`](execution-plan.md) | 11-phase plan sequencing all 51 stories |
+| [`frontend.md`](frontend.md) | 21 stories — FE-001 to FE-021 |
+| [`bug.md`](bug.md) | Open bugs — BUG-001 to BUG-015 |
+| [`execution-plan.md`](execution-plan.md) | 11-phase plan sequencing all 53 stories (+ open bugs) |
 
 ## Quick Reference
 
@@ -31,5 +32,7 @@ This directory contains the full user story backlog for the Service Delivery sys
 | BE-025 | SignalR infrastructure | Backend |
 | FE-001–002 | Authentication | Frontend |
 | FE-003–006 | Dispatcher view | Frontend |
-| FE-007–014 | ServiceRep view | Frontend |
+| FE-007–014, FE-020 | ServiceRep view (incl. idle view) | Frontend |
 | FE-015–019 | Requester view | Frontend |
+| FE-021 | App shell, navigation & logout | Frontend |
+| BUG-001–015 | Open bugs | Backend / Frontend / Central |
