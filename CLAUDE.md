@@ -52,6 +52,12 @@ Azure infrastructure provisioned via Terraform (not active for POC local dev)
 # Run all backend tests
 ./scripts/local/test-backend.sh
 
+# Run all simulator tests
+./scripts/local/test-simulator.sh
+
+# Run the full test suite (backend + simulator)
+./scripts/local/test-all.sh
+
 # Bring up the full system locally (once scripts are populated)
 ./scripts/local/start.sh
 
@@ -61,6 +67,8 @@ Azure infrastructure provisioned via Terraform (not active for POC local dev)
 # Run a utility script
 ./scripts/utils/<script-name>.sh
 ```
+
+`scripts/utils/mark-story-complete.sh` is not run by hand — it is fired by a PostToolUse hook after `gh pr merge` succeeds, and crosses the merged story/bug ID out in `docs/stories/execution-plan.md`.
 
 All scripts must be runnable from the repo root and must be executable (`chmod +x`).
 
