@@ -63,7 +63,7 @@
 | ~~[**BUG-013**](bug.md)~~ | ~~Central~~ | ~~**Bug** — CLAUDE.md "Persona" wording implies a section header the agents don't use.~~ |
 | ~~[**BUG-014**](bug.md)~~ | ~~Central~~ | ~~**Bug** — CLAUDE.md `docs/stories/` description omits `parallel-tracks.md` and `README.md`.~~ |
 | ~~[**BUG-015**](bug.md)~~ | ~~Central~~ | ~~**Bug** — Stale `.gitkeep` files in populated `scripts/local` and `scripts/utils`.~~ |
-| [BE-014](backend.md) | Backend | Matching algorithm: filter → sort → tiebreaker → issue job offer |
+| ~~[BE-014](backend.md)~~ | ~~Backend~~ | ~~Matching algorithm: filter → sort → tiebreaker → issue job offer~~ |
 
 **Exit criteria:** Submitting a request via API results in a `JobOfferReceived` event on the backend's RepHub.
 
