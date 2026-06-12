@@ -86,7 +86,7 @@ A dispatcher cannot recover a stuck/offline rep's vehicle through the UI, despit
 
 ## BUG-004 — Phase 3 exit criterion depends on a Phase 4 endpoint
 
-- **Status:** Open · **Severity:** Medium · **Area:** Central docs — execution plan · **Related:** `BE-014`, `BE-015`
+- **Status:** Fixed · **Severity:** Medium · **Area:** Central docs — execution plan · **Related:** `BE-014`, `BE-015`
 - **Issue:** `execution-plan.md` Phase 3 exit criteria require *"offer visible via `GET /job-offers/pending`"*, but that endpoint is **BE-015 (Phase 4)** — it does not exist at Phase 3 completion.
 - **Fix:** Reword Phase 3 exit to stop at the `JobOfferReceived` event (BE-014's deliverable); move the `/job-offers/pending` clause to Phase 4.
 - **Done when:** Phase 3 exit criteria reference only Phase 3 deliverables.

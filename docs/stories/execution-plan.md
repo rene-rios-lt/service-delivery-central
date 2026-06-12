@@ -50,7 +50,7 @@
 | ~~[BE-013](backend.md)~~ | ~~Backend~~ | ~~`GET /service-requests/{id}`~~ |
 | ~~[**BUG-001**](bug.md)~~ | ~~Backend~~ | ~~**Bug** — `BE-025`'s `RepHub` event list omits the force-release notification that `BE-007` promises. Add a session-revoked event (e.g. `VehicleForceReleased`) to `BE-025` and name it in `BE-007`'s AC.~~ |
 | ~~[**BUG-002**](bug.md)~~ | ~~Frontend~~ | ~~**Bug** — No frontend story for the Dispatcher force-release action that `BE-007` backs (`FE-006` references it but defines no UI). Add new story **FE-022** (force-release: button → confirm dialog → `POST /vehicles/{id}/force-release`) and cross-reference it from `FE-006`.~~ |
-| [**BUG-003**](bug.md) | Central | **Bug** — FE-011 cross-references FE-016 for `RedirectReceived`; should be FE-018. |
+| ~~[**BUG-003**](bug.md)~~ | ~~Central~~ | ~~**Bug** — FE-011 cross-references FE-016 for `RedirectReceived`; should be FE-018.~~ |
 | [**BUG-004**](bug.md) | Central | **Bug** — Phase 3 exit criterion requires `GET /job-offers/pending` (BE-015, Phase 4); reword to BE-014's `JobOfferReceived`. |
 | [**BUG-005**](bug.md) | Central | **Bug** — `data-flow.puml` emits "Almost There (Within15Miles)" on the OnSite step; should be "Arrived". |
 | [**BUG-006**](bug.md) | Central | **Bug** — README Skills table omits the `master` skill. |
@@ -65,7 +65,7 @@
 | [**BUG-015**](bug.md) | Central | **Bug** — Stale `.gitkeep` files in populated `scripts/local` and `scripts/utils`. |
 | [BE-014](backend.md) | Backend | Matching algorithm: filter → sort → tiebreaker → issue job offer |
 
-**Exit criteria:** Submitting a request via API results in a `JobOfferReceived` event on the backend's RepHub; offer visible via `GET /job-offers/pending`.
+**Exit criteria:** Submitting a request via API results in a `JobOfferReceived` event on the backend's RepHub.
 
 ---
 
@@ -80,7 +80,7 @@
 | [BE-018](backend.md) | Backend | Background job: expire offers after 60 seconds + re-run matching |
 | [SIM-005](simulator.md) | Simulator | Auto-accept (~85%) / auto-decline (~15%) job offers with delay |
 
-**Exit criteria:** Full accept/decline/expire cycle works end-to-end with the simulator responding to offers.
+**Exit criteria:** Pending offers are visible via `GET /job-offers/pending`; the full accept/decline/expire cycle works end-to-end with the simulator responding to offers.
 
 ---
 
