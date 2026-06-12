@@ -156,7 +156,7 @@ A dispatcher cannot recover a stuck/offline rep's vehicle through the UI, despit
 
 ## BUG-014 — CLAUDE.md `docs/stories/` description omits files
 
-- **Status:** Open · **Severity:** Low · **Area:** Central docs — CLAUDE.md · **Related:** `CLAUDE.md:79`
+- **Status:** Fixed · **Severity:** Low · **Area:** Central docs — CLAUDE.md · **Related:** `CLAUDE.md:79`
 - **Issue:** The `docs/stories/` directory description lists the backlog + `bug.md` + execution plan but omits `parallel-tracks.md` and `README.md`.
 - **Fix:** Add `parallel-tracks.md` and `README.md` to the description (or generalize the wording).
 - **Done when:** The description reflects the directory's actual contents.
