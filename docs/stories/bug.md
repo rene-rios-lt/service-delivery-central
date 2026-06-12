@@ -142,7 +142,7 @@ A dispatcher cannot recover a stuck/offline rep's vehicle through the UI, despit
 
 ## BUG-012 — `BUG-`/`fix/` branch handling incomplete downstream of master
 
-- **Status:** Open · **Severity:** Low · **Area:** Central — AI pipeline · **Related:** `story-planner`, `story-implementor`, `story-pr`
+- **Status:** Fixed · **Severity:** Low · **Area:** Central — AI pipeline · **Related:** `story-planner`, `story-implementor`, `story-pr`
 - **Issue:** `master` / `story-evaluator` carry the `BUG-`→Repo/Area resolution and `fix/` branch convention, but `story-planner` (arch-doc table), `story-implementor`, and `story-pr` only show `feature/<BE-…>` examples and no `fix/` / Repo-Area note.
 - **Fix:** Add one-line `BUG-`/`fix/` notes to those three agents.
 - **Done when:** All pipeline agents handle `BUG-` consistently.
