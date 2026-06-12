@@ -58,6 +58,7 @@ Skills are Claude Code slash commands invocable as `/<name>`. Agents read the re
 | Test Quality | `/test-quality` | Unit vs integration levels, value-add criteria, duplication check — all three repos |
 | SOLID Principles | `/solid-principles` | All five principles mapped per layer — Backend, Frontend, and Simulator |
 | AC Coverage | `/ac-coverage` | AC → test mapping process, Configuration AC handling, SignalR event testing |
+| Master | `/master` | Story pipeline orchestrator — invoke as `/master <STORY-ID>` to run a story end-to-end |
 | Audit Agents | `/audit-agents` | Full audit of all pipeline agents — ratings across 9 dimensions, improvement backlog |
 | Audit Skills | `/audit-skills` | Full audit of all pipeline skills — ratings across 8 dimensions, improvement backlog |
 | Validate AI System | `/validate-ai-system` | Pipeline health check — required sections, Required Reading paths, cross-references in all AGENT.md and SKILL.md files |
