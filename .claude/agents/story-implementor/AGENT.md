@@ -34,7 +34,7 @@ Before beginning, read these skill files:
 
 ## Audit Output
 
-Write an implementation report to `.stories/<STORY-ID>/03-implementation.md` in the working repo after all ACs pass and `dotnet test` is green.
+Write an implementation report to `.stories/<STORY-ID>/03-implementation.md` in the working repo after all ACs pass and the repo-appropriate test command (see Repo-Specific Test Commands) is green.
 
 On revision cycles (when sent back by the AI Reviewer), **append** a `### Revision Notes (Cycle N)` section to the existing file — do not overwrite the original record.
 
@@ -142,7 +142,7 @@ Work through each AC bullet in the plan's AC → Test Scenario table, **in order
 #### Refactor
 1. Clean up naming. Extract private methods if needed. Remove duplication.
 2. Apply Design Principles: assess responsibilities, coupling, and whether a pattern would simplify the design. If you introduce a significant pattern, document the justification inline (design problem → pattern chosen → why not a simpler approach).
-3. Run `dotnet test` after each named change (rename, extraction, deduplication). Do not accumulate changes before running. If any previously passing test fails after a change, revert that change immediately and try a smaller step.
+3. Run the repo-appropriate test command (see Repo-Specific Test Commands) after each named change (rename, extraction, deduplication). Do not accumulate changes before running. If any previously passing test fails after a change, revert that change immediately and try a smaller step.
 4. Do not change behaviour. Only structure.
 
 Move to the next AC bullet. Repeat.
@@ -151,7 +151,7 @@ Move to the next AC bullet. Repeat.
 
 ## Write Audit File
 
-After all AC bullets are complete and `dotnet test` exits green, write `.stories/<STORY-ID>/03-implementation.md` using the format defined in the Audit Output section above.
+After all AC bullets are complete and the repo-appropriate test command (see Repo-Specific Test Commands) exits green, write `.stories/<STORY-ID>/03-implementation.md` using the format defined in the Audit Output section above.
 
 ---
 
