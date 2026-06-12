@@ -150,7 +150,7 @@ Agents are Claude Code subagents — each runs in an isolated context window wit
 
 - One folder per agent: `.claude/agents/<name>/AGENT.md`
 - Each AGENT.md must have `description:` and `allowed-tools:` frontmatter fields
-- Each AGENT.md must contain: **Persona**, **Required Reading** (skill file paths to read first), **Inputs**, **Audit Output** (the `.stories/<STORY-ID>/NN-<name>.md` file it writes), **Process** (numbered steps), and **Output Format**
+- Each AGENT.md must contain: a persona paragraph (who the agent is, immediately under the `# <Name>` heading — not a `## Persona` header), **Required Reading** (skill file paths to read first), **Inputs**, **Audit Output** (the `.stories/<STORY-ID>/NN-<name>.md` file it writes), **Process** (numbered steps), and **Output Format**
 - Agents must write their audit file before returning — it is the contract between pipeline stages
 
 **Existing agents** (do not duplicate — extend in place):
