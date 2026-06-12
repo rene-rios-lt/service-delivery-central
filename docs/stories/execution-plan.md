@@ -54,15 +54,15 @@
 | ~~[**BUG-004**](bug.md)~~ | ~~Central~~ | ~~**Bug** — Phase 3 exit criterion requires `GET /job-offers/pending` (BE-015, Phase 4); reword to BE-014's `JobOfferReceived`.~~ |
 | ~~[**BUG-005**](bug.md)~~ | ~~Central~~ | ~~**Bug** — `data-flow.puml` emits "Almost There (Within15Miles)" on the OnSite step; should be "Arrived".~~ |
 | ~~[**BUG-006**](bug.md)~~ | ~~Central~~ | ~~**Bug** — README Skills table omits the `master` skill.~~ |
-| [**BUG-007**](bug.md) | Central | **Bug** — `test-all.sh`, `test-simulator.sh`, `mark-story-complete.sh` exist but are undocumented. |
-| [**BUG-008**](bug.md) | Central | **Bug** — CLAUDE.md says ship-it "lands all pending changes"; the skill scopes to out-of-pipeline only. |
-| [**BUG-009**](bug.md) | Central | **Bug** — story-implementor hardcodes `dotnet test` instead of the repo-appropriate command (breaks FE/SIM). |
-| [**BUG-010**](bug.md) | Central | **Bug** — Dispatcher force-release endpoint absent from UI brief & system-overview endpoint lists. |
-| [**BUG-011**](bug.md) | Central | **Bug** — Commit/PR attribution conventions disagree across story-pr and ship-it. |
-| [**BUG-012**](bug.md) | Central | **Bug** — `BUG-`/`fix/` branch handling missing from story-planner / story-implementor / story-pr. |
-| [**BUG-013**](bug.md) | Central | **Bug** — CLAUDE.md "Persona" wording implies a section header the agents don't use. |
-| [**BUG-014**](bug.md) | Central | **Bug** — CLAUDE.md `docs/stories/` description omits `parallel-tracks.md` and `README.md`. |
-| [**BUG-015**](bug.md) | Central | **Bug** — Stale `.gitkeep` files in populated `scripts/local` and `scripts/utils`. |
+| ~~[**BUG-007**](bug.md)~~ | ~~Central~~ | ~~**Bug** — `test-all.sh`, `test-simulator.sh`, `mark-story-complete.sh` exist but are undocumented.~~ |
+| ~~[**BUG-008**](bug.md)~~ | ~~Central~~ | ~~**Bug** — CLAUDE.md says ship-it "lands all pending changes"; the skill scopes to out-of-pipeline only.~~ |
+| ~~[**BUG-009**](bug.md)~~ | ~~Central~~ | ~~**Bug** — story-implementor hardcodes `dotnet test` instead of the repo-appropriate command (breaks FE/SIM).~~ |
+| ~~[**BUG-010**](bug.md)~~ | ~~Central~~ | ~~**Bug** — Dispatcher force-release endpoint absent from UI brief & system-overview endpoint lists.~~ |
+| ~~[**BUG-011**](bug.md)~~ | ~~Central~~ | ~~**Bug** — Commit/PR attribution conventions disagree across story-pr and ship-it.~~ |
+| ~~[**BUG-012**](bug.md)~~ | ~~Central~~ | ~~**Bug** — `BUG-`/`fix/` branch handling missing from story-planner / story-implementor / story-pr.~~ |
+| ~~[**BUG-013**](bug.md)~~ | ~~Central~~ | ~~**Bug** — CLAUDE.md "Persona" wording implies a section header the agents don't use.~~ |
+| ~~[**BUG-014**](bug.md)~~ | ~~Central~~ | ~~**Bug** — CLAUDE.md `docs/stories/` description omits `parallel-tracks.md` and `README.md`.~~ |
+| ~~[**BUG-015**](bug.md)~~ | ~~Central~~ | ~~**Bug** — Stale `.gitkeep` files in populated `scripts/local` and `scripts/utils`.~~ |
 | [BE-014](backend.md) | Backend | Matching algorithm: filter → sort → tiebreaker → issue job offer |
 
 **Exit criteria:** Submitting a request via API results in a `JobOfferReceived` event on the backend's RepHub.
