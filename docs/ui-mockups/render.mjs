@@ -34,6 +34,7 @@ const JOBS = [
   ['dispatcher-dashboard__desktop-1440x900','dispatcher-dashboard.html',1440, 900],
   ['dispatcher-dashboard__web-1280x800',   'dispatcher-dashboard.html',1280, 800],
   ['dispatcher-redirect__desktop-1440x900','dispatcher-redirect.html', 1440, 900],
+  ['dispatcher-force-release__desktop-1440x900','dispatcher-force-release.html', 1440, 900],
   ['dispatcher-nav__desktop-1440x900',     'dispatcher-nav.html',      1440, 900],
   // Service Rep (Mobile)
   ['rep-vehicle-select__mobile-390x844',   'rep-vehicle-select.html',   390, 844],
