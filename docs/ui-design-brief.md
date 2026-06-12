@@ -176,6 +176,10 @@ alongside, and an alert banner area at the top.
 - Banner is dismissible; a log of recent alerts is accessible from the UI.
 - Triggered by `RepOfflineMidJob` from `DispatchHub`.
 
+**Force-release a vehicle (FE-022)**
+- Dispatcher action on an unreachable rep's vehicle: button → confirmation dialog → `POST /vehicles/{id}/force-release`.
+- Distinct from the rep's own end-of-shift `POST /vehicles/{id}/release` (§6.3) — this is a dispatcher override when the rep cannot release it themselves.
+
 ---
 
 ### 6.3 Service Rep View (Mobile only — single-task)
