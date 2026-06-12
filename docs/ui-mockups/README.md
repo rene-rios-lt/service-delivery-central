@@ -52,8 +52,8 @@ The login screen is identical for every persona; routing to the persona view hap
 ## Dispatcher — Desktop + Web
 
 Dense command-center dashboard: live fleet map (color-coded markers, popover, legend), the priority-ordered
-request queue, the offline alert banner (FE-006), and the redirect confirmation dialog (FE-005).
-**Not built for mobile** (ADR-0008).
+request queue, the offline alert banner (FE-006), the redirect confirmation dialog (FE-005), and the
+force-release confirmation dialog (FE-022). **Not built for mobile** (ADR-0008).
 
 ### Fleet dashboard — FE-003 / FE-004 / FE-006
 
@@ -68,6 +68,10 @@ request queue, the offline alert banner (FE-006), and the redirect confirmation 
 ### Redirect confirmation — FE-005
 
 <img src="images/dispatcher-redirect__desktop-1440x900.png" alt="Dispatcher redirect dialog" width="900">
+
+### Force-release confirmation — FE-022
+
+<img src="images/dispatcher-force-release__desktop-1440x900.png" alt="Dispatcher force-release dialog" width="900">
 
 ### Account menu & logout — FE-021
 
@@ -151,4 +155,4 @@ Every screen here maps to one or more frontend user stories. The authoritative
 **[Story ↔ Screen Traceability](../stories/frontend.md#story--screen-traceability)** table lives in the
 frontend stories, where each story also embeds its mockup. New screens added beyond the original brief:
 `rep-idle` (FE-020), `rep-on-site` (FE-012/013), `rep-nav-drawer` + `rep-release-vehicle` (FE-014/021),
-`dispatcher-nav` (FE-021), and `requester-redirect` (FE-018).
+`dispatcher-nav` (FE-021), `dispatcher-force-release` (FE-022), and `requester-redirect` (FE-018).

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Dispatcher — Force-Release Confirmation</title>
+<link rel="stylesheet" href="../design-system.css">
+<style>
+  html, body { height: 100%; }
+  .dash { height: calc(100vh - 60px); display: flex; flex-direction: column; gap: 14px; padding: 18px; }
+  .dash__body { flex: 1; display: flex; gap: 18px; min-width: 0; }
+  .dash__main { flex: 1; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .dash__map { flex: 1; border-radius: var(--sd-radius); overflow: hidden; box-shadow: var(--sd-elev-2); border: 1px solid var(--sd-border); position: relative; }
+  .dash__queue { width: 384px; display: flex; flex-direction: column; gap: 12px; }
+  .queue__list { display: flex; flex-direction: column; gap: 12px; }
+  .stage { position: relative; }
+  /* small action button sized to sit inside the alert banner */
+  .sd-btn--banner { padding: 7px 13px; font-size: 12.5px; }
+</style>
+</head>
+<body>
+
+<div class="sd-appbar">
+  <div class="sd-appbar__logo">🛰️</div>
+  <div>
+    <div class="sd-appbar__title">Service Delivery</div>
+    <div class="sd-appbar__sub">Fleet Command — Iowa</div>
+  </div>
+  <div class="sd-appbar__spacer"></div>
+  <div class="sd-appbar__action">🔔</div>
+  <div class="sd-avatar">DM</div>
+</div>
+
+<div class="stage">
+<div class="dash">
+  <!-- Offline alert (FE-006) — now carries the force-release action (FE-022) -->
+  <div class="sd-banner">
+    <span class="sd-banner__icon">⚠️</span>
+    <span>R. Alvarez went offline — <b>Hydraulic Pressure Loss</b> request re-queued</span>
+    <span class="sd-banner__spacer"></span>
+    <button class="sd-btn sd-btn--danger sd-btn--banner">Force-release vehicle</button>
+    <span class="sd-banner__close">✕</span>
+  </div>
+
+  <div class="dash__body">
+    <div class="dash__main">
+      <div class="dash__map">
+        <div class="sd-map">
+          <div class="sd-map__roads">
+            <i style="left:0; top:42%; width:100%; height:7px;"></i>
+            <i style="left:0; top:70%; width:100%; height:5px;"></i>
+            <i style="left:28%; top:0; width:6px; height:100%;"></i>
+            <i style="left:62%; top:0; width:7px; height:100%;"></i>
+          </div>
+          <div class="sd-map__label" style="left:30%; top:30%;">Des Moines</div>
+          <div class="sd-map__label" style="left:66%; top:24%;">Cedar Rapids</div>
+          <div class="sd-marker sd-marker--available" style="left:22%; top:35%;"><div class="sd-marker__pin"></div></div>
+          <div class="sd-marker sd-marker--enroute" style="left:55%; top:45%;"><div class="sd-marker__pin"></div></div>
+          <div class="sd-marker sd-marker--offline" style="left:40%; top:62%;"><div class="sd-marker__pin"></div></div>
+          <div class="sd-marker sd-marker--onsite" style="left:70%; top:46%;"><div class="sd-marker__pin"></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="dash__queue">
+      <div class="sd-section-label">Active Requests</div>
+      <div class="queue__list">
+        <div class="sd-reqcard sd-reqcard--silver">
+          <div class="sd-reqcard__row">
+            <span class="sd-reqcard__name">Dana Cole</span>
+            <span class="sd-badge sd-badge--silver">Silver</span>
+            <span class="sd-reqcard__spacer"></span>
+            <span class="sd-chip sd-chip--pending">Pending</span>
+          </div>
+          <div class="sd-reqcard__dtc">C1234 · Hydraulic Pressure Loss</div>
+        </div>
+        <div class="sd-reqcard sd-reqcard--gold">
+          <div class="sd-reqcard__row">
+            <span class="sd-reqcard__name">Marcus Webb</span>
+            <span class="sd-badge sd-badge--gold"><span class="sd-badge__icon">★</span>Gold</span>
+            <span class="sd-reqcard__spacer"></span>
+            <span class="sd-chip sd-chip--enroute"><span class="sd-chip__dot"></span>Assigned</span>
+          </div>
+          <div class="sd-reqcard__dtc">P0700 · Transmission Control Fault</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Force-release confirmation dialog (FE-022) -->
+<div class="sd-scrim">
+  <div class="sd-dialog">
+    <div class="sd-dialog__head">Force-release R. Alvarez's vehicle?</div>
+    <div class="sd-dialog__body">
+      This rep is offline. Force-releasing returns their vehicle to the available pool and
+      keeps their request in the queue for reassignment.
+      <div class="sd-swap">
+        <div class="sd-swap__col">
+          <div class="sd-swap__lbl">Vehicle</div>
+          <div style="margin-top:6px;"><span class="sd-chip sd-chip--offline"><span class="sd-chip__dot"></span>Offline</span></div>
+          <div style="margin-top:8px; font-size:13.5px; color:var(--sd-text);">IOW-4471 · Sprinter 2500</div>
+        </div>
+        <div class="sd-swap__arrow">→</div>
+        <div class="sd-swap__col">
+          <div class="sd-swap__lbl">After release</div>
+          <div style="margin-top:6px;"><span class="sd-chip sd-chip--offline"><span class="sd-chip__dot"></span>Unclaimed</span></div>
+          <div style="margin-top:8px; font-size:13.5px; color:var(--sd-text);">Request re-queued · Pending</div>
+        </div>
+      </div>
+      <div class="sd-cooldown">
+        <span>⚠️</span>
+        <span>The rep's session is revoked — if they reconnect they must claim a vehicle again.</span>
+      </div>
+    </div>
+    <div class="sd-dialog__foot">
+      <button class="sd-btn sd-btn--ghost">Cancel</button>
+      <button class="sd-btn sd-btn--danger">Force-release vehicle</button>
+    </div>
+  </div>
+</div>
+</div>
+
+</body>
+</html>

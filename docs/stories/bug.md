@@ -39,7 +39,7 @@ A force-released rep's client has no specified event to react to — it can't re
 
 ## BUG-002 — No frontend story for the Dispatcher force-release action
 
-- **Status:** Open
+- **Status:** Fixed
 - **Severity:** Medium
 - **Repo / Area:** Frontend — Dispatcher (relates to `FE-006`)
 - **Related stories:** `BE-007`, `FE-006`, new `FE-022`

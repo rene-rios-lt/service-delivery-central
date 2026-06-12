@@ -119,11 +119,33 @@ _No dedicated screen — redirects to the login screen (see FE-001)._
 - Affected request returns to the queue with status `Pending`
 - Alert dismissible; a log of recent alerts accessible from the UI
 - Triggered by `RepOfflineMidJob` event from `DispatchHub`
+- Banner carries a **Force-release vehicle** action that opens the force-release flow (see FE-022)
 - Banner is responsive across Desktop and Web (spans the map column)
 
 **Mockup —** _the alert banner above the Desktop dashboard map_
 
 <img src="../ui-mockups/images/dispatcher-dashboard__desktop-1440x900.png" alt="Dispatcher offline alert banner — desktop" width="600">
+
+---
+
+### FE-022 — Force-release a vehicle
+**As a** Dispatcher,
+**I want to** force-release a stuck or offline rep's vehicle from a confirmed action,
+**so that** the vehicle returns to the available pool and the rep's request is reassigned without waiting for them to reconnect.
+
+**Acceptance Criteria:**
+- A "Force-release vehicle" action is available from the offline-alert banner (FE-006); it is also reachable from the rep marker popover on the fleet map (FE-003)
+- Clicking the action opens a confirmation dialog showing: rep name, vehicle registration, the request that will be re-queued, and a warning that the rep's session is revoked (they must claim a vehicle again if they reconnect)
+- On confirm: calls `POST /vehicles/{id}/force-release`
+- On success: the vehicle marker updates to Unclaimed/Offline (grey), the offline banner is dismissed, and the affected request remains in the queue as `Pending` for reassignment
+- On API error (e.g. the rep reconnected and self-released between click and confirm): error shown; the dialog stays open with the confirm button disabled
+- Restricted to the Dispatcher role; available on Desktop + Web only (per [ADR-0008](../adr/0008-persona-platform-support.md))
+- Dialog is responsive across Desktop and Web
+- The affected rep is notified server-side via the `VehicleForceReleased { vehicleId, registration }` event on `RepHub` (BE-007 / BE-025); the dispatcher's own fleet map reflects the now-unclaimed vehicle through the usual `VehiclePositionHub` fleet updates (FE-003)
+
+**Mockup —** _Desktop (force-release confirmation over the offline-alert dashboard)_
+
+<img src="../ui-mockups/images/dispatcher-force-release__desktop-1440x900.png" alt="Dispatcher force-release confirmation dialog" width="600">
 
 ---
 
@@ -423,6 +445,7 @@ _No dedicated screen — redirects to the login screen (see FE-001)._
 | FE-004 Request queue | `dispatcher-dashboard` | Desktop, Web |
 | FE-005 Redirect a rep | `dispatcher-redirect` | Desktop |
 | FE-006 Rep offline alert | `dispatcher-dashboard` (banner) | Desktop, Web |
+| FE-022 Force-release a vehicle | `dispatcher-force-release` | Desktop, Web |
 | FE-007 Claim a vehicle | `rep-vehicle-select` | Mobile |
 | FE-008 Job offer + countdown | `rep-job-offer` | Mobile |
 | FE-009 Accept offer | `rep-job-offer` (action) | Mobile |
