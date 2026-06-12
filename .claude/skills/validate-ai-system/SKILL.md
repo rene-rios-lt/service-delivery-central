@@ -1,153 +1,85 @@
 ---
-description: Validates all AI system AGENT.md and SKILL.md files for required sections, resolvable Required Reading paths, and intact cross-references. Run before and after any agent or skill edit to catch drift before a story run.
+description: Validates the AI system (agents + skills) for silent drift before a story run hits it — frontmatter and section structure, native subagent registration, resolvable Required Reading paths, intact cross-references, audit-file numbering, and registry consistency between master/CLAUDE.md and the files on disk. Returns blocking findings and non-blocking warnings.
 ---
 
 # Skill: Validate Ai System
 
 ## Purpose
 
-Detect AI system drift before a story run discovers it. A broken Required Reading path, a missing `## Output Format` section, or a cross-reference pointing to a renamed skill folder will not produce a visible error — the agent silently skips the missing content or fills the gap with unconstrained output. This skill makes those failures visible and actionable.
+Catch AI system drift **before** a story run discovers it. The dangerous failures here are the ones that throw no error: a renamed skill folder leaves a Required Reading path dangling and the agent silently skips that discipline; a `## Output Format` section goes missing and the agent free-forms its output; an agent's `name:` stops matching its folder and it no longer registers as a subagent; `master` references a stage that no longer exists. None of these surface at load time — they just quietly make `/master` behave wrong.
 
-Run this skill before and after any edit to an AGENT.md or SKILL.md file.
+This skill makes that drift visible and actionable. It validates **internal consistency and runnability**, not just per-file formatting — it cross-checks the orchestrator (`master/SKILL.md`), the documentation (`CLAUDE.md`), and the actual files against each other.
+
+Run it before and after any edit to an `AGENT.md` or `SKILL.md`. It also runs automatically via a PostToolUse hook after any `.claude/` file edit (see Repo Adaptations).
 
 ---
 
-## Process
+## How to run
 
-### Step 1 — Locate all Ai System files
-
-Run from the central repo root (`service-delivery-central/`):
+The checks are implemented deterministically in a single script — there is no manual step-by-step interpretation to do. Run it and relay the output:
 
 ```bash
-find .claude/agents -name "AGENT.md" | sort
-find .claude/skills -name "SKILL.md" | sort
+./scripts/utils/validate-ai-system.sh
 ```
 
-Record the full list. Any agent folder that contains no AGENT.md, and any skill folder that contains no SKILL.md, is itself a **Structural Gap** — record it.
+- **Exit 0** — clean (or warnings only). Report the result.
+- **Exit 1** — blocking findings exist. Relay them verbatim and stop; do not run `/master` until they are resolved.
+
+The hook invokes the same script with `--quiet` (silent when fully clean). Manual runs and the hook therefore always agree — one engine, no second implementation to drift.
 
 ---
 
-### Step 2 — Check each AGENT.md for required sections
+## What it checks
 
-For each AGENT.md, verify the following are present:
+**Blocking** (breaks a story run — exit 1):
 
-**Frontmatter (YAML block at the top of the file):**
-- `name:` — non-empty string (kebab-case, matches the agent folder name)
-- `description:` — non-empty string
-- `tools:` — non-empty, comma- or space-separated tool list
+| # | Check | Silent failure it prevents |
+|---|-------|----------------------------|
+| 1 | Every agent/skill folder contains its definition file | Empty folder → stage missing at runtime |
+| 2 | AGENT.md has `name:`, `description:`, `tools:` | Missing field → subagent fails to register or runs unconstrained |
+| 3 | `name:` matches the folder and is unique | Mismatch → subagent registers under the wrong id or not at all |
+| 4 | AGENT.md has all required sections (`## Required Reading`, `## Inputs`, `## Audit Output`, `## Process`, `## Output Format`) + persona heading | Missing section → unpredictable agent output |
+| 5 | An agent that declares an audit file has `Write` in `tools:` | Declared output it cannot actually produce |
+| 6 | SKILL.md has `description:`, `## Purpose`, `## Repo Adaptations` | Malformed skill |
+| 7 | Required Reading paths resolve | Dangling path → agent skips that discipline silently |
+| 8 | Skill cross-references resolve | Broken `[[link]]`/path misleads readers, hides coverage gaps |
+| 9 | Each agent declares its expected stage audit file (`01-evaluation.md` … `05-pr.md`) | Mis-numbered handoff between stages |
+| 10 | `master/SKILL.md` references every agent, and every agent it references exists | Orphan stage, or a wired stage that's gone |
 
-**Body sections (must exist as Markdown headers):**
-- A top-level heading (`# <Name>`) followed by a persona paragraph — describes who the agent is and how it approaches its work
-- `## Required Reading`
-- `## Inputs`
-- `## Audit Output`
-- `## Process`
-- `## Output Format`
+**Warning** (drift worth fixing, won't break a run — exit 0):
 
-Flag each missing field or section as a **Structural Gap** citing the file and the missing item.
-
----
-
-### Step 3 — Check each SKILL.md for required sections
-
-For each SKILL.md, verify:
-
-**Frontmatter:**
-- `description:` — non-empty string
-
-**Body sections:**
-- `## Purpose`
-- `## Repo Adaptations`
-
-Flag each missing field or section as a **Structural Gap**.
+| Check | Why it's a warning, not a blocker |
+|-------|-----------------------------------|
+| `tools:` entry outside the known tool roster (likely a typo) | The roster evolves; a real new tool shouldn't fail the build |
+| Agent body has a shell block but `tools:` lacks `Bash` | Heuristic — usually right, occasionally a doc-only example |
+| An agent/skill folder is undocumented in the `CLAUDE.md` registry tables | Documentation lag, not a runtime fault |
 
 ---
 
-### Step 4 — Verify Required Reading paths
+## Known-example handling (no false positives)
 
-For each AGENT.md, read the `## Required Reading` section. For every path listed (e.g. `../.claude/skills/tdd-cycle/SKILL.md`):
+The governance skills (`validate-ai-system`, `audit-agents`, `audit-skills`) deliberately contain *example* broken references (e.g. `ac-coverge`, `ac-overage`) to illustrate what a failure looks like. The script excludes these so it does not flag its own documentation:
 
-1. Strip the leading `../` — agent paths are written relative to the working repo, where `../` resolves to the central repo root. The resulting path is relative to the central repo root (e.g. `.claude/skills/tdd-cycle/SKILL.md`).
-2. Check that the file exists:
+- references inside fenced code blocks are skipped;
+- the documented example typos are held in a tiny, explicit ignore-list in the script.
 
-```bash
-ls .claude/skills/tdd-cycle/SKILL.md
-```
-
-3. If the file does not exist, flag it as an **Unresolvable Path**, citing the agent file and the verbatim path string from Required Reading.
-
----
-
-### Step 5 — Verify skill cross-references in SKILL.md files
-
-Scan all SKILL.md files for inline references to other skill files. Look for patterns like:
-- `.claude/skills/<name>/SKILL.md`
-- `../.claude/skills/<name>/SKILL.md`
-- `[[name]]` — a named cross-reference slug
-
-For each reference, confirm the named skill folder exists and contains a SKILL.md. If either is missing, flag it as a **Broken Cross-Reference**.
-
----
-
-### Step 6 — Verify audit file numbering
-
-For each AGENT.md, read its `## Audit Output` section. If it declares an audit file (not `None`):
-
-1. Confirm the file number matches the expected stage:
-   - `01-evaluation.md` → story-evaluator
-   - `02-plan.md` → story-planner
-   - `03-implementation.md` → story-implementor
-   - `04-ai-review.md` → story-ai-reviewer
-   - `05-pr.md` → story-pr
-2. Confirm no two agents declare the same audit file name.
-
-Flag mismatches or collisions as **Audit File Conflicts**.
-
----
-
-### Step 7 — Report
-
-**If no findings:**
-
-```
-Ai System validation passed — no structural gaps, unresolvable paths, broken cross-references, or audit file conflicts.
-```
-
-**If findings exist:**
-
-```
-AI SYSTEM VALIDATION FAILED
-
-Structural Gaps:
-  story-evaluator/AGENT.md — missing section: ## Output Format
-  audit-agents/SKILL.md — missing frontmatter field: description
-
-Unresolvable Paths:
-  story-planner/AGENT.md — ../.claude/skills/ac-coverge/SKILL.md → NOT FOUND (typo?)
-
-Broken Cross-References:
-  tdd-cycle/SKILL.md — .claude/skills/ac-overage/SKILL.md → NOT FOUND
-
-Audit File Conflicts:
-  none
-
-Summary: 2 structural gaps · 1 unresolvable path · 1 broken cross-reference · 0 conflicts
-All findings must be resolved before running /master.
-```
+If you add a new illustrative typo to a skill's docs, add it to `EXAMPLE_IGNORE` in `scripts/utils/validate-ai-system.sh` so the validator stays trustworthy — a linter that cries wolf gets ignored.
 
 ---
 
 ## Hard Rules
 
-- A Structural Gap in any AGENT.md is a blocker — do not run `/master` until resolved. An agent missing `## Output Format` or `## Process` will produce unpredictable, inconsistent output with no warning.
-- An Unresolvable Required Reading path means the agent silently skips that discipline at runtime — no error, just unconstrained output in place of enforced rules.
-- Broken cross-references mislead readers and create silent coverage gaps in AI Review. Fix them before any audit run.
-- After editing a file, re-read it before reporting clean — confirm the change actually saved before declaring validation passed.
+- A **blocking** finding is a gate — do not run `/master` until it is resolved. Each one maps to a silent runtime failure, not a style nit.
+- **Warnings** do not block a run, but resolve documentation/tool warnings before merging an AI-system change — they are how today's warning becomes tomorrow's drift.
+- The script is the single source of truth. Do not re-implement its checks by hand in this file or anywhere else — extend the script and let both the skill and the hook inherit the change.
+- After editing an `AGENT.md` or `SKILL.md`, re-run the script before declaring the system clean — confirm the change saved and introduced no new finding.
 
 ---
 
 ## Repo Adaptations
 
-This skill applies in the **central repo only** (`service-delivery-central`). The working repos (backend, frontend, simulator) contain no AGENT.md or SKILL.md files.
+This skill applies in the **central repo only** (`service-delivery-central`). The working repos (backend, frontend, simulator) contain no `AGENT.md` or `SKILL.md` files.
 
-All paths in Step 1 resolve from the central repo root without modification. The `../` prefix in Required Reading paths exists because agents run from inside a working repo where `../` points up to the central repo root. When validating from the central repo, strip that prefix before checking.
+The script resolves the central repo root from its own location (`scripts/utils/` → repo root), so it runs correctly from any working directory and from the hook, where the cwd is not guaranteed.
+
+**Automatic invocation:** a `PostToolUse` hook in `.claude/settings.json` runs `validate-ai-system.sh --quiet` after any `Edit`/`Write`/`MultiEdit` to a file under `.claude/`. On a clean edit it stays silent; on any finding it surfaces the report immediately, so AI-system drift is caught at the moment it is introduced rather than at the next story run.
