@@ -18,7 +18,7 @@ Service Delivery is an "Uber for service reps" — a fleet dispatch platform tha
 ## The Three Personas
 
 ### Dispatcher
-Manages the fleet from a command center view. Sees all service vehicles on a live map, receives incoming service requests, and gets guided to the best available rep. Has override authority to hard-reassign En Route reps to higher-priority requests. Can force-release a vehicle if a rep is unreachable.
+Manages the fleet from a command center view. Sees all service vehicles on a live map, receives incoming service requests, and gets guided to the best available rep. Has override authority to hard-reassign En Route reps to higher-priority requests. Can force-release a vehicle (`POST /vehicles/{id}/force-release`) if a rep is unreachable — distinct from the rep's own end-of-shift `POST /vehicles/{id}/release`.
 
 ### Service Rep
 A field technician driving a service vehicle. Logs in, claims a vehicle for the day, and receives incoming job offers with full context (requester location, fault description, distance, ETA). Accepts or declines. Manually marks arrival ("I've Arrived") and job completion ("Mark Complete"). Releases their vehicle on daily logout.
