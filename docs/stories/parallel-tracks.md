@@ -1,22 +1,25 @@
 # Parallel Tracks
 
-> 32 stories remain across 3 repos. This document shows which work can proceed simultaneously so multiple developers can make progress without blocking each other.
+> 34 stories remain across 3 repos, plus 15 open bugs. This document shows which work can proceed simultaneously so multiple developers can make progress without blocking each other.
 
-**Status snapshot:** Phases 1–2 complete; Phase 3 partially complete (BE-014 still pending). 19 of 51 stories done.
+**Status snapshot:** Phases 1–2 complete; Phase 3 partially complete (BE-014 still pending). 19 of 53 stories done. 15 open bugs ([`bug.md`](bug.md)) are sequenced ahead of BE-014 (BUG-001/002 from the backend/frontend cross-check; BUG-003–015 from the full-repo audit — all doc/pipeline fixes).
 
 ---
 
 ## Start Now — No Blockers
 
-These three stories have all dependencies satisfied today:
+These items have all dependencies satisfied today:
 
 | Story | Repo | Description | Why unblocked |
 |-------|------|-------------|---------------|
+| **BUG-001** | Backend | Add force-release event to BE-025 / BE-007 | Doc fix; no code dependencies |
+| **BUG-002** | Frontend | Add FE-022 force-release story + cross-ref FE-006 | Doc fix; no code dependencies |
 | **BE-014** | Backend | Matching algorithm | BE-010 (POST requests) is done |
 | **FE-001** | Frontend | Login screen → route by role | BE-001 (POST /auth/login) is done |
 | **FE-002** | Frontend | JWT expiry detection | BE-001 done; pure client-side logic |
+| **FE-021** | Frontend | App shell, nav menu & logout | BE-002 done; per-persona shell |
 
-BE-014 is independent of the frontend work. FE-001 and FE-002 are also independent of each other. All three can run in parallel across two devs. *(BE-013 — `GET /service-requests/{id}` — is now done.)*
+The two bugs are documentation-only fixes (handle via `/ship-it`, not the TDD pipeline) and can be done anytime. BE-014 is independent of the frontend work; FE-001, FE-002, and FE-021 are also independent of each other. *(BE-013 — `GET /service-requests/{id}` — is now done.)*
 
 ---
 
@@ -42,8 +45,9 @@ TRACK A: BACKEND ─────────────────────
 
 TRACK B: FRONTEND ────────────────────────────────────────────────────
  [NOW] FE-001 ┐
- [NOW] FE-002 ┘
-               → ServiceRep sub-track (FE-007, FE-014 immediately;
+ [NOW] FE-002 │
+ [NOW] FE-021 ┘ (app shell)
+               → ServiceRep sub-track (FE-007, FE-014, FE-020 immediately;
                │  FE-008–FE-013 after Phase 4 + 5 backend)
                → Requester sub-track (FE-015 immediately;
                │  FE-016–FE-019 after Phase 4 + 5 backend)
@@ -119,6 +123,7 @@ FE-001 and FE-002 are unblocked now. Once auth is wired, all three persona sub-t
 |-------|-------------|------------|
 | FE-001 | Login screen → route by role | BE-001 ✓ |
 | FE-002 | JWT expiry detection → redirect to login | BE-001 ✓ |
+| FE-021 | App shell, navigation menu & logout (per-persona) | BE-002 ✓ |
 
 ---
 
@@ -127,6 +132,7 @@ FE-001 and FE-002 are unblocked now. Once auth is wired, all three persona sub-t
 | Story | Description | Integration gate |
 |-------|-------------|-----------------|
 | FE-007 | Vehicle selection and claim screen | BE-004/005 ✓ — live now |
+| FE-020 | Idle / waiting-for-offers view | BE-015 (pending offer) — stub now, live Phase 4 |
 | FE-014 | Release vehicle from menu | BE-006 ✓ — live now |
 | FE-008 | Job offer screen with 60s countdown | Phase 4 backend |
 | FE-009 | Accept offer → navigate to active job view | Phase 4 backend |
@@ -195,8 +201,9 @@ SIM-005 can begin once Phase 4 backend is in progress (implement the handler, te
 |-------|---------|-----------|
 | Track A — Backend | 10 | BE-014, BE-015–018, BE-019–020, BE-023, BE-021–022 |
 | Track C — Simulator | 3 | SIM-005, SIM-006, SIM-007 |
-| Track B — Frontend Auth | 2 | FE-001, FE-002 |
-| Track B — ServiceRep | 8 | FE-007–FE-014 |
+| Track B — Frontend Auth + Shell | 3 | FE-001, FE-002, FE-021 |
+| Track B — ServiceRep | 9 | FE-007–FE-014, FE-020 |
 | Track B — Requester | 5 | FE-015–FE-019 |
 | Track B — Dispatcher | 4 | FE-003–FE-006 |
-| **Total** | **32** | |
+| **Total** | **34** | |
+| Open bugs | 15 | BUG-001 – BUG-015 (see `bug.md`) |

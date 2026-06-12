@@ -1,5 +1,5 @@
 ---
-description: Implements a user story end-to-end using the TDD pipeline. Invoke with /master <STORY-ID> (e.g. /master BE-010, /master FE-007, /master SIM-003).
+description: Implements a user story end-to-end using the TDD pipeline. Invoke with /master <STORY-ID> (e.g. /master BE-010, /master FE-007, /master SIM-003, /master BUG-001).
 ---
 
 # Master Orchestrator
@@ -22,6 +22,7 @@ Invoked with a story ID:
 /master BE-010
 /master SIM-003
 /master FE-007
+/master BUG-001
 ```
 
 ---
@@ -33,6 +34,7 @@ Invoked with a story ID:
 | `BE-` | `service-delivery-backend/` |
 | `SIM-` | `service-delivery-simulator/` |
 | `FE-` | `service-delivery-frontend/` |
+| `BUG-` | not encoded by the prefix — read the bug's **Repo / Area** field in `bug.md` (backend / frontend / simulator) |
 
 ---
 
@@ -52,9 +54,11 @@ Invoked with a story ID:
 
 ### 1. Display the story
 
-Read `docs/stories/<repo>.md` in the central repo (match story prefix: `BE-` → `backend.md`, `SIM-` → `simulator.md`, `FE-` → `frontend.md`). Display the story title and all acceptance criteria.
+Read `docs/stories/<repo>.md` in the central repo (match story prefix: `BE-` → `backend.md`, `SIM-` → `simulator.md`, `FE-` → `frontend.md`, `BUG-` → `bug.md`). Display the story title and all acceptance criteria. For a `BUG-` ID, also read its **Repo / Area** field — that determines the working repo (see Working Repo Resolution above).
 
 If the story ID does not appear in the file, stop and report: `Story [ID] not found in docs/stories/[repo].md. Verify the ID and re-run.`
+
+A documentation-only bug (no code or tests) does not belong in this TDD pipeline — handle it as a direct doc edit via `/ship-it` instead.
 
 ### 2. Setup
 
@@ -66,6 +70,7 @@ In the working repo for this story, at the start of every execution:
    git checkout -b feature/<STORY-ID>-<kebab-case-title>
    ```
    Example: story "BE-010 — Submit a service request" → `feature/BE-010-submit-service-request`.
+   For a `BUG-` ID, use a `fix/` branch instead — e.g. `fix/BUG-001-rephub-force-release-event`.
    If the branch already exists (prior failed run), check it out instead:
    ```bash
    git checkout feature/<STORY-ID>-<kebab-case-title>
@@ -223,5 +228,6 @@ This skill runs from the **central repo** (`service-delivery-central`) and dispa
 | `BE-` | `service-delivery-backend/` |
 | `SIM-` | `service-delivery-simulator/` |
 | `FE-` | `service-delivery-frontend/` |
+| `BUG-` | not encoded by the prefix — read the bug's **Repo / Area** field in `bug.md` (see Working Repo Resolution) |
 
 All agent invocations, branch operations, and audit file paths are scoped to the resolved working repo. The central repo itself is never the target of story implementation work.

@@ -171,7 +171,7 @@ If any staged file is not in the story's change list, unstage it.
 ### Step 4 — Derive the commit summary
 
 Before writing the commit message:
-1. Read the story title from `docs/stories/<repo>.md` in the central repo.
+1. Read the story title from `docs/stories/<repo>.md` in the central repo (`BUG-` IDs live in `bug.md`).
 2. Read the plan's one-line responsibility summary from `.stories/<STORY-ID>/02-plan.md` (Responsibility column of the most central new file).
 3. Compose: `[STORY-ID] <imperative verb> <what> — <why in 5–8 words>`.
 

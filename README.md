@@ -71,8 +71,9 @@ Each agent writes a stage file to `.stories/<STORY-ID>/` in the working repo (gi
 .stories/BE-010/
   01-evaluation.md
   02-plan.md
-  03-ai-review.md
-  04-pr.md
+  03-implementation.md
+  04-ai-review.md
+  05-pr.md
 ```
 
 ---

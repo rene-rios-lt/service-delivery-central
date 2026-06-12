@@ -50,7 +50,7 @@ actor Dispatcher
 
 Requester -> Backend : POST /service-requests\n(GPS location + DTC selection)
 
-Backend -> Backend : Run matching algorithm:\n1. Filter by dealer\n2. Filter by equipment (DTC match)\n3. Filter: Available or EnRoute\n4. Exclude skipped reps\n5. Sort by Haversine distance\n6. Tiebreaker: longest Available
+Backend -> Backend : Run matching algorithm:\n1. Filter by dealer\n2. Filter by equipment (DTC match)\n3. Filter: Available only\n4. Exclude skipped reps\n5. Sort by Haversine distance\n6. Tiebreaker: longest Available
 
 Backend -> RepHub : JobOfferReceived → Rep\n{ offerId, requesterName, tier, dtcTitle,\n  distanceMiles, etaMinutes, lat, lng }
 RepHub -> Rep : job offer screen\n60-second countdown
