@@ -163,7 +163,7 @@ A dispatcher cannot recover a stuck/offline rep's vehicle through the UI, despit
 
 ## BUG-015 — Stale `.gitkeep` files in populated script directories
 
-- **Status:** Open · **Severity:** Low · **Area:** Central — scripts · **Related:** `scripts/local/.gitkeep`, `scripts/utils/.gitkeep`
+- **Status:** Fixed · **Severity:** Low · **Area:** Central — scripts · **Related:** `scripts/local/.gitkeep`, `scripts/utils/.gitkeep`
 - **Issue:** Both directories now contain real scripts, so the `.gitkeep` placeholders are obsolete.
 - **Fix:** Remove `scripts/local/.gitkeep` and `scripts/utils/.gitkeep`.
 - **Done when:** Both `.gitkeep` files are gone.
