@@ -232,7 +232,7 @@ _No dedicated screen — redirects to the login screen (see FE-001)._
 - ETA (minutes) shown and updated as my position changes via `RepPositionUpdated` or position polling
 - DTC title and requester name shown in a bottom sheet
 - "I've Arrived" button shown but disabled until rep is within 15 miles (or always enabled if within 15 miles on load)
-- Receiving a `RedirectReceived` event updates the map destination without requiring a new screen load (see FE-016)
+- Receiving a `RedirectReceived` event updates the map destination without requiring a new screen load (see FE-018)
 
 **Mockup —** _Mobile (En Route)_
 
