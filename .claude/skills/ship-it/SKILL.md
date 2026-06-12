@@ -71,8 +71,14 @@ Read the changed files and diffs to understand what the changes do. Do not ask t
 - Types: `feat`, `fix`, `refactor`, `docs`, `chore`
 - Example: `refactor/validate-ai-system-terminology`
 
+**Bug fixes — name the branch `fix/BUG-NNN-<short-kebab-description>`.** If the shipment resolves a tracked bug from `docs/stories/bug.md`, the branch name **must** contain the `BUG-NNN` ID. The post-merge `mark-story-complete.sh` hook keys off the branch name to cross the bug out in `execution-plan.md` — a `docs/…` branch without the ID will not be struck.
+- Identify the bug ID from the diff: a bug fix typically flips that bug's **Status: Open → Fixed** in `bug.md` and/or applies its documented **Fix**. Use that `BUG-NNN`.
+- Example: `fix/BUG-005-data-flow-arrived-message`.
+- If one shipment resolves several bugs, use the lowest-numbered `BUG-NNN` in the branch and list the rest in the commit body. (The hook strikes the IDs found in the branch name.)
+- If you cannot confidently identify which bug a change resolves, this is one of the rare cases to ask the developer for the ID before branching.
+
 **Commit message:**
-- Subject line: `<type>: <imperative summary>`
+- Subject line: `<type>: <imperative summary>` — for a bug fix use `fix:` and reference the ID, e.g. `fix: correct OnSite requester message (BUG-005)`
 - Body: 1–2 sentences of context if needed (skip if the subject is self-explanatory)
 - Always append: `Co-Authored-By: Claude Code <noreply@anthropic.com>`
 
