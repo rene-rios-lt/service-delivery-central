@@ -70,10 +70,12 @@ alt Rep accepts
 
     Backend -> Backend : Haversine < 15 miles detected\nRep state → Within15Miles
 
+    Requester <-- ReqHub : state = "Almost there" (Within15Miles)
+
     Rep -> Backend : POST /rep/arrive
     Backend -> Backend : Rep → OnSite\nRequest → InProgress
 
-    Requester <-- ReqHub : state = "Almost There" (Within15Miles)
+    Requester <-- ReqHub : state = "Arrived"\n"Your technician has arrived" (OnSite)
 
     Rep -> Backend : POST /rep/complete
     Backend -> Backend : Rep → Available\nRequest → Completed
