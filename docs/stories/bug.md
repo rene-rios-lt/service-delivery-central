@@ -121,7 +121,7 @@ A dispatcher cannot recover a stuck/offline rep's vehicle through the UI, despit
 
 ## BUG-009 — `story-implementor` hardcodes `dotnet test`
 
-- **Status:** Open · **Severity:** Medium · **Area:** Central — AI pipeline (story-implementor) · **Related:** `story-implementor/AGENT.md`
+- **Status:** Fixed · **Severity:** Medium · **Area:** Central — AI pipeline (story-implementor) · **Related:** `story-implementor/AGENT.md`
 - **Issue:** Lines 37, 145, 154 use bare `dotnet test`, but the agent elsewhere mandates a "repo-appropriate test command" with per-repo paths (`:134,178,214-220`) — wrong scope for Frontend/Simulator.
 - **Fix:** Replace bare `dotnet test` at 37/145/154 with "the repo-appropriate test command (see Repo-Specific Test Commands)."
 - **Done when:** No bare `dotnet test` remains where a repo-specific command is required.
