@@ -84,7 +84,7 @@ scripts/
 docs/
   architecture/ # Architecture diagrams and decision context
   adr/          # Architecture Decision Records (ADRs)
-  stories/      # Full user story backlog (backend.md, frontend.md, simulator.md), bug backlog (bug.md), and execution plan
+  stories/      # Full user story backlog (backend.md, frontend.md, simulator.md), bug backlog (bug.md), execution plan (execution-plan.md), parallel-tracks.md, and a stories README.md
 ```
 
 ## Engineering Standards
