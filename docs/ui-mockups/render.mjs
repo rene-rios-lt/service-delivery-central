@@ -37,7 +37,7 @@ const JOBS = [
   ['dispatcher-force-release__desktop-1440x900','dispatcher-force-release.html', 1440, 900],
   ['dispatcher-nav__desktop-1440x900',     'dispatcher-nav.html',      1440, 900],
   // Service Rep (Mobile)
-  ['rep-vehicle-select__mobile-390x844',   'rep-vehicle-select.html',   390, 844],
+  ['rep-takeover__mobile-390x844',         'rep-takeover.html',         390, 844],
   ['rep-idle__mobile-390x844',             'rep-idle.html',             390, 844],
   ['rep-job-offer__mobile-390x844',        'rep-job-offer.html',        390, 844],
   ['rep-active-job__mobile-390x844',       'rep-active-job.html',       390, 844],

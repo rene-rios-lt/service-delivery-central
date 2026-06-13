@@ -1,105 +1,147 @@
 # Simulator User Stories
 
 > **Repo:** `service-delivery-simulator`
-> These stories cover all behaviours of the .NET 10 Worker Service that drives the POC with 8 simulated vehicles across Iowa.
+> These stories cover all behaviours of the .NET 10 Worker Service that drives the POC across Iowa. Per [ADR-0009](../adr/0009-simulator-operates-rep-identities-and-human-takeover.md), the simulator operates the seeded rep accounts (`rep1…rep8`) as autonomous drivers and holds a `Simulator`-role account used only to post positions. A human can take over any idle rep from a real device, after which the simulator drives that truck's position but the human makes the decisions.
 
 ---
 
 ## Epic: Authentication & Startup
 
-### SIM-001 — Authenticate with the backend
+### SIM-001 — Authenticate as the rep accounts and the position account
 **As the** Simulator,
-**I want to** authenticate with the backend using the pre-seeded simulator service account credentials on startup,
-**so that** all subsequent API calls carry a valid JWT.
+**I want to** authenticate on startup as each seeded rep account (`rep1…rep8`) and as the `Simulator`-role position account,
+**so that** I can make job decisions on behalf of automated reps and post vehicle positions.
 
 **Acceptance Criteria:**
-- `POST /auth/login` called with simulator username and password from `SimulatorOptions`
-- JWT stored in `BackendApiClient` and sent as `Authorization: Bearer` on every request
-- If authentication fails, startup aborts with a clear error log
-- If the JWT expires mid-run, re-authentication is attempted before the next API call
+- `POST /auth/login` is called for each operated rep (`rep1@dealer.com`…`rep8@dealer.com`, shared `RepPassword`) and once for the `Simulator`-role account; each JWT is stored and sent as `Authorization: Bearer` on that identity's requests
+- The `Simulator`-role token is used for position posts and the fleet-state read; each rep token is used for that rep's claim, offers, and accept/arrive/complete
+- If any authentication fails, startup logs a clear error; the position account failing aborts startup, a single rep failing skips that rep
+- If a JWT expires mid-run, re-authentication is attempted before the next API call on that identity
 
 ---
 
-### SIM-002 — Connect to RepHub on startup
+### SIM-002 — Connect to RepHub per automated rep
 **As the** Simulator,
-**I want to** connect to the backend's SignalR `RepHub` after authenticating,
-**so that** job offers sent to the simulator service account are received in real time.
+**I want to** open a `RepHub` SignalR connection for each automated rep after authenticating,
+**so that** job offers the matching engine routes to those reps are received in real time.
 
 **Acceptance Criteria:**
-- `HubConnection` built to `{BackendBaseUrl}/hubs/rep` with JWT Bearer token
-- Handler registered for the `"JobOfferReceived"` event before any `VehicleWorker` starts
+- One `HubConnection` to `{BackendBaseUrl}/hubs/rep` per operated rep, each carrying that rep's JWT (so the connection joins that rep's `rep:{repId}` group)
+- A `"JobOfferReceived"` handler is registered per connection before that rep begins driving
 - On disconnect, automatic reconnect is attempted with exponential back-off
-- Connection failure logged clearly; workers continue sending position updates independently
+- A rep currently controlled by a human is **not** operated by the simulator — no offer handling for it (see SIM-009)
+- Connection failure is logged clearly; position updates continue independently
 
 ---
 
-## Epic: Vehicle Position Updates
+## Epic: Vehicle Position Updates (Position Engine)
 
-### SIM-003 — Advance vehicle along Iowa route loop
+### SIM-003 — Advance an idle vehicle along its Iowa route loop
 **As the** Simulator,
-**I want to** advance each of the 8 vehicles along its pre-determined Iowa route waypoints every 3 seconds,
-**so that** the backend receives realistic, continuously changing position data.
+**I want to** advance each idle vehicle along its pre-determined Iowa route waypoints every 3 seconds,
+**so that** the backend receives realistic, continuously changing position data while reps wait for work.
 
 **Acceptance Criteria:**
 - Each vehicle has a distinct ordered waypoint array covering its Iowa loop
-- Position advances one waypoint per tick (every 3 seconds)
-- When the last waypoint is reached, wrap back to the first (continuous loop)
-- Each vehicle runs in its own `VehicleWorker` `BackgroundService`
-- Cancellation token respected — worker exits cleanly on shutdown
+- While the vehicle's rep is idle (no active job), position advances one waypoint per tick (every 3 seconds), wrapping from the last waypoint to the first
+- The position engine drives **every** vehicle — whether its rep is simulator- or human-controlled (see SIM-006 for the active-job case)
+- Cancellation token respected — the engine exits cleanly on shutdown
 
 ---
 
-### SIM-004 — POST position update to backend
+### SIM-004 — POST position updates for all vehicles
 **As the** Simulator,
-**I want to** POST each vehicle's current latitude and longitude to the backend after every position advance,
-**so that** dispatchers and requesters see live vehicle movement.
+**I want to** POST each vehicle's current latitude and longitude every 3 seconds as the `Simulator`-role account,
+**so that** dispatchers and requesters see live movement for the whole fleet.
 
 **Acceptance Criteria:**
-- `POST /vehicles/{id}/position` called with `{ vehicleId, latitude, longitude }` every 3 seconds per vehicle
-- Uses JWT Bearer authentication
-- On 401, re-authenticates and retries once before logging an error
-- On transient network failure, logs the error and continues on the next tick (does not crash the worker)
+- `POST /vehicles/{id}/position` called with `{ vehicleId, latitude, longitude }` every 3 seconds for every vehicle, using the `Simulator`-role token
+- Positions are **simulator-pushed**, not backend-derived; this holds for human-controlled trucks too (the device never posts GPS)
+- On 401, re-authenticates the position account and retries once before logging an error
+- On transient network failure, logs the error and continues on the next tick (does not crash)
 
 ---
 
-## Epic: Job Offer Handling
+## Epic: Job Offer Handling (Auto-Decision Engine)
 
-### SIM-005 — Auto-respond to job offers
+### SIM-005 — Auto-respond to job offers for automated reps
 **As the** Simulator,
-**I want to** auto-respond to incoming job offers with approximately 85% acceptance and 15% decline,
-**so that** the system exercises both the acceptance and rejection flows during a demo.
+**I want to** auto-respond to job offers for the reps I operate with ~85% acceptance and ~15% decline,
+**so that** the demo fleet exercises both the acceptance and rejection flows without a human.
 
 **Acceptance Criteria:**
-- Decision driven by `AutoDeclineRatePercent` configuration value
-- A random delay of 1–5 seconds applied before responding (simulates a real rep reviewing the offer)
-- Accept via `POST /job-offers/{id}/accept`
-- Decline via `POST /job-offers/{id}/decline`
-- On accept, the relevant `VehicleWorker` is notified to begin job navigation
-- On decline or expiry, worker continues its normal loop
+- Applies **only** to reps the simulator currently operates — a rep a human has taken over is skipped entirely (the human decides)
+- Decision driven by `AutoDeclineRatePercent`; a random 1–5 second delay precedes the response (simulates a rep reviewing the offer)
+- Accept via `POST /job-offers/{id}/accept`, decline via `POST /job-offers/{id}/decline`, called as that rep's identity
+- On accept, the position engine begins navigating that rep's vehicle toward the requester (see SIM-006)
+- On decline or expiry, the vehicle continues its normal loop
 
 ---
 
 ## Epic: Job Navigation
 
-### SIM-006 — Navigate toward requester location when job accepted
+### SIM-006 — Navigate a vehicle toward the requester on an accepted job
 **As the** Simulator,
-**I want to** deviate a vehicle from its loop route and interpolate its position straight-line toward the requester's location when a job is accepted,
-**so that** position updates reflect a rep heading toward the job site.
+**I want to** drive a vehicle straight-line toward the requester once its rep's job is accepted — whether the rep is automated or human-controlled,
+**so that** position updates reflect a rep heading to the job site.
 
 **Acceptance Criteria:**
-- On job acceptance, `VehicleWorker` receives the requester's latitude and longitude
-- Each subsequent tick advances the vehicle position linearly toward the requester's coordinates
-- Position updates continue to be POSTed to the backend every 3 seconds during navigation
-- Normal loop waypoint traversal is suspended for the duration of the job
+- The position engine reads each rep's job-state from the backend fleet-state read (see SIM-008); when a rep is `EnRoute` with an active request, its vehicle interpolates toward the requester's lat/lng each 3-second tick
+- For an **automated** rep, on reaching the requester the simulator auto-marks arrival and completion (see SIM-010)
+- For a **human-controlled** rep, on reaching the requester the vehicle **holds position and waits** — the simulator never calls arrive/complete for a human; the human taps "I've Arrived" / "Mark Complete"
+- Normal loop traversal is suspended for the duration of the job
+- If a rep is redirected (by a dispatcher), the engine re-navigates toward the new destination from the updated job-state — for automated and human reps alike
 
 ---
 
 ### SIM-007 — Return to loop after job completion
 **As the** Simulator,
-**I want to** return the vehicle to the nearest loop waypoint after the job is marked complete,
+**I want to** return a vehicle to its nearest loop waypoint once its job completes,
 **so that** the vehicle resumes its normal patrol route.
 
 **Acceptance Criteria:**
-- On job completion signal, the nearest loop waypoint is identified using Haversine distance
-- Vehicle resumes traversal from that waypoint on the next tick
-- Job navigation state is cleared; worker returns to standard loop behaviour
+- When a rep's active request completes (auto-completed by the simulator, or marked complete by a human), the nearest loop waypoint is identified using Haversine distance
+- The vehicle resumes loop traversal from that waypoint on the next tick
+- Job navigation state is cleared for that vehicle
+- Does not apply to a vehicle a human has since gone off-duty on — that vehicle parks (see SIM-009)
+
+---
+
+## Epic: Reconciliation & Human Takeover
+
+### SIM-008 — Reconcile against backend fleet state each tick
+**As the** Simulator,
+**I want to** read authoritative fleet/job-state from the backend every tick and drive each vehicle accordingly,
+**so that** the simulator always reflects the real state of claims, jobs, and human takeovers.
+
+**Acceptance Criteria:**
+- Each tick the simulator calls the `Simulator`-role fleet-state read (e.g. `GET /simulator/fleet-state`) to learn, per vehicle: claiming rep, rep state, active request location, and whether the rep is `human-controlled`
+- The position engine drives every vehicle from that state (idle loop / navigate / hold)
+- The auto-decision engine operates only reps **not** marked `human-controlled`
+- At startup the simulator claims a vehicle for each automated rep so they are dispatchable `Available` reps; it rebalances its operated reps onto free vehicles as availability changes
+
+---
+
+### SIM-009 — Yield a rep on human takeover (sticky)
+**As the** Simulator,
+**I want to** relinquish a rep the moment a human takes it over and never re-assume it for the rest of the run,
+**so that** a human operator is never fought over or overridden by the simulator.
+
+**Acceptance Criteria:**
+- When the fleet-state read shows a rep is `human-controlled`, the simulator stops operating that rep's decisions immediately (no offers, no accept/arrive/complete)
+- The simulator continues to drive that rep's truck **position** from job-state (navigate after the human accepts; hold for the human's Arrived/Complete)
+- When the human goes off-duty (logout or heartbeat timeout) and the rep parks, the simulator does **not** re-assume that rep or re-claim that vehicle for the remainder of the run ("gone home for the night")
+- Reps and vehicles freed by a human takeover are excluded from the simulator's rebalancing for the rest of the run
+
+---
+
+### SIM-010 — Automated on-site work dwell
+**As the** Simulator,
+**I want to** keep an automated rep on-site for a randomized 2–4 minutes before completing,
+**so that** viewers see realistic "mechanic at work" dwell time on the map.
+
+**Acceptance Criteria:**
+- On reaching the requester, an automated rep calls `POST /rep/arrive`, then after a randomized **120–240 second** dwell calls `POST /rep/complete`
+- The dwell is randomized per job so completions stagger across the fleet
+- The 120–240s window is a code constant (no config-file knob)
+- Applies to automated reps only — a human controls their own arrive/complete timing

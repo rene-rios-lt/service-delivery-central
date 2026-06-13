@@ -13,7 +13,7 @@ Service Delivery is an "Uber for service reps" — a fleet dispatch platform tha
 | **Central** (this repo) | Cross-cutting architecture docs, ADRs, AI skills/agents, local dev orchestration |
 | **Backend** | .NET 10 Clean Architecture API — all business logic, SignalR hubs, data model |
 | **Frontend** | .NET MAUI Blazor Hybrid — Desktop, Web, and Mobile hosts. Each persona is supported only on a subset of these (see [Persona Platform Support](#persona-platform-support)) |
-| **Simulator** | External service that drives the system with simulated vehicle data for the POC |
+| **Simulator** | External service that drives the system with simulated vehicle data for the POC. It operates the seeded rep accounts (`rep1…rep8`) as autonomous drivers and posts every vehicle's position, until a human takes one over (see [ADR-0009](../adr/0009-simulator-operates-rep-identities-and-human-takeover.md)) |
 
 ## The Three Personas
 
@@ -22,6 +22,9 @@ Manages the fleet from a command center view. Sees all service vehicles on a liv
 
 ### Service Rep
 A field technician driving a service vehicle. Logs in, claims a vehicle for the day, and receives incoming job offers with full context (requester location, fault description, distance, ETA). Accepts or declines. Manually marks arrival ("I've Arrived") and job completion ("Mark Complete"). Releases their vehicle on daily logout.
+
+### Simulated vs. Human Reps
+The eight rep accounts (`rep1…rep8`) are operated by the **simulator** by default — it claims a vehicle for each, auto-responds to offers (~85% accept), drives to the requester, "works" for a couple of minutes, and completes — so the dispatcher map always shows a believable, busy fleet. A presenter can **take over** any *idle* rep from a real device by logging in as that rep account and selecting an *idle* vehicle: the simulator relinquishes that rep and rebalances, and from then on the human makes every decision (Accept/Decline, Arrived, Complete) while the simulator still drives the truck's position on the map. Takeover is sticky — when the human leaves, the rep and vehicle go off-duty and the simulator does not re-assume them. See [ADR-0009](../adr/0009-simulator-operates-rep-identities-and-human-takeover.md) and [Data Flow → Human Takeover](data-flow.md#flow-5--human-takeover).
 
 ### Requester
 The customer or end-user reporting a fault. Submits a service request with their GPS location and the fault type. Sees an Uber-like tracking experience once a rep is assigned — rep name, ETA, live position on a map. Receives a notification if their rep is redirected to a higher-priority call.
@@ -63,15 +66,15 @@ Login still routes by JWT role on whichever host the user launches. Supporting a
 | DTCs | 10 | Each with a human-readable title and required equipment type |
 | Vehicles | 8 | Each handles 6 of 10 DTCs (intentional variation) |
 | Dispatchers | 2 | |
-| Service Reps | 8 | |
+| Service Reps | 8 | `rep1…rep8` — driven by the simulator until a human takes one over |
 | Requesters | 10 | 6 Bronze, 3 Silver, 1 Gold |
-| Simulator account | 1 | Pre-seeded service account |
+| Simulator position account | 1 | `Simulator`-role account, used only to post vehicle positions (the simulator logs in as `rep1…rep8` for job decisions — see [ADR-0009](../adr/0009-simulator-operates-rep-identities-and-human-takeover.md)) |
 
 DTC coverage: 4 common DTCs handled by 6–8 vehicles; 6 specialized DTCs handled by 2–3 vehicles each. Every DTC is covered by at least 2 vehicles.
 
 ## Geography
 
-The POC operates across the state of Iowa. Eight service vehicles follow pre-determined road route loops spread statewide. All proximity calculations use the Haversine formula (straight-line distance). ETA assumes an average speed of 60 mph.
+The POC operates across the state of Iowa. Eight service vehicles follow pre-determined road route loops spread statewide; the simulator drives every vehicle's position — including one a human has taken over, navigating it toward the requester after the human accepts. All proximity calculations use the Haversine formula (straight-line distance). ETA assumes an average speed of 60 mph.
 
 ## Related Documents
 
@@ -85,3 +88,4 @@ The POC operates across the state of Iowa. Eight service vehicles follow pre-det
 - [ADR-0006](../adr/0006-single-dealer-poc-multidealer-ready.md) — Single-dealer POC, multi-dealer data model
 - [ADR-0007](../adr/0007-mudblazor-component-library.md) — MudBlazor component library
 - [ADR-0008](../adr/0008-persona-platform-support.md) — Persona platform support
+- [ADR-0009](../adr/0009-simulator-operates-rep-identities-and-human-takeover.md) — Simulator operates rep identities; human takeover

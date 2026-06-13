@@ -15,7 +15,7 @@ Use **local simulated JWT authentication** with pre-seeded users in the database
 - All users (Dispatchers, Service Reps, Requesters, and the Simulator service account) are pre-seeded in the database with their role and tier
 - Login exchanges credentials for a JWT containing the user's role claim
 - The frontend reads the role from the JWT and renders the appropriate persona view
-- The simulator authenticates with a dedicated pre-seeded service account — same mechanism as all other users, no special cases
+- The simulator authenticates with pre-seeded accounts — same mechanism as all other users, no special cases. Per [ADR-0009](0009-simulator-operates-rep-identities-and-human-takeover.md), this is now the real rep accounts `rep1…rep8` (the simulator drives their job decisions until a human takes one over) plus a dedicated `Simulator`-role account used only to post vehicle positions.
 - No user registration flow is needed — all accounts are pre-configured for the demo
 
 ### Real Application Path

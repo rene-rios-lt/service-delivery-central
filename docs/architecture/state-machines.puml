@@ -24,14 +24,28 @@ OnSite --> Available : taps "Mark Complete"\n[Rep]
 
 EnRoute --> EnRoute : redirected by dispatcher\n[tier + cooldown rules]
 
-EnRoute --> Offline : disconnect / logout\n[SignalR OnDisconnectedAsync]
+EnRoute --> Offline : disconnect / logout\n[human: OnDisconnectedAsync / heartbeat timeout]
 Within15Miles --> Offline : disconnect / logout
 OnSite --> Offline : disconnect / logout
 Available --> Offline : explicit logout
 
+note top of Available
+  OWNERSHIP (see ADR-0009)
+  rep1..rep8 are SIMULATOR-controlled by default
+  (sim drives every transition; never goes Offline).
+  A human can TAKE OVER an idle rep (no active job)
+  + an idle vehicle, flipping it to HUMAN-controlled:
+  the human then drives Accept/Arrived/Complete while
+  the simulator still drives the truck's position.
+  Offline transitions below apply to HUMAN-controlled reps;
+  on logout/timeout the rep+vehicle park and the simulator
+  does NOT re-assume them for the run.
+end note
+
 note right of EnRoute
   Redirect allowed by dispatcher
-  subject to tier + cooldown rules.
+  subject to tier + cooldown rules
+  (applies to simulator- AND human-controlled reps).
   5-minute cooldown after a redirect;
   Gold tier overrides the cooldown.
 end note
