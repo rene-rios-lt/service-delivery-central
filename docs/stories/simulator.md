@@ -34,6 +34,24 @@
 
 ---
 
+### SIM-011 — Retrofit the per-rep identity model (reconcile SIM-001/SIM-002)
+**As the** Simulator,
+**I want to** replace the single `Simulator`-account authentication and shared `RepHub` connection with the per-rep identity model that SIM-001 and SIM-002 already specify,
+**so that** the simulator can act as each `rep1…rep8` individually — the prerequisite for auto-responding to job offers (SIM-005) and yielding cleanly to human takeover (SIM-008 / SIM-009).
+
+> **Why this exists:** SIM-001/SIM-002 were implemented and merged against an earlier single-service-account design, then their acceptance criteria were rewritten for the ADR-0009 per-rep model — but the code was never brought along. As merged: `SimulatorOptions` carries only `SimulatorEmail`/`SimulatorPassword`; `BackendApiClient` stores one JWT and sets a single global bearer header; `JobOfferPayload` carries no rep id; `SignalRClient` holds one shared `/hubs/rep` connection; and `AcceptJobOfferAsync`/`DeclineJobOfferAsync` are no-identity stubs. This story delivers SIM-001/SIM-002's (already-correct) per-rep ACs without rewriting their merged history.
+
+**Acceptance Criteria:**
+- `SimulatorOptions` carries the operated rep accounts (`rep1@dealer.com`…`rep8@dealer.com`) with a shared `RepPassword`, alongside the existing `Simulator`-role position account
+- A per-rep identity/session abstraction stores one JWT per rep (plus the `Simulator` token) and re-authenticates each identity independently on expiry (SIM-001)
+- The `Simulator`-role token is used only for position posts and the fleet-state read; each rep's token is used for that rep's offers and accept/decline (SIM-001)
+- One `RepHub` connection per operated rep, each carrying that rep's JWT (joining its `rep:{repId}` group), with a per-connection `JobOfferReceived` handler that attributes each offer to the owning rep (SIM-002)
+- `IBackendApiClient.AcceptJobOfferAsync` / `DeclineJobOfferAsync` take the responding rep's identity and call `POST /job-offers/{id}/accept` | `/decline` with that rep's bearer token — replacing the current no-identity stubs (so accept/decline satisfies the backend's JWT `NameIdentifier` rep resolution)
+- Position posting continues to work unchanged for every vehicle on the `Simulator` token
+- A single rep's auth or connection failure skips only that rep; the position account failing aborts startup (SIM-001 / SIM-002)
+
+---
+
 ## Epic: Vehicle Position Updates (Position Engine)
 
 ### SIM-003 — Advance an idle vehicle along its Iowa route loop
