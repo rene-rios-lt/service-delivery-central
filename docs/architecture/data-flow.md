@@ -15,7 +15,7 @@ Simulator ──POST position──► Backend API
               Dispatchers    Rep (own)   Requester (if assigned)
 ```
 
-The simulator pushes vehicle position updates every 3 seconds. The backend owns all business logic triggered by position updates — it checks whether any En Route rep has crossed the 15-mile threshold and recalculates ETA for the requester.
+The simulator pushes vehicle position updates every 3 seconds, for **every** vehicle — including one a human has taken over. The simulator drives each truck from its rep's backend job-state: looping while idle, navigating straight-line toward the requester once the job is accepted (by an automated rep **or** a human), and holding at the requester until the job completes. The backend owns all business logic triggered by position updates — it checks whether any En Route rep has crossed the 15-mile threshold and recalculates ETA for the requester. (The human's device never reports GPS; it only sends decisions. See [ADR-0009](../adr/0009-simulator-operates-rep-identities-and-human-takeover.md).)
 
 ---
 
@@ -135,23 +135,67 @@ Rep goes Offline (crash or logout)
 while En Route or On Site
          │
          ▼
-Job → Pending
+Job → Pending  (re-matched to another available rep)
 Dispatcher notified
-Vehicle stays Claimed
+Vehicle stays Claimed (then released — see below)
          │
-    ┌────┴────────────────────┐
-    │                         │
-Rep reconnects           Dispatcher force-releases
-and re-logs in           vehicle manually
-    │                         │
-    ▼                         ▼
-Rep reclaims             Vehicle → Unclaimed
-vehicle                  Available for another rep
-    │
-    ▼
-System re-runs matching
-for the pending job
+    ┌────┴────────────────────────────────┐
+    │                                      │
+Automated (simulator) rep            Human rep "goes home"
+    │                                      │
+    ▼                                      ▼
+Simulator reconciler notices         Rep parks; vehicle goes
+and resumes that rep on its          off-duty. The simulator
+vehicle (normal loop)                NEVER re-assumes a rep a
+    │                                human took over (sticky).
+    ▼                                      │
+System re-runs matching ◄──────────────────┘
+for the pending job (any available rep)
 ```
+
+**Human takeover is sticky.** When a human-controlled rep drops (logout or heartbeat timeout), the rep goes Offline and its vehicle parks — the simulator does **not** bring that rep/vehicle back for the rest of the run ("gone home for the night"). Any job they abandoned mid-flight is re-matched to another available rep (in practice an automated one). A dispatcher may still `force-release` the parked vehicle. This contrasts with an *automated* rep, which the simulator's reconciler simply keeps driving.
+
+---
+
+## Flow 5 — Human Takeover
+
+```
+Human logs in on a device
+as a rep account (e.g. rep3)
+         │
+         ▼
+Sees a dropdown of IDLE vehicles
+(not en route / not on a job)
+         │
+   selects one (e.g. V-002)
+         │
+         ▼
+POST /vehicles/{id}/take-over
+Backend: release prior (simulator) claim on V-002,
+end rep3's prior session, claim V-002 for rep3 (human),
+mark rep3 human-controlled
+         │
+         ▼
+Simulator reconciler (next tick) sees rep3 is
+human-controlled → relinquishes rep3 and rebalances
+its remaining reps onto the freed vehicle
+         │
+         ▼
+From now on, for rep3's truck:
+  • the HUMAN makes decisions — Accept/Decline an offer,
+    tap "I've Arrived", tap "Mark Complete"
+  • the SIMULATOR drives the truck's position from
+    rep3's job-state (navigates to requester on Accept,
+    then HOLDS until the human taps Arrived)
+         │
+   device sends periodic heartbeat
+         │
+         ▼
+On logout / heartbeat timeout → rep3 Offline,
+V-002 parks; simulator does NOT re-assume (see Flow 4)
+```
+
+Eligibility: a human may take over only an **idle** rep (no active job) and an **idle** vehicle. Multiple humans can each take a distinct rep + vehicle concurrently — the single-active-session rule and the vehicle claim mutex keep them from colliding.
 
 ---
 
@@ -161,7 +205,7 @@ for the pending job
 |-----|-----------|-------------|
 | `VehiclePositionHub` | Backend (receives positions from Simulator via REST, fans out) | Dispatchers, Requester (assigned rep only) |
 | `DispatchHub` | Backend | Dispatchers |
-| `RepHub` | Backend | Individual service rep (by connection); Simulator (subscribes to receive job offers) |
+| `RepHub` | Backend | Each service rep by connection — a human on a device, **or** the simulator connected as that automated rep (rep1–rep8) to receive its offers |
 | `RequesterHub` | Backend | Individual requester (by connection) |
 
-All hubs are managed by the backend. The simulator pushes position updates via **REST** (`POST /vehicles/{id}/position`) — not via SignalR. It does subscribe to `RepHub` to receive job offers pushed by the backend.
+All hubs are managed by the backend. The simulator pushes position updates via **REST** (`POST /vehicles/{id}/position`, as the `Simulator`-role account) — not via SignalR. For job decisions it connects to `RepHub` once **per automated rep** (logged in as `rep1…rep8`) to receive the offers the matching engine routes to those reps; it stops operating any rep a human has taken over.

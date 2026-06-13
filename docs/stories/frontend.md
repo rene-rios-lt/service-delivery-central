@@ -61,6 +61,7 @@ _No dedicated screen — redirects to the login screen (see FE-001)._
 - Clicking a marker shows a popover: rep name, state, vehicle registration, active request title and tier (if assigned)
 - A legend maps marker colour → rep state
 - Offline reps' markers are removed from the map
+- The map shows the whole fleet uniformly — reps driven by the simulator and reps a human has taken over look and behave the same (the popover may optionally note "human-controlled"); all positions arrive via `VehiclePositionHub` regardless of who is driving decisions
 - Layout is responsive across Desktop and Web; the map fills available width with the request queue beside it
 
 **Mockup**
@@ -153,21 +154,22 @@ _No dedicated screen — redirects to the login screen (see FE-001)._
 
 > **Platforms:** **Mobile only** ([ADR-0008](../adr/0008-persona-platform-support.md)). Single-task, touch-first field experience — no desktop or web rep view.
 
-### FE-007 — Select and claim a vehicle at login
+### FE-007 — Take over an idle vehicle at login
 **As a** ServiceRep,
-**I want to** choose a vehicle from a list of available vehicles immediately after logging in,
-**so that** I have an active session before I can receive job offers.
+**I want to** pick an idle vehicle from a dropdown immediately after logging in and take it over from the simulator,
+**so that** I have an active session and personally drive that rep's jobs while the simulator keeps moving the truck.
 
 **Acceptance Criteria:**
-- Vehicle selection screen is the first screen after successful login (before the main rep view)
-- List populated from `GET /vehicles/available`; shows registration and equipment list per vehicle
-- Tapping a vehicle calls `POST /vehicles/{id}/claim`
-- On success, transitions to the idle rep view (waiting for job offers — see FE-020)
-- On `409` (race condition — vehicle claimed by another rep), refreshes the list and shows a message
+- The take-over screen is the first screen after successful login (before the main rep view)
+- A dropdown lists only **idle** vehicles — those not en route to a job and not on a job (the simulator may be driving them on their loop); each option shows registration and equipment list
+- Selecting a vehicle calls `POST /vehicles/{id}/take-over`, which supersedes the simulator's claim on that vehicle (see [ADR-0009](../adr/0009-simulator-operates-rep-identities-and-human-takeover.md) / BE-026)
+- On success, transitions to the idle rep view (waiting for job offers — see FE-020); from here the human makes all decisions while the simulator drives the truck's position
+- On `409` (the rep or vehicle is no longer idle — e.g. another human took it, or it picked up a job), refreshes the dropdown and shows a message
+- Eligibility: only an idle rep may take over (a rep already mid-job cannot)
 
 **Mockup —** _Mobile_
 
-<img src="../ui-mockups/images/rep-vehicle-select__mobile-390x844.png" alt="Rep — claim a vehicle" width="240">
+<img src="../ui-mockups/images/rep-takeover__mobile-390x844.png" alt="Rep — take over an idle vehicle" width="240">
 
 ---
 
@@ -232,7 +234,8 @@ _No dedicated screen — redirects to the login screen (see FE-001)._
 - ETA (minutes) shown and updated as my position changes via `RepPositionUpdated` or position polling
 - DTC title and requester name shown in a bottom sheet
 - "I've Arrived" button shown but disabled until rep is within 15 miles (or always enabled if within 15 miles on load)
-- Receiving a `RedirectReceived` event updates the map destination without requiring a new screen load (see FE-018)
+- My vehicle's position is driven by the simulator (the device does not report GPS); after I accept, the simulator navigates the truck toward the requester and the map reflects that movement, then holds at the requester until I tap "I've Arrived"
+- Receiving a `RedirectReceived` event updates the map destination without requiring a new screen load — a dispatcher may redirect me even while I am driving the job (see FE-018); the simulator re-navigates the truck to the new destination
 
 **Mockup —** _Mobile (En Route)_
 
@@ -281,7 +284,8 @@ _No dedicated screen — redirects to the login screen (see FE-001)._
 - "Release Vehicle" option accessible from the navigation menu (not the primary UI — see FE-021)
 - Disabled if a job is currently `InProgress`
 - On tap: confirmation dialog; on confirm: calls `POST /vehicles/{id}/release`
-- On success: returns to vehicle selection screen
+- On success: returns to the take-over screen (FE-007)
+- Releasing ends the human's control: the vehicle parks and the simulator does **not** re-assume that rep/vehicle for the rest of the run (it becomes available for another human takeover or a dispatcher force-release) — see [ADR-0009](../adr/0009-simulator-operates-rep-identities-and-human-takeover.md)
 
 **Mockup —** _Mobile_
 
@@ -306,6 +310,20 @@ _No dedicated screen — redirects to the login screen (see FE-001)._
 **Mockup —** _Mobile_
 
 <img src="../ui-mockups/images/rep-idle__mobile-390x844.png" alt="Rep — idle waiting for offers" width="240">
+
+---
+
+### FE-023 — Stay on duty (heartbeat) and go off duty cleanly
+**As a** ServiceRep on a device,
+**I want to** keep my session alive while I'm working and end it cleanly when I leave,
+**so that** the system knows I'm in control and can hand my vehicle back when I'm gone.
+
+**Acceptance Criteria:**
+- While signed in with a vehicle taken over, the app sends `POST /rep/heartbeat` on an interval (~every 15 seconds) so the backend keeps the rep marked human-controlled
+- If the app is backgrounded/closed or loses connectivity, heartbeats stop; the backend times the rep out, parks the vehicle, and re-queues any active job (see BE-023 / BE-028)
+- Explicit log out / Release Vehicle (FE-014) ends control immediately without waiting for timeout
+- Once the human leaves, the simulator does not re-assume that rep/vehicle for the run; the vehicle reappears in the take-over dropdown (FE-007) for any idle rep
+- No dedicated screen — heartbeat runs in the background of the rep views
 
 ---
 
@@ -424,7 +442,7 @@ _No dedicated screen — redirects to the login screen (see FE-001)._
 - A persona shell wraps every authenticated view: app bar with title, context (e.g. claimed vehicle), and a menu affordance
 - Menu presentation adapts to platform: slide-in drawer on Mobile; dropdown account menu on Desktop/Web
 - Menu exposes secondary actions per persona (e.g. ServiceRep: Release Vehicle (FE-014), Job history; Dispatcher: Profile, Settings) and **Log out** for all
-- On "Log out": JWT cleared and user returned to the login screen (FE-001); a ServiceRep with a claimed vehicle is prompted/expected to release it first
+- On "Log out": JWT cleared and user returned to the login screen (FE-001); a ServiceRep with a claimed vehicle is prompted/expected to release it first. Logging out (or the app closing) stops the rep's heartbeat (FE-023) — the rep goes off-duty, the vehicle parks, and the simulator does not re-assume it ("gone home for the night")
 - Destructive items (Release Vehicle, Log out) are visually distinct
 
 **Mockup**
@@ -446,7 +464,7 @@ _No dedicated screen — redirects to the login screen (see FE-001)._
 | FE-005 Redirect a rep | `dispatcher-redirect` | Desktop |
 | FE-006 Rep offline alert | `dispatcher-dashboard` (banner) | Desktop, Web |
 | FE-022 Force-release a vehicle | `dispatcher-force-release` | Desktop, Web |
-| FE-007 Claim a vehicle | `rep-vehicle-select` | Mobile |
+| FE-007 Take over an idle vehicle | `rep-takeover` | Mobile |
 | FE-008 Job offer + countdown | `rep-job-offer` | Mobile |
 | FE-009 Accept offer | `rep-job-offer` (action) | Mobile |
 | FE-010 Decline offer | `rep-job-offer` (action) → `rep-idle` | Mobile |
@@ -460,6 +478,7 @@ _No dedicated screen — redirects to the login screen (see FE-001)._
 | FE-018 Redirect notification | `requester-redirect` | Web, Mobile |
 | FE-019 Service complete | `requester-complete` | Mobile |
 | FE-020 Idle / waiting view | `rep-idle` | Mobile |
+| FE-023 Heartbeat / go off duty | _(background — no screen)_ | — |
 | FE-021 App shell & logout | `rep-nav-drawer`, `dispatcher-nav` | Mobile, Desktop |
 
 > Screens are rendered to PNG by [`docs/ui-mockups/render.mjs`](../ui-mockups/render.mjs) and indexed in the [mockups README](../ui-mockups/README.md). The reusable component library is [`design-system.css`](../ui-mockups/design-system.css).

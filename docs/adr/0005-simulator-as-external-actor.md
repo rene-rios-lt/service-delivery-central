@@ -1,6 +1,8 @@
 # ADR-0005: Simulator as a Separate External Actor
 
-**Status:** Accepted
+**Status:** Accepted — **superseded in part by [ADR-0009](0009-simulator-operates-rep-identities-and-human-takeover.md)**
+
+> **Note:** The core decision below — the simulator is a separate external actor that calls the backend's public API, with zero simulation logic in the backend — still holds. However, the specifics of *how* the simulator authenticates and responds to offers have been superseded by ADR-0009: the simulator no longer uses a single auto-accepting service account. It now operates the real seeded rep accounts (`rep1…rep8`) for job decisions and holds a `Simulator`-role account only to post positions, and a human can take over any idle rep. Read the affected bullets below in light of ADR-0009.
 
 ## Context
 
@@ -15,11 +17,11 @@ The simulator is a **separate repository and service** that calls the backend's 
 
 The backend contains zero simulation logic. It does not know or care whether it is receiving data from the simulator or from real hardware.
 
-The simulator:
-- Authenticates with a pre-seeded service account JWT (same auth as all other users)
-- Pushes vehicle position updates every 3 seconds via the backend's position update endpoint
-- Receives job offers over SignalR and auto-accepts them (~85%) or auto-declines (~15%)
-- Deviates from pre-determined route loops when a vehicle is assigned to a job, navigating toward the requester
+The simulator (as revised by [ADR-0009](0009-simulator-operates-rep-identities-and-human-takeover.md)):
+- Authenticates with pre-seeded accounts the same way every other user does — now the real rep accounts `rep1…rep8` (for job decisions) plus a `Simulator`-role account (for position updates). *(Originally: a single service account.)*
+- Pushes every vehicle's position every 3 seconds via the backend's position update endpoint (using the `Simulator`-role account)
+- Auto-responds to job offers **as each automated rep** (~85% accept / ~15% decline) — only for reps not currently controlled by a human. *(Originally: the single service account received and auto-accepted offers, which the matching engine could never actually route to it.)*
+- Drives every vehicle's position from backend job-state: deviates toward the requester when a job is accepted (by an automated rep **or** a human), then returns to the loop on completion
 
 ## Consequences
 

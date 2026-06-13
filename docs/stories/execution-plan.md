@@ -84,16 +84,19 @@
 
 ---
 
-## Phase 5 — Rep State Transitions & Resilience
-**Goal:** Reps can arrive and complete jobs. Offline detection re-queues jobs automatically.
+## Phase 5 — Rep State Transitions, Resilience & Human Takeover
+**Goal:** Reps can arrive and complete jobs. Offline detection re-queues jobs automatically. A human can take over an idle rep+vehicle from a device, and the backend tracks human-controlled presence.
 
 | Story | Repo | Description |
 |-------|------|-------------|
 | [BE-019](backend.md) | Backend | `POST /rep/arrive` |
 | [BE-020](backend.md) | Backend | `POST /rep/complete` + re-run matching for Pending requests |
-| [BE-023](backend.md) | Backend | `OnDisconnectedAsync` — offline detection, re-queue, DispatchHub alert |
+| [BE-023](backend.md) | Backend | `OnDisconnectedAsync` — offline detection, re-queue (re-match), DispatchHub alert; human reps not re-assumed |
+| [BE-026](backend.md) | Backend | `POST /vehicles/{id}/take-over` — idle rep assumes an idle vehicle, supersedes simulator, marks human-controlled |
+| [BE-027](backend.md) | Backend | `GET /simulator/fleet-state` — Simulator-role read of per-vehicle rep state + active-request location + human-controlled flag |
+| [BE-028](backend.md) | Backend | `POST /rep/heartbeat` + go-off-duty; human-controlled timeout → park + re-match; sim does not re-assume |
 
-**Exit criteria:** A full job lifecycle (submit → match → offer → accept → arrive → complete) works via API calls; re-matching after completion creates a new offer if other requests are pending.
+**Exit criteria:** A full job lifecycle (submit → match → offer → accept → arrive → complete) works via API calls; re-matching after completion creates a new offer if other requests are pending; a human can take over an idle vehicle (superseding the simulator) and is parked on logout/timeout without the simulator re-assuming them.
 
 ---
 
@@ -109,15 +112,19 @@
 
 ---
 
-## Phase 7 — Simulator Job Navigation
-**Goal:** Simulator vehicles deviate toward requesters when jobs are accepted and return to loops on completion.
+## Phase 7 — Simulator Job Navigation, Reconciliation & Takeover
+**Goal:** The simulator drives every vehicle's position from backend job-state, reconciles each tick, yields any rep a human takes over, and gives automated reps a realistic on-site dwell.
 
 | Story | Repo | Description |
 |-------|------|-------------|
-| [SIM-006](simulator.md) | Simulator | Navigate straight-line toward requester on job acceptance |
+| [SIM-006](simulator.md) | Simulator | Navigate toward requester on accept (automated **or** human rep); hold for a human's Arrived/Complete |
 | [SIM-007](simulator.md) | Simulator | Return to nearest loop waypoint on job completion |
+| [SIM-008](simulator.md) | Simulator | Reconcile against `GET /simulator/fleet-state` each tick; drive all vehicles; operate only non-human reps |
+| [SIM-009](simulator.md) | Simulator | Yield a rep on human takeover; never re-assume it for the run (sticky) |
+| [SIM-010](simulator.md) | Simulator | Automated on-site work dwell (randomized 120–240s) |
 
-**Exit criteria:** During a simulated job, vehicle position updates show movement toward the requester's coordinates, then resume loop traversal after the job ends.
+**Depends on:** Phase 5 (BE-026/027/028 — takeover, fleet-state read, presence).
+**Exit criteria:** During a simulated job, vehicle position updates show movement toward the requester's coordinates, then resume loop traversal after the job ends; when a human takes over a rep, the simulator stops deciding for it but keeps driving its position, and never re-assumes it once the human leaves.
 
 ---
 
@@ -140,18 +147,19 @@
 
 | Story | Repo | Description |
 |-------|------|-------------|
-| [FE-007](frontend.md) | Frontend | Vehicle selection and claim screen |
+| [FE-007](frontend.md) | Frontend | Take over an idle vehicle (dropdown) — supersedes the simulator |
 | [FE-020](frontend.md) | Frontend | Idle / waiting-for-offers view |
 | [FE-008](frontend.md) | Frontend | Job offer screen with 60-second countdown |
 | [FE-009](frontend.md) | Frontend | Accept offer → navigate to active job view |
 | [FE-010](frontend.md) | Frontend | Decline offer → return to idle |
-| [FE-011](frontend.md) | Frontend | Active job map with live position and ETA |
+| [FE-011](frontend.md) | Frontend | Active job map with live (simulator-driven) position and ETA |
 | [FE-012](frontend.md) | Frontend | "I've Arrived" button → on-site view |
 | [FE-013](frontend.md) | Frontend | "Mark Complete" → return to idle |
-| [FE-014](frontend.md) | Frontend | Release vehicle from menu |
+| [FE-014](frontend.md) | Frontend | Release vehicle from menu (goes off-duty; vehicle parks) |
+| [FE-023](frontend.md) | Frontend | Heartbeat while on duty + clean go-off-duty |
 
-**Depends on:** Phase 8, Phases 2–5 (vehicle + job offer + state transition endpoints)
-**Exit criteria:** A ServiceRep user can complete a full job end-to-end in the UI with the simulator driving the other side.
+**Depends on:** Phase 8, Phases 2–5 (vehicle + job offer + state transition + takeover/heartbeat endpoints)
+**Exit criteria:** A ServiceRep user can take over an idle vehicle and complete a full job end-to-end in the UI with the simulator driving position; going off-duty parks the vehicle without the simulator re-assuming it.
 
 ---
 
@@ -193,9 +201,9 @@ Phase 1 (Foundation)
     └── Phase 2 (Vehicles + Simulator positioning)
             └── Phase 3 (Service Requests + Matching)
                     └── Phase 4 (Job Offer Lifecycle + Simulator offers)
-                            └── Phase 5 (Rep State Transitions + Resilience)
+                            └── Phase 5 (Rep State + Resilience + Human Takeover)
                                     └── Phase 6 (Dispatcher Redirect)
-                                    └── Phase 7 (Simulator Navigation)
+                                    └── Phase 7 (Simulator Navigation + Reconciliation + Takeover)
 Phase 1
     └── Phase 8 (Frontend Auth)
             └── Phase 9 (Frontend ServiceRep)   ← needs Phases 2–5
@@ -211,9 +219,9 @@ Frontend phases (8–11) can begin in parallel with Phase 2+ on the backend — 
 
 | Repo | Stories | Phases |
 |------|---------|--------|
-| Backend | BE-001 – BE-025 (25 stories) | 1–6 |
-| Simulator | SIM-001 – SIM-007 (7 stories) | 2, 4, 7 |
-| Frontend | FE-001 – FE-021 (21 stories) | 8–11 |
-| **Total** | **53 stories** | **11 phases** |
+| Backend | BE-001 – BE-028 (28 stories) | 1–6 |
+| Simulator | SIM-001 – SIM-010 (10 stories) | 2, 4, 7 |
+| Frontend | FE-001 – FE-023 (23 stories) | 8–11 |
+| **Total** | **61 stories** | **11 phases** |
 
 Plus **15 open bugs** ([`bug.md`](bug.md)) — `BUG-001` – `BUG-015` — sequenced in Phase 3 ahead of `BE-014`. `BUG-003`–`BUG-015` are central-repo doc/pipeline fixes (handle via `/ship-it`).

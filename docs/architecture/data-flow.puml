@@ -14,7 +14,14 @@ participant "RequesterHub" as ReqHub
 actor "Dispatcher(s)" as Dispatcher
 actor "Requester" as Requester
 
-Sim -> Backend : POST /vehicles/{id}/position\n{ vehicleId, latitude, longitude }\nevery 3 seconds
+note over Sim
+  The simulator drives EVERY vehicle's position from its rep's
+  backend job-state — including a truck a human has taken over
+  (it navigates after the human accepts, then holds at the
+  requester). Posted as the Simulator-role account.
+end note
+
+Sim -> Backend : POST /vehicles/{id}/position\n{ vehicleId, latitude, longitude }\nevery 3 seconds, all vehicles
 
 Backend -> Backend : Persist position
 Backend -> Backend : If rep has active Assigned request:\n  - Recalculate Haversine distance to requester\n  - If < 15 miles and EnRoute → Within15Miles\n  - Recalculate ETA
@@ -205,14 +212,64 @@ DispHub -> Dispatcher : alert: "[Rep] went offline — [DTC] request re-queued"\
 Backend -> ReqHub : (requester returns to Pending state)
 ReqHub -> Requester : spinner: "finding your technician"
 
-Backend -> Backend : Run matching algorithm\nfor re-queued request
+Backend -> Backend : Run matching algorithm\nfor re-queued request\n(offered to any available rep — usually an automated one)
 
-alt Rep reconnects
-    Rep -> Backend : login + vehicle claim
-    note right : Vehicle still claimed —\nrep sees it and can release it
-else Dispatcher force-releases vehicle
-    Dispatcher -> Backend : POST /vehicles/{id}/force-release
-    Backend -> Backend : Vehicle → Unclaimed\nAvailable for another rep
+alt Automated (simulator) rep
+    Backend -> Backend : Simulator reconciler resumes\nthat rep on its vehicle (normal loop)
+else Human rep "goes home" (logout / heartbeat timeout)
+    note right
+      Rep parks; vehicle off-duty.
+      Simulator does NOT re-assume a rep
+      a human took over (sticky for the run).
+    end note
+    Dispatcher -> Backend : (optional) POST /vehicles/{id}/force-release
+    Backend -> Backend : Vehicle → Unclaimed
 end
+
+@enduml
+
+@startuml flow5-human-takeover
+title Flow 5 — Human Takeover
+
+skinparam participant {
+    BackgroundColor #E0F2F1
+    BorderColor #00695C
+}
+
+actor "Human Rep\n(device, logs in as rep3)" as Human
+participant "Backend" as Backend
+participant "Simulator" as Sim
+participant "RepHub" as RepHub
+
+Human -> Backend : GET idle vehicles\n(not en route / not on a job)
+Backend -> Human : dropdown of idle vehicles
+
+Human -> Backend : POST /vehicles/{V-002}/take-over
+Backend -> Backend : release prior (simulator) claim on V-002\nend rep3's prior session\nclaim V-002 for rep3 (human)\nmark rep3 human-controlled
+
+Sim -> Backend : GET fleet job-state (next tick)
+Backend -> Sim : rep3 is human-controlled
+Sim -> Sim : relinquish rep3; rebalance remaining\nautomated reps onto the freed vehicle
+
+note over Human, RepHub
+  From now on, for rep3's truck:
+  • HUMAN decides — Accept/Decline, "I've Arrived", "Mark Complete"
+  • SIMULATOR drives position from rep3's job-state
+    (navigates to requester on Accept, then HOLDS)
+end note
+
+Backend -> RepHub : JobOfferReceived → rep3 (human's device)
+RepHub -> Human : job offer screen (human taps Accept)
+Sim -> Backend : POST /vehicles/V-002/position\n(navigating toward requester, then holding)
+Human -> Backend : POST /rep/arrive , then /rep/complete
+
+loop every ~15s while on duty
+    Human -> Backend : heartbeat
+end
+
+note over Human, Backend
+  On logout / heartbeat timeout → rep3 Offline, V-002 parks.
+  Simulator does NOT re-assume (sticky).
+end note
 
 @enduml

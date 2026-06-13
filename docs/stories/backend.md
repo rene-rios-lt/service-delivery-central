@@ -111,7 +111,7 @@
   - Recalculates ETA using Haversine at 60 mph assumed speed
 - Broadcasts `VehiclePositionUpdated { repId, vehicleId, lat, lng, state }` to all dispatchers via `VehiclePositionHub`
 - Broadcasts `RepPositionUpdated { lat, lng, etaMinutes, state }` to the assigned requester via `RequesterHub` (only if request is `Assigned`)
-- Requires Simulator role
+- Requires Simulator role — the simulator posts positions for **every** vehicle, including one currently controlled by a human (the human's device never posts GPS; see [ADR-0009](../adr/0009-simulator-operates-rep-identities-and-human-takeover.md))
 
 ---
 
@@ -216,9 +216,11 @@
 ---
 
 ### BE-016 — Accept a job offer
-**As a** ServiceRep (or the Simulator),
+**As a** ServiceRep,
 **I want to** `POST /job-offers/{id}/accept` to take the job,
 **so that** I can start navigating to the requester.
+
+> The simulator calls this **as the rep account it operates** (`rep1…rep8`); a human calls it from their device. The endpoint behaves identically for both — there is no special "Simulator" path (see [ADR-0009](../adr/0009-simulator-operates-rep-identities-and-human-takeover.md)).
 
 **Acceptance Criteria:**
 - `JobOffer` transitions `Pending → Accepted`
@@ -231,9 +233,11 @@
 ---
 
 ### BE-017 — Decline a job offer
-**As a** ServiceRep (or the Simulator),
+**As a** ServiceRep,
 **I want to** `POST /job-offers/{id}/decline` to refuse the job,
 **so that** the system can find the next best rep.
+
+> As with accept, the simulator calls this as the rep account it operates; a human calls it from their device. No special "Simulator" path.
 
 **Acceptance Criteria:**
 - `JobOffer` transitions `Pending → Declined`
@@ -335,12 +339,12 @@
 **so that** the job is re-queued and the dispatcher can take action.
 
 **Acceptance Criteria:**
-- `OnDisconnectedAsync` on `RepHub` triggers rep state → `Offline`
-- Active job → `Pending` (vehicle stays `Claimed`)
+- `OnDisconnectedAsync` on `RepHub` (and, for a human-controlled rep, a heartbeat timeout — see BE-028) triggers rep state → `Offline`
+- Active job → `Pending`; **re-matched** to another available rep (in practice an automated one)
+- Vehicle stays `Claimed` momentarily, then: for a rep the simulator was operating, the simulator's reconciler resumes it; for a **human-controlled** rep, the vehicle parks and the simulator does **not** re-assume that rep/vehicle for the rest of the run (the `human-controlled` marker is cleared on disconnect — see BE-028)
 - Broadcasts `RepOfflineMidJob { repId, requestId, repName, dtcTitle }` to dispatchers via `DispatchHub`
 - Broadcasts the requester back to a `Pending` spinner state via `RequesterHub`
-- Re-runs matching for the re-queued request
-- When the rep reconnects and re-logs in, they can see their vehicle is still claimed and either reclaim it or the dispatcher can force-release
+- A dispatcher may `force-release` a parked, human-vacated vehicle
 
 ---
 
@@ -357,7 +361,7 @@
 - **2 Dispatchers** (dealer A)
 - **8 ServiceReps** (dealer A) with varied equipment authorisations
 - **10 Requesters** — 6 Bronze, 3 Silver, 1 Gold (dealer A)
-- **1 Simulator service account** (role: Simulator)
+- **1 Simulator service account** (role: Simulator) — used by the simulator only to post positions; the simulator drives job decisions by logging in as the 8 ServiceRep accounts above (see [ADR-0009](../adr/0009-simulator-operates-rep-identities-and-human-takeover.md))
 - Seeding is idempotent — safe to run on every startup; does not duplicate records
 
 ---
@@ -375,7 +379,7 @@
 |-----|------|-----------|------------|
 | `VehiclePositionHub` | `/hubs/position` | `VehiclePositionUpdated` | All dispatchers |
 | `DispatchHub` | `/hubs/dispatch` | `ServiceRequestPending`, `ServiceRequestAssigned`, `ServiceRequestCompleted`, `RepStateChanged`, `RepOfflineMidJob` | All dispatchers |
-| `RepHub` | `/hubs/rep` | `JobOfferReceived`, `JobOfferExpired`, `RedirectReceived`, `VehicleForceReleased` | Individual rep (by connection); Simulator service account |
+| `RepHub` | `/hubs/rep` | `JobOfferReceived`, `JobOfferExpired`, `RedirectReceived`, `VehicleForceReleased` | Each rep by connection — a human on a device, or the simulator connected **as that automated rep** (`rep1…rep8`) |
 | `RequesterHub` | `/hubs/requester` | `RepAssigned`, `RepPositionUpdated`, `RepRedirected`, `ServiceCompleted` | Individual requester (by connection) |
 
 - All hubs require JWT Bearer authentication
@@ -383,3 +387,47 @@
 - Individual rep and requester events targeted by `userId` connection group, not broadcast to all
 - `RepHub` event payloads:
   - `VehicleForceReleased { vehicleId, registration }` — published to the affected rep when a Dispatcher force-releases their claimed vehicle (see BE-007). The rep client clears any active job and returns to vehicle selection.
+
+---
+
+## Epic: Human Takeover & Presence
+
+> These stories support the "Human Takeover" model in [ADR-0009](../adr/0009-simulator-operates-rep-identities-and-human-takeover.md): the simulator operates `rep1…rep8` until a human takes one over from a real device.
+
+### BE-026 — Take over an idle vehicle
+**As a** ServiceRep,
+**I want to** `POST /vehicles/{id}/take-over` to assume an idle vehicle the simulator is currently driving,
+**so that** I can personally drive that rep's jobs from my device while the simulator keeps moving the truck.
+
+**Acceptance Criteria:**
+- **Preconditions (all must hold, else `409`):** the authenticated rep is idle (state `Available` or `Offline`, no active `Assigned`/`InProgress` request) **and** the target vehicle is idle (its current rep, if any, has no active job — not `EnRoute`/`Within15Miles`/`OnSite`)
+- **On success, atomically:** release any existing claim on the target vehicle (ending that rep's session and setting it `Offline`); end the calling rep's prior session if any; create a new `RepSession` claiming the vehicle for the calling rep; set the calling rep `Available` and mark it `humanControlled = true` with `lastHeartbeatAt = now`
+- Broadcasts `RepStateChanged` (and a fleet update) to dispatchers via `DispatchHub`
+- Returns `200` with the new session, or `409` (with reason) if the rep or vehicle is not idle
+- Requires ServiceRep role
+
+---
+
+### BE-027 — Simulator fleet job-state read
+**As the** Simulator,
+**I want to** `GET /simulator/fleet-state` to read every vehicle's claiming rep, rep state, active-request location, and human-controlled flag,
+**so that** I can drive each truck's position from authoritative job-state and skip reps a human has taken over.
+
+**Acceptance Criteria:**
+- Returns, per vehicle in the dealer: `vehicleId`, `claimingRepId`, `repState`, `humanControlled`, and `activeRequestLocation { lat, lng }` (null when idle)
+- Requires Simulator role
+- Read-only; reflects the current persisted state (the simulator polls it each tick)
+
+---
+
+### BE-028 — Rep heartbeat & go-off-duty
+**As a** ServiceRep on a device,
+**I want to** `POST /rep/heartbeat` periodically and have a clean go-off-duty path,
+**so that** the backend knows a human is actively in control and can release the rep when they leave.
+
+**Acceptance Criteria:**
+- `POST /rep/heartbeat` updates `lastHeartbeatAt` for the authenticated rep (sent ~every 15 seconds while a human is on duty); requires ServiceRep role
+- A background check marks a `humanControlled` rep `Offline` and clears `humanControlled` when `lastHeartbeatAt` is older than a configured timeout (e.g. ~15s × a small multiple); any active job is re-queued (see BE-023)
+- Explicit logout / `POST /vehicles/{id}/release` also clears `humanControlled` and parks the vehicle
+- Once a human has taken a rep over, the simulator does **not** re-assume that rep or re-claim that vehicle for the remainder of the run (the simulator enforces this via its reconciler — see SIM-009); the backend simply reports the cleared state
+- The vehicle remains available for a dispatcher `force-release` or a fresh human takeover

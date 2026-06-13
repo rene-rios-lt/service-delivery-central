@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Service Rep — Take Over an Idle Vehicle</title>
+<link rel="stylesheet" href="../design-system.css">
+<style>
+  html, body { height: 100%; }
+  .phone { height: 100vh; display: flex; flex-direction: column; }
+  .phone__body { flex: 1; overflow: auto; padding: 18px 16px; background: var(--sd-bg); }
+  .phone__intro { margin-bottom: 16px; }
+  .phone__intro h2 { margin: 0 0 4px; font-size: 19px; }
+  .phone__intro p { margin: 0; color: var(--sd-text-2); font-size: 13.5px; }
+
+  .dd__label { font-size: 12px; font-weight: 600; color: var(--sd-text-2);
+               text-transform: uppercase; letter-spacing: .4px; margin: 0 0 6px 2px; }
+  /* the select "field" (open state) */
+  .dd { background: var(--sd-surface); border: 1.5px solid var(--sd-primary);
+        border-radius: 12px; box-shadow: 0 6px 20px rgba(20,20,60,.12); overflow: hidden; }
+  .dd__field { display: flex; align-items: center; gap: 10px; padding: 13px 14px;
+               border-bottom: 1px solid var(--sd-border); }
+  .dd__field .sd-listitem__title { font-size: 15px; }
+  .dd__caret { margin-left: auto; color: var(--sd-primary); font-size: 13px; transform: rotate(180deg); }
+  .dd__menu { background: var(--sd-surface); }
+  .dd__opt { display: flex; align-items: center; gap: 10px; padding: 12px 14px;
+             border-bottom: 1px solid var(--sd-border); }
+  .dd__opt:last-child { border-bottom: 0; }
+  .dd__opt--sel { background: color-mix(in srgb, var(--sd-primary) 8%, transparent); }
+  .dd__check { margin-left: auto; color: var(--sd-primary); font-weight: 700; }
+  .dd__hint { margin: 8px 2px 0; font-size: 12px; color: var(--sd-text-2); }
+  .takeover-cta { margin-top: 18px; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="sd-appbar">
+    <div class="sd-appbar__logo">🚐</div>
+    <div>
+      <div class="sd-appbar__title">Take Over a Vehicle</div>
+      <div class="sd-appbar__sub">Signed in as Rep 3</div>
+    </div>
+    <div class="sd-appbar__spacer"></div>
+    <div class="sd-avatar">R3</div>
+  </div>
+
+  <div class="phone__body">
+    <div class="phone__intro">
+      <h2>Pick an idle vehicle</h2>
+      <p>Choose a truck that's free right now. You'll take it over from the simulator and start receiving job offers.</p>
+    </div>
+
+    <div class="dd__label">Idle vehicles</div>
+    <div class="dd">
+      <div class="dd__field">
+        <div class="sd-listitem__icon">🚐</div>
+        <div style="min-width:0;">
+          <div class="sd-listitem__title">IA-4471 · Transit 350</div>
+          <div class="sd-equip"><span>Hydraulics</span><span>Coolant</span><span>+4</span></div>
+        </div>
+        <span class="dd__caret">▾</span>
+      </div>
+      <div class="dd__menu">
+        <div class="dd__opt dd__opt--sel">
+          <div class="sd-listitem__icon">🚐</div>
+          <div style="min-width:0;">
+            <div class="sd-listitem__title">IA-4471 · Transit 350</div>
+            <div class="sd-listitem__sub">Des Moines loop · idle</div>
+          </div>
+          <span class="dd__check">✓</span>
+        </div>
+        <div class="dd__opt">
+          <div class="sd-listitem__icon">🚐</div>
+          <div style="min-width:0;">
+            <div class="sd-listitem__title">IA-2208 · Sprinter</div>
+            <div class="sd-listitem__sub">Cedar Rapids loop · idle</div>
+          </div>
+        </div>
+        <div class="dd__opt">
+          <div class="sd-listitem__icon">🚐</div>
+          <div style="min-width:0;">
+            <div class="sd-listitem__title">IA-9015 · Transit 250</div>
+            <div class="sd-listitem__sub">Sioux City loop · idle</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="dd__hint">Only idle vehicles appear — trucks on a job aren't selectable.</p>
+
+    <div class="takeover-cta">
+      <button class="sd-btn sd-btn--primary" style="width:100%; padding:14px; font-size:15px;">Take over IA-4471</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>

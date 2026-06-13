@@ -8,13 +8,13 @@ This is the **central governance repository** for the Service Delivery system. I
 
 ## System Context
 
-This system is a fleet dispatch platform — "Uber for service reps." When a requester reports an equipment fault (identified by a Diagnostic Trouble Code), the system finds the nearest qualified service vehicle and dispatches the rep. Dispatchers manage the fleet and handle priority escalations (Bronze / Silver / Gold service tiers). Real-time updates flow over SignalR.
+This system is a fleet dispatch platform — "Uber for service reps." When a requester reports an equipment fault (identified by a Diagnostic Trouble Code), the system finds the nearest qualified service vehicle and dispatches the rep. Dispatchers manage the fleet and handle priority escalations (Bronze / Silver / Gold service tiers). Real-time updates flow over SignalR. For the POC, the simulator operates the seeded rep accounts (`rep1…rep8`) to make job decisions and a position-only `Simulator` account to drive all trucks; a human can log in as any idle rep and take it over from a device (see ADR-0009, "Human Takeover").
 
 **Before working on any cross-cutting concern**, read the architecture docs:
 - [`docs/architecture/system-overview.md`](docs/architecture/system-overview.md) — full system description, personas, tech stack, seed data
 - [`docs/architecture/state-machines.md`](docs/architecture/state-machines.md) — all rep, request, vehicle, and job offer state machines
 - [`docs/architecture/data-flow.md`](docs/architecture/data-flow.md) — end-to-end flows for all scenarios
-- [`docs/adr/`](docs/adr/) — all architectural decisions (4-repo structure, SignalR, auth strategy, Haversine distance, simulator design, multi-dealer data model)
+- [`docs/adr/`](docs/adr/) — all architectural decisions (4-repo structure, SignalR, auth strategy, Haversine distance, simulator design, multi-dealer data model, simulator rep identities / human takeover (ADR-0009))
 
 ## Repositories
 

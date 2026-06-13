@@ -22,11 +22,16 @@ skinparam arrow {
 }
 
 package "service-delivery-simulator" as SimPkg {
-    component "VehicleWorker x8" as Workers
+    component "Position Engine\n(drives all 8 vehicles\nfrom backend job-state)" as PosEngine
+    component "Auto-Decision Engine\n(operates rep1..rep8,\nskips human-controlled)" as DecisionEngine
+    component "Reconciler\n(reads fleet state each tick,\nyields reps taken by humans)" as Reconciler
     component "BackendApiClient\n(HTTP)" as ApiClient
-    component "SignalRClient" as SimSignalR
-    Workers --> ApiClient : uses
-    Workers --> SimSignalR : uses
+    component "SignalRClient x N\n(one per automated rep)" as SimSignalR
+    PosEngine --> ApiClient : uses
+    DecisionEngine --> ApiClient : uses
+    DecisionEngine --> SimSignalR : uses
+    Reconciler --> PosEngine
+    Reconciler --> DecisionEngine
 }
 
 package "service-delivery-backend" as BackendPkg {
@@ -46,7 +51,7 @@ package "service-delivery-backend" as BackendPkg {
 
 package "service-delivery-frontend" as FEPkg {
     component "Dispatcher View\n(fleet map, request queue,\nredirect controls)" as DispView
-    component "ServiceRep View\n(vehicle selection, job offers,\nactive job, mark complete)" as RepView
+    component "ServiceRep View\n(take over idle vehicle, job offers,\nactive job, mark complete)" as RepView
     component "Requester View\n(submit request, Uber-like\ntracking, redirect notification)" as ReqView
     note bottom of FEPkg
       Shared Razor UI across
@@ -55,8 +60,8 @@ package "service-delivery-frontend" as FEPkg {
 }
 
 ' Simulator → Backend (REST)
-ApiClient --> REST : POST /vehicles/{id}/position\n(every 3 seconds)\nPOST /job-offers/{id}/accept|decline\nPOST /rep/arrive\nPOST /rep/complete
-SimSignalR ..> Hubs : subscribe RepHub\n(receive JobOfferReceived)
+ApiClient --> REST : as Simulator account:\n  POST /vehicles/{id}/position (every 3s, all trucks)\n  GET fleet job-state (drive positions)\nas each automated rep (rep1..rep8):\n  POST /vehicles/{id}/claim\n  POST /job-offers/{id}/accept|decline\n  POST /rep/arrive · /rep/complete
+SimSignalR ..> Hubs : subscribe RepHub as each\nautomated rep (receive JobOfferReceived)
 
 ' Frontend → Backend (REST + SignalR)
 DispView --> REST : REST

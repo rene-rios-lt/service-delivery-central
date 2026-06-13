@@ -81,11 +81,11 @@ force-release confirmation dialog (FE-022). **Not built for mobile** (ADR-0008).
 
 ## Service Rep — Mobile only
 
-Single-task, touch-first field experience. **Not built for desktop/web** (ADR-0008).
+Single-task, touch-first field experience. **Not built for desktop/web** (ADR-0008). The rep signs in as one of `rep1…rep8` and **takes over an idle vehicle** from the simulator (FE-007); from then on the human makes the decisions while the simulator drives the truck's position (see [ADR-0009](../adr/0009-simulator-operates-rep-identities-and-human-takeover.md)).
 
-| Claim a vehicle (FE-007) | Idle / waiting (FE-020) | Job offer + countdown (FE-008) |
+| Take over an idle vehicle (FE-007) | Idle / waiting (FE-020) | Job offer + countdown (FE-008) |
 |:---:|:---:|:---:|
-| <img src="images/rep-vehicle-select__mobile-390x844.png" alt="Rep — claim a vehicle" width="250"> | <img src="images/rep-idle__mobile-390x844.png" alt="Rep — idle waiting for offers" width="250"> | <img src="images/rep-job-offer__mobile-390x844.png" alt="Rep — job offer with countdown" width="250"> |
+| <img src="images/rep-takeover__mobile-390x844.png" alt="Rep — take over an idle vehicle" width="250"> | <img src="images/rep-idle__mobile-390x844.png" alt="Rep — idle waiting for offers" width="250"> | <img src="images/rep-job-offer__mobile-390x844.png" alt="Rep — job offer with countdown" width="250"> |
 
 | Active job — En Route (FE-011) | On site (FE-012/013) | Nav drawer · Release vehicle (FE-014/021) |
 |:---:|:---:|:---:|
@@ -154,5 +154,6 @@ responsive layout (shown once as "Web / Desktop").
 Every screen here maps to one or more frontend user stories. The authoritative
 **[Story ↔ Screen Traceability](../stories/frontend.md#story--screen-traceability)** table lives in the
 frontend stories, where each story also embeds its mockup. New screens added beyond the original brief:
+`rep-takeover` (FE-007 — take over an idle vehicle, supersedes the old `rep-vehicle-select`),
 `rep-idle` (FE-020), `rep-on-site` (FE-012/013), `rep-nav-drawer` + `rep-release-vehicle` (FE-014/021),
 `dispatcher-nav` (FE-021), `dispatcher-force-release` (FE-022), and `requester-redirect` (FE-018).
