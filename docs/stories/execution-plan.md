@@ -29,8 +29,8 @@
 | ~~[BE-006](backend.md)~~ | ~~Backend~~ | ~~`POST /vehicles/{id}/release`~~ |
 | ~~[BE-007](backend.md)~~ | ~~Backend~~ | ~~`POST /vehicles/{id}/force-release` (Dispatcher)~~ |
 | ~~[BE-008](backend.md)~~ | ~~Backend~~ | ~~`POST /vehicles/{id}/position` + 15-mile detection + SignalR fan-out~~ |
-| ~~[SIM-001](simulator.md)~~ | ~~Simulator~~ | ~~Authenticate and store JWT~~ |
-| ~~[SIM-002](simulator.md)~~ | ~~Simulator~~ | ~~Connect to RepHub via SignalR~~ |
+| ~~[SIM-001](simulator.md)~~ | ~~Simulator~~ | ~~Authenticate per-rep (`rep1…rep8`) + `Simulator`-role position account~~ — merged single-account; per-rep retrofit tracked in **SIM-011** |
+| ~~[SIM-002](simulator.md)~~ | ~~Simulator~~ | ~~Connect to `RepHub` per automated rep~~ — merged single-connection; per-rep retrofit tracked in **SIM-011** |
 | ~~[SIM-003](simulator.md)~~ | ~~Simulator~~ | ~~Advance vehicles along Iowa route loops~~ |
 | ~~[SIM-004](simulator.md)~~ | ~~Simulator~~ | ~~POST position updates every 3 seconds~~ |
 
@@ -70,7 +70,7 @@
 ---
 
 ## Phase 4 — Job Offer Lifecycle
-**Goal:** Reps can accept/decline offers; the simulator auto-responds. Offer expiry runs automatically.
+**Goal:** Reps can accept/decline offers; the simulator gains per-rep identities so it can act as each automated rep. Offer expiry runs automatically. (Auto-response itself moves to Phase 7 — it depends on the human-controlled signal.)
 
 | Story | Repo | Description |
 |-------|------|-------------|
@@ -78,9 +78,9 @@
 | ~~[BE-016](backend.md)~~ | ~~Backend~~ | ~~`POST /job-offers/{id}/accept` + state transitions + SignalR events~~ |
 | ~~[BE-017](backend.md)~~ | ~~Backend~~ | ~~`POST /job-offers/{id}/decline` + re-run matching~~ |
 | ~~[BE-018](backend.md)~~ | ~~Backend~~ | ~~Background job: expire offers after 60 seconds + re-run matching~~ |
-| [SIM-005](simulator.md) | Simulator | Auto-accept (~85%) / auto-decline (~15%) job offers with delay |
+| [SIM-011](simulator.md) | Simulator | Retrofit per-rep identity model — per-rep auth + per-rep `RepHub` connections + rep-aware accept/decline (delivers SIM-001/002's ADR-0009 ACs; prerequisite for SIM-005) |
 
-**Exit criteria:** Pending offers are visible via `GET /job-offers/pending`; the full accept/decline/expire cycle works end-to-end with the simulator responding to offers.
+**Exit criteria:** Pending offers are visible via `GET /job-offers/pending`; the full accept/decline/expire cycle works end-to-end via API; the simulator can authenticate and open a `RepHub` connection as each automated rep and call accept/decline as that rep (SIM-011). Auto-response (SIM-005) lands in Phase 7, once the human-controlled signal exists.
 
 ---
 
@@ -114,17 +114,18 @@
 ---
 
 ## Phase 7 — Simulator Job Navigation, Reconciliation & Takeover
-**Goal:** The simulator drives every vehicle's position from backend job-state, reconciles each tick, yields any rep a human takes over, and gives automated reps a realistic on-site dwell.
+**Goal:** The simulator drives every vehicle's position from backend job-state, reconciles each tick, auto-responds to offers for the reps it still operates, yields any rep a human takes over, and gives automated reps a realistic on-site dwell.
 
 | Story | Repo | Description |
 |-------|------|-------------|
 | [SIM-006](simulator.md) | Simulator | Navigate toward requester on accept (automated **or** human rep); hold for a human's Arrived/Complete |
 | [SIM-007](simulator.md) | Simulator | Return to nearest loop waypoint on job completion |
 | [SIM-008](simulator.md) | Simulator | Reconcile against `GET /simulator/fleet-state` each tick; drive all vehicles; operate only non-human reps |
+| [SIM-005](simulator.md) | Simulator | Auto-accept (~85%) / auto-decline (~15%) job offers with a 1–5s delay — only for reps the simulator still operates (skips human-controlled, per SIM-008). Moved here from Phase 4: depends on SIM-011 (per-rep identity) and SIM-008 (human-controlled signal) |
 | [SIM-009](simulator.md) | Simulator | Yield a rep on human takeover; never re-assume it for the run (sticky) |
 | [SIM-010](simulator.md) | Simulator | Automated on-site work dwell (randomized 120–240s) |
 
-**Depends on:** Phase 5 (BE-026/027/028 — takeover, fleet-state read, presence).
+**Depends on:** Phase 4 (SIM-011 — per-rep identities), Phase 5 (BE-026/027/028 — takeover, fleet-state read, presence). SIM-005's AC-1 specifically needs BE-027's `human-controlled` flag surfaced via SIM-008.
 **Exit criteria:** During a simulated job, vehicle position updates show movement toward the requester's coordinates, then resume loop traversal after the job ends; when a human takes over a rep, the simulator stops deciding for it but keeps driving its position, and never re-assumes it once the human leaves.
 
 ---
@@ -201,10 +202,10 @@
 Phase 1 (Foundation)
     └── Phase 2 (Vehicles + Simulator positioning)
             └── Phase 3 (Service Requests + Matching)
-                    └── Phase 4 (Job Offer Lifecycle + Simulator offers)
+                    └── Phase 4 (Job Offer Lifecycle + Simulator per-rep identities)
                             └── Phase 5 (Rep State + Resilience + Human Takeover)
                                     └── Phase 6 (Dispatcher Redirect)
-                                    └── Phase 7 (Simulator Navigation + Reconciliation + Takeover)
+                                    └── Phase 7 (Simulator Navigation + Reconciliation + Takeover + Auto-response)
 Phase 1
     └── Phase 8 (Frontend Auth)
             └── Phase 9 (Frontend ServiceRep)   ← needs Phases 2–5
@@ -221,8 +222,8 @@ Frontend phases (8–11) can begin in parallel with Phase 2+ on the backend — 
 | Repo | Stories | Phases |
 |------|---------|--------|
 | Backend | BE-001 – BE-029 (29 stories) | 1–6 |
-| Simulator | SIM-001 – SIM-010 (10 stories) | 2, 4, 7 |
+| Simulator | SIM-001 – SIM-011 (11 stories) | 2, 4, 7 |
 | Frontend | FE-001 – FE-023 (23 stories) | 8–11 |
-| **Total** | **62 stories** | **11 phases** |
+| **Total** | **63 stories** | **11 phases** |
 
 Plus **15 open bugs** ([`bug.md`](bug.md)) — `BUG-001` – `BUG-015` — sequenced in Phase 3 ahead of `BE-014`. `BUG-003`–`BUG-015` are central-repo doc/pipeline fixes (handle via `/ship-it`).
