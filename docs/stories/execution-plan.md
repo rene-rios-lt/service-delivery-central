@@ -74,10 +74,10 @@
 
 | Story | Repo | Description |
 |-------|------|-------------|
-| [BE-015](backend.md) | Backend | `GET /job-offers/pending` |
-| [BE-016](backend.md) | Backend | `POST /job-offers/{id}/accept` + state transitions + SignalR events |
-| [BE-017](backend.md) | Backend | `POST /job-offers/{id}/decline` + re-run matching |
-| [BE-018](backend.md) | Backend | Background job: expire offers after 60 seconds + re-run matching |
+| ~~[BE-015](backend.md)~~ | ~~Backend~~ | ~~`GET /job-offers/pending`~~ |
+| ~~[BE-016](backend.md)~~ | ~~Backend~~ | ~~`POST /job-offers/{id}/accept` + state transitions + SignalR events~~ |
+| ~~[BE-017](backend.md)~~ | ~~Backend~~ | ~~`POST /job-offers/{id}/decline` + re-run matching~~ |
+| ~~[BE-018](backend.md)~~ | ~~Backend~~ | ~~Background job: expire offers after 60 seconds + re-run matching~~ |
 | [SIM-005](simulator.md) | Simulator | Auto-accept (~85%) / auto-decline (~15%) job offers with delay |
 
 **Exit criteria:** Pending offers are visible via `GET /job-offers/pending`; the full accept/decline/expire cycle works end-to-end with the simulator responding to offers.
@@ -95,6 +95,7 @@
 | [BE-026](backend.md) | Backend | `POST /vehicles/{id}/take-over` — idle rep assumes an idle vehicle, supersedes simulator, marks human-controlled |
 | [BE-027](backend.md) | Backend | `GET /simulator/fleet-state` — Simulator-role read of per-vehicle rep state + active-request location + human-controlled flag |
 | [BE-028](backend.md) | Backend | `POST /rep/heartbeat` + go-off-duty; human-controlled timeout → park + re-match; sim does not re-assume |
+| [BE-029](backend.md) | Backend | Background reconciler — re-match `Pending` requests with no active offer (backstop for dropped re-matches; reuses the BE-018 hosted-service pattern) |
 
 **Exit criteria:** A full job lifecycle (submit → match → offer → accept → arrive → complete) works via API calls; re-matching after completion creates a new offer if other requests are pending; a human can take over an idle vehicle (superseding the simulator) and is parked on logout/timeout without the simulator re-assuming them.
 
@@ -219,9 +220,9 @@ Frontend phases (8–11) can begin in parallel with Phase 2+ on the backend — 
 
 | Repo | Stories | Phases |
 |------|---------|--------|
-| Backend | BE-001 – BE-028 (28 stories) | 1–6 |
+| Backend | BE-001 – BE-029 (29 stories) | 1–6 |
 | Simulator | SIM-001 – SIM-010 (10 stories) | 2, 4, 7 |
 | Frontend | FE-001 – FE-023 (23 stories) | 8–11 |
-| **Total** | **61 stories** | **11 phases** |
+| **Total** | **62 stories** | **11 phases** |
 
 Plus **15 open bugs** ([`bug.md`](bug.md)) — `BUG-001` – `BUG-015` — sequenced in Phase 3 ahead of `BE-014`. `BUG-003`–`BUG-015` are central-repo doc/pipeline fixes (handle via `/ship-it`).
