@@ -348,6 +348,24 @@
 
 ---
 
+### BE-029 — Reconcile orphaned pending requests
+**As the** system,
+**I want to** periodically detect `Pending` service requests that have no active job offer and re-run matching for them,
+**so that** a request can never silently stall when a re-match is dropped.
+
+> Safety net for the deferred-scope gap noted in [BE-018](backend.md): the expiry sweep re-matches per expired offer, but if that re-match fails (logged at `Error`) the request is left `Pending` with no offer and is not naturally re-swept (the expired offer is terminal). This reconciler is the backstop that catches such orphans regardless of how they arose (failed re-match after expire/decline, or a request that never produced an offer).
+
+**Acceptance Criteria:**
+- A background process periodically finds `Pending` `ServiceRequest`s that have **no** `Pending` `JobOffer` (none ever created, or the last offer expired/declined and re-match produced no replacement)
+- For each orphaned request, re-runs the matching algorithm (`IMatchingService.RunAsync`)
+- A request that already has a `Pending` offer is skipped — no duplicate offers are created
+- Respects the existing skip list — declined/expired reps remain excluded (`GetSkippedRepIdsForRequestAsync`)
+- Idempotent and safe to run repeatedly; a request with no eligible rep stays `Pending` and is retried on the next pass without raising an error
+- Reuses the BE-018 hosted-service pattern (thin `BackgroundService` timer shell + scoped sweeper resolved per tick via `IServiceScopeFactory`); poll interval configurable via `appsettings.json`
+- Emits no SignalR events of its own — any offer/assignment events fire from within `MatchingService` as usual
+
+---
+
 ## Epic: Data Seeding
 
 ### BE-024 — Seed POC data on startup
