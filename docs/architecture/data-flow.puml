@@ -82,7 +82,7 @@ alt Rep accepts
     Rep -> Backend : POST /rep/arrive
     Backend -> Backend : Rep → OnSite\nRequest → InProgress
 
-    Requester <-- ReqHub : state = "Arrived"\n"Your technician has arrived" (OnSite)
+    Requester <-- ReqHub : RepArrived { repId, requestId }\n"Your technician has arrived" (OnSite)
 
     Rep -> Backend : POST /rep/complete
     Backend -> Backend : Rep → Available\nRequest → Completed

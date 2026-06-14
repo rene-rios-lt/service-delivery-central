@@ -269,10 +269,10 @@
 **so that** the request transitions to `InProgress`.
 
 **Acceptance Criteria:**
-- Rep state transitions `EnRoute` or `Within15Miles` → `OnSite`
+- Rep state transitions `Within15Miles → OnSite` (a rep close enough to arrive has already been promoted to `Within15Miles` by position detection — see BE-008; arriving while not yet `Within15Miles` returns `400`)
 - `ServiceRequest` transitions `Assigned → InProgress`
 - Broadcasts `RepStateChanged` to dispatchers via `DispatchHub`
-- Broadcasts updated state to the requester via `RequesterHub`
+- Broadcasts `RepArrived { repId, requestId }` to the requester via `RequesterHub`
 - Returns `400` if rep has no active assigned request
 
 ---
@@ -398,7 +398,7 @@
 | `VehiclePositionHub` | `/hubs/position` | `VehiclePositionUpdated` | All dispatchers |
 | `DispatchHub` | `/hubs/dispatch` | `ServiceRequestPending`, `ServiceRequestAssigned`, `ServiceRequestCompleted`, `RepStateChanged`, `RepOfflineMidJob` | All dispatchers |
 | `RepHub` | `/hubs/rep` | `JobOfferReceived`, `JobOfferExpired`, `RedirectReceived`, `VehicleForceReleased` | Each rep by connection — a human on a device, or the simulator connected **as that automated rep** (`rep1…rep8`) |
-| `RequesterHub` | `/hubs/requester` | `RepAssigned`, `RepPositionUpdated`, `RepRedirected`, `ServiceCompleted` | Individual requester (by connection) |
+| `RequesterHub` | `/hubs/requester` | `RepAssigned`, `RepPositionUpdated`, `RepArrived`, `RepRedirected`, `ServiceCompleted` | Individual requester (by connection) |
 
 - All hubs require JWT Bearer authentication
 - Hub connections scoped to `dealerId` — cross-dealer leakage is not possible

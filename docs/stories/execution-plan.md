@@ -78,7 +78,7 @@
 | ~~[BE-016](backend.md)~~ | ~~Backend~~ | ~~`POST /job-offers/{id}/accept` + state transitions + SignalR events~~ |
 | ~~[BE-017](backend.md)~~ | ~~Backend~~ | ~~`POST /job-offers/{id}/decline` + re-run matching~~ |
 | ~~[BE-018](backend.md)~~ | ~~Backend~~ | ~~Background job: expire offers after 60 seconds + re-run matching~~ |
-| [SIM-011](simulator.md) | Simulator | Retrofit per-rep identity model — per-rep auth + per-rep `RepHub` connections + rep-aware accept/decline (delivers SIM-001/002's ADR-0009 ACs; prerequisite for SIM-005) |
+| ~~[SIM-011](simulator.md)~~ | ~~Simulator~~ | ~~Retrofit per-rep identity model — per-rep auth + per-rep `RepHub` connections + rep-aware accept/decline (delivers SIM-001/002's ADR-0009 ACs; prerequisite for SIM-005)~~ |
 
 **Exit criteria:** Pending offers are visible via `GET /job-offers/pending`; the full accept/decline/expire cycle works end-to-end via API; the simulator can authenticate and open a `RepHub` connection as each automated rep and call accept/decline as that rep (SIM-011). Auto-response (SIM-005) lands in Phase 7, once the human-controlled signal exists.
 
