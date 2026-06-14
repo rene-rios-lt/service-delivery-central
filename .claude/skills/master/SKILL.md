@@ -83,6 +83,14 @@ In the working repo for this story, at the start of every execution:
 
 ### 3. Evaluator
 
+Before invoking the evaluator, capture the run's start time as the wall-clock anchor:
+
+```bash
+date +%s   # record this value; it anchors the wall-clock metric reported in Step 8
+```
+
+Capture it once per execution — the Evaluator is the first stage, so this marks "first stage". Do not reset it on a BLOCKED re-run; a fresh `/master` invocation is a new execution with a new anchor.
+
 Invoke the **story-evaluator** agent with the story ID.
 
 - If result is `BLOCKED`: display the blockers, stop. Do not proceed until blockers are resolved and the developer re-runs.
@@ -180,9 +188,19 @@ Report the PR URL to the developer.
 
 ### 8. Done
 
+Capture the run end time (`date +%s`) and compute the **Run Time** — report both:
+
+- **Active pipeline time** — the sum of the execution durations of every stage invocation in this run: evaluator, planner, implementor, each AI-review cycle, and the PR agent — **including** any re-runs (BLOCKED re-evaluations, implementor re-runs, additional review cycles). Use each stage's reported execution duration. This excludes time the run sat paused at checkpoints.
+- **Wall-clock elapsed** — end timestamp minus the Step 3 start anchor. This **includes** the time the run was paused at both checkpoints. If the start anchor is unavailable (e.g. context was summarized mid-run), report wall-clock as "unavailable" and give active pipeline time only.
+- Format each as `Xm Ys` (or `Ys` when under a minute).
+
+The active total is smaller than wall-clock; the difference is checkpoint wait plus orchestration overhead — that gap is expected and worth surfacing.
+
 Tell the developer:
 
-> "PR is open at <URL>. Merge when ready."
+> "PR is open at <URL>. Merge when ready.
+>
+> **Run time** — active pipeline: `<Xm Ys>` (sum of N stage executions); wall-clock: `<Am Bs>` (first stage → PR, includes checkpoint pauses)."
 
 ---
 
@@ -216,6 +234,7 @@ Skills are at `../.claude/skills/<name>/SKILL.md` from a working repo.
 - An `APPROVED` verdict from the AI Reviewer is not developer approval — Checkpoint #2 requires an explicit developer response regardless of the reviewer's verdict.
 - If the developer provides no response at a checkpoint, wait. Do not time out and proceed.
 - A pause is closed only by an explicit developer response that resolves it. Questions asked, work requested, or fixes made during a pause do not close it — re-state the pause question after any mid-pause work before proceeding.
+- Always report the Run Time in the Done step (active pipeline time + wall-clock). If the wall-clock start anchor was lost, say so rather than silently omitting the metric.
 
 ---
 
