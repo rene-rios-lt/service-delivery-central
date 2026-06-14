@@ -89,7 +89,7 @@
 
 | Story | Repo | Description |
 |-------|------|-------------|
-| [BE-019](backend.md) | Backend | `POST /rep/arrive` |
+| ~~[BE-019](backend.md)~~ | ~~Backend~~ | ~~`POST /rep/arrive`~~ |
 | [BE-020](backend.md) | Backend | `POST /rep/complete` + re-run matching for Pending requests |
 | [BE-023](backend.md) | Backend | `OnDisconnectedAsync` — offline detection, re-queue (re-match), DispatchHub alert; human reps not re-assumed |
 | [BE-026](backend.md) | Backend | `POST /vehicles/{id}/take-over` — idle rep assumes an idle vehicle, supersedes simulator, marks human-controlled |
