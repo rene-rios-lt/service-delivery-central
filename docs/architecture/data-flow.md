@@ -56,6 +56,8 @@ Rep state → Within 15 Miles
 Rep taps "I've Arrived"
 Rep → On Site
 Request → In Progress
+Requester sees: "Your rep has arrived" (RepArrived via RequesterHub)
+Dispatcher sees: rep state → On Site (RepStateChanged via DispatchHub)
          │
          ▼
 Rep taps "Mark Complete"
