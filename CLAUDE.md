@@ -55,7 +55,10 @@ Azure infrastructure provisioned via Terraform (not active for POC local dev)
 # Run all simulator tests
 ./scripts/local/test-simulator.sh
 
-# Run the full test suite (backend + simulator)
+# Run all frontend tests
+./scripts/local/test-frontend.sh
+
+# Run the full test suite (backend + frontend + simulator) with a live results table
 ./scripts/local/test-all.sh
 
 # Bring up the full system locally (once scripts are populated)
