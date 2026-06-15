@@ -188,19 +188,34 @@ Report the PR URL to the developer.
 
 ### 8. Done
 
-Capture the run end time (`date +%s`) and compute the **Run Time** — report both:
+Capture the run end time (`date +%s`) and compute the **Run Time** as a table.
 
-- **Active pipeline time** — the sum of the execution durations of every stage invocation in this run: evaluator, planner, implementor, each AI-review cycle, and the PR agent — **including** any re-runs (BLOCKED re-evaluations, implementor re-runs, additional review cycles). Use each stage's reported execution duration. This excludes time the run sat paused at checkpoints.
-- **Wall-clock elapsed** — end timestamp minus the Step 3 start anchor. This **includes** the time the run was paused at both checkpoints. If the start anchor is unavailable (e.g. context was summarized mid-run), report wall-clock as "unavailable" and give active pipeline time only.
-- Format each as `Xm Ys` (or `Ys` when under a minute).
+Source the numbers from:
+- **Per-stage durations** — each stage invocation's reported execution duration: evaluator, planner, implementor, each AI-review cycle, and the PR agent. Each invocation is its **own row**, including re-runs (BLOCKED re-evaluations, implementor re-runs, additional review cycles) — label a re-run row with its cycle, e.g. `AI Review (cycle 2)` or `Implementor (re-run)`. Never fold a re-run into its first execution's row; the retry cost must stay visible.
+- **Active pipeline total** — the sum of every per-stage row above. Excludes time the run sat paused at checkpoints. Render it as a **bold separator row** directly beneath the stage rows, so the breakdown visibly sums to it.
+- **Wall-clock** — end timestamp minus the Step 3 start anchor. **Includes** the time the run was paused at both checkpoints. Render it as the final row, beneath the active total. If the start anchor is unavailable (e.g. context was summarized mid-run), put `unavailable` in its Duration cell rather than omitting the row.
+
+Format each duration as `Xm Ys` (or `Ys` when under a minute).
 
 The active total is smaller than wall-clock; the difference is checkpoint wait plus orchestration overhead — that gap is expected and worth surfacing.
 
-Tell the developer:
+Tell the developer (table column widths are illustrative — let them render naturally):
 
 > "PR is open at <URL>. Merge when ready.
 >
-> **Run time** — active pipeline: `<Xm Ys>` (sum of N stage executions); wall-clock: `<Am Bs>` (first stage → PR, includes checkpoint pauses)."
+> **Run time**
+>
+> | Stage | Duration |
+> |-------|----------|
+> | Evaluator | `<Xm Ys>` |
+> | Planner | `<Xm Ys>` |
+> | Implementor | `<Xm Ys>` |
+> | AI Review | `<Xm Ys>` |
+> | PR | `<Xm Ys>` |
+> | **Active pipeline total** | **`<Xm Ys>`** |
+> | Wall-clock (incl. checkpoint pauses) | `<Am Bs>` |
+>
+> The ~`<gap>` between active and wall-clock is checkpoint wait plus orchestration overhead."
 
 ---
 
