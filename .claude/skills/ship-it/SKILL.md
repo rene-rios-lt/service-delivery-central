@@ -159,7 +159,47 @@ git -C <repo-path> checkout main
 git -C <repo-path> pull origin main
 ```
 
-Report the PR URL to the developer.
+---
+
+### Step 8 — Prune merged local branches (smart cleanup)
+
+Squash-merges (this project's default) are **not** recognised by `git branch -d` — the branch tip never becomes an ancestor of `main` — so merged branches silently pile up unless cleaned explicitly. After syncing `main`, tidy the **target repo only** (never reach into the other three).
+
+1. Prune stale remote-tracking refs so "gone" upstreams are detected accurately:
+
+   ```bash
+   git -C <repo-path> fetch --prune origin
+   ```
+
+2. Delete the branch this run just created. Step 6's `--delete-branch` removes it on the remote, but the local copy lingers because the merge ran while it was the checked-out branch:
+
+   ```bash
+   git -C <repo-path> branch -D <branch-name>
+   ```
+
+3. Smart-delete any **other** local branch whose upstream is **gone** — it was pushed, merged, and its remote branch deleted. A gone upstream is the safe signal that distinguishes a merged-and-cleaned branch from local-only work. Never `main`:
+
+   ```bash
+   git -C <repo-path> for-each-ref --format '%(refname:short) %(upstream:track)' refs/heads/ \
+     | awk '$2 == "[gone]" { print $1 }' \
+     | grep -vx main \
+     | xargs -r -n1 git -C <repo-path> branch -D
+   ```
+
+**Leave untouched** — these are not safe to assume merged:
+- `main` and the currently checked-out branch.
+- Branches with **no** upstream (never pushed) — may be unpushed local work.
+- Branches whose upstream **still exists** on the remote — an open or unmerged PR.
+
+This is conservative by design: it removes only branches git can prove are merged-and-remote-deleted, so it is safe to run on every shipment.
+
+---
+
+### Step 9 — Report
+
+Report to the developer:
+- The PR URL.
+- The local branches pruned in Step 8 (or "no merged branches to prune" if none qualified).
 
 ---
 
@@ -170,6 +210,8 @@ Report the PR URL to the developer.
 - Never cherry-pick merge commits.
 - If any step fails, stop and report the exact error — do not retry silently with different flags.
 - If the working tree has changes in unrelated files alongside the intended changes, stage only the relevant files and note what was left unstaged.
+- Never delete `main` or the currently checked-out branch.
+- Step 8 cleanup may force-delete only the branch this run just merged, or branches whose upstream is **gone** (merged + remote-deleted). Never force-delete a branch with a live upstream (open PR) or no upstream (unpushed local work).
 
 ---
 
