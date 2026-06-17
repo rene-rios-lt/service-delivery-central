@@ -91,7 +91,7 @@
 |-------|------|-------------|
 | ~~[BE-019](backend.md)~~ | ~~Backend~~ | ~~`POST /rep/arrive`~~ |
 | ~~[BE-020](backend.md)~~ | ~~Backend~~ | ~~`POST /rep/complete` + re-run matching for Pending requests~~ |
-| [BE-023](backend.md) | Backend | `OnDisconnectedAsync` — offline detection, re-queue (re-match), DispatchHub alert; human reps not re-assumed |
+| ~~[BE-023](backend.md)~~ | ~~Backend~~ | ~~`OnDisconnectedAsync` — offline detection, re-queue (re-match), DispatchHub alert; human reps not re-assumed~~ |
 | [BE-026](backend.md) | Backend | `POST /vehicles/{id}/take-over` — idle rep assumes an idle vehicle, supersedes simulator, marks human-controlled |
 | [BE-027](backend.md) | Backend | `GET /simulator/fleet-state` — Simulator-role read of per-vehicle rep state + active-request location + human-controlled flag |
 | [BE-028](backend.md) | Backend | `POST /rep/heartbeat` + go-off-duty; human-controlled timeout → park + re-match; sim does not re-assume |
