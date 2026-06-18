@@ -1,15 +1,79 @@
 #!/usr/bin/env bash
-# Fired by a PostToolUse hook after 'gh pr merge' succeeds.
-# Extracts the story/bug ID from the merged PR's head branch and crosses it out
-# in docs/stories/execution-plan.md in the central repo.
+# Crosses a merged story/bug ID out in docs/stories/execution-plan.md.
 #
-# Handles both story IDs (BE-/FE-/SIM-) and bug IDs (BUG-), and matches the ID
-# whether the row's first cell is a bare ID (`| BE-014 |`) or a markdown link
+# Two modes:
+#   1. Explicit:  mark-story-complete.sh <STORY-ID>      (e.g. BE-014, SIM-008, BUG-001)
+#      Crosses the ID out directly. Used by reconcile-plan.sh and by the
+#      /master / worktree flows, where the PostToolUse hook does NOT fire (a
+#      worktree is a separate project dir, so central's project-scoped hook is
+#      not active there — see reconcile-plan.sh).
+#   2. Hook (no args): reads the PostToolUse JSON on stdin, extracts the merged
+#      PR's head-branch story ID, and crosses it out. Fired after `gh pr merge`.
+#
+# Handles story IDs (BE-/FE-/SIM-) and bug IDs (BUG-), matching the ID whether
+# the row's first cell is a bare ID (`| BE-014 |`) or a markdown link
 # (`| [BE-014](backend.md) |`, `| [**BUG-001**](bug.md) |`).
+#
+# Idempotent — a row that is already struck through is left untouched.
 
 PLAN="/Users/rrios/dev/ServiceDelivery/docs/stories/execution-plan.md"
 CENTRAL_REPO="/Users/rrios/dev/ServiceDelivery"
 
+# Cross a single story/bug ID out in the execution plan.
+# Link-aware: matches the ID inside a markdown link or as a bare token, in the
+# first table cell only; preserves the link markup inside the ~~ ~~.
+cross_out() {
+  story_id="$1"
+  [ -z "$story_id" ] && return 0
+  python3 - "$story_id" "$PLAN" <<'PYEOF'
+import re, sys
+
+story_id = sys.argv[1]
+plan_file = sys.argv[2]
+
+with open(plan_file) as f:
+    lines = f.readlines()
+
+# Match the ID as a whole token (bare, or inside [..](..) / [**..**](..)),
+# not as a prefix of a longer ID (BE-1 must not match BE-14).
+id_re = re.compile(r'(?<![A-Za-z0-9-])' + re.escape(story_id) + r'(?![0-9])')
+
+changed = False
+out = []
+for line in lines:
+    stripped = line.rstrip('\n')
+    is_row = stripped.startswith('|') and stripped.count('|') >= 4
+    cells = stripped.split('|') if is_row else []
+    # cells[1] is the first (Story) column; only strike if the ID is there
+    # and the row is not already struck through.
+    if is_row and len(cells) >= 4 and id_re.search(cells[1]) and '~~' not in stripped:
+        new = []
+        for i, c in enumerate(cells):
+            if i == 0 or i == len(cells) - 1:
+                new.append(c)              # outer empties around the row
+            else:
+                inner = c.strip()
+                new.append(f' ~~{inner}~~ ' if inner else c)
+        line = '|'.join(new) + '\n'
+        changed = True
+    out.append(line)
+
+if changed:
+    with open(plan_file, 'w') as f:
+        f.writelines(out)
+    print('Crossed out ' + story_id + ' in execution-plan.md')
+PYEOF
+}
+
+# --- Mode 1: explicit story ID ------------------------------------------------
+if [ "$#" -ge 1 ]; then
+  story_id=$(printf '%s' "$1" | grep -oE '(BE|FE|SIM|BUG)-[0-9]+' || true)
+  [ -z "$story_id" ] && { echo "mark-story-complete: '$1' is not a story/bug id" >&2; exit 1; }
+  cross_out "$story_id"
+  exit 0
+fi
+
+# --- Mode 2: PostToolUse hook (JSON on stdin) ---------------------------------
 input=$(cat)
 
 # Extract PR number from the command: "gh pr merge 15 --merge ..."
@@ -54,46 +118,4 @@ fi
 
 # Extract ID: feature/BE-025-... -> BE-025 ; fix/BUG-001-... -> BUG-001
 story_id=$(echo "$branch" | grep -oE '(BE|FE|SIM|BUG)-[0-9]+' || true)
-[ -z "$story_id" ] && exit 0
-
-# Apply strikethrough to the matching row in execution-plan.md.
-# Link-aware: matches the ID inside a markdown link or as a bare token, in the
-# first table cell only; preserves the link markup inside the ~~ ~~.
-python3 - "$story_id" "$PLAN" <<'PYEOF'
-import re, sys
-
-story_id = sys.argv[1]
-plan_file = sys.argv[2]
-
-with open(plan_file) as f:
-    lines = f.readlines()
-
-# Match the ID as a whole token (bare, or inside [..](..) / [**..**](..)),
-# not as a prefix of a longer ID (BE-1 must not match BE-14).
-id_re = re.compile(r'(?<![A-Za-z0-9-])' + re.escape(story_id) + r'(?![0-9])')
-
-changed = False
-out = []
-for line in lines:
-    stripped = line.rstrip('\n')
-    is_row = stripped.startswith('|') and stripped.count('|') >= 4
-    cells = stripped.split('|') if is_row else []
-    # cells[1] is the first (Story) column; only strike if the ID is there
-    # and the row is not already struck through.
-    if is_row and len(cells) >= 4 and id_re.search(cells[1]) and '~~' not in stripped:
-        new = []
-        for i, c in enumerate(cells):
-            if i == 0 or i == len(cells) - 1:
-                new.append(c)              # outer empties around the row
-            else:
-                inner = c.strip()
-                new.append(f' ~~{inner}~~ ' if inner else c)
-        line = '|'.join(new) + '\n'
-        changed = True
-    out.append(line)
-
-if changed:
-    with open(plan_file, 'w') as f:
-        f.writelines(out)
-    print('Crossed out ' + story_id + ' in execution-plan.md')
-PYEOF
+cross_out "$story_id"

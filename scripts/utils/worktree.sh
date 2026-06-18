@@ -230,12 +230,22 @@ cleanup_worktrees_dir() {
   rmdir "$WORKTREES_DIR" 2>/dev/null && info "removed empty $WORKTREES_DIR" || true
 }
 
+# Cross out any merged stories the worktree-merge hook missed. Worktree sessions
+# merge PRs from a separate project dir where central's PostToolUse hook does not
+# fire, so the plan drifts; this reconciles it against the merged-PR ground truth.
+reconcile_plan() {
+  local script="$CENTRAL/scripts/utils/reconcile-plan.sh"
+  [ -x "$script" ] || return 0
+  info "reconciling execution plan with merged PRs…"
+  "$script" || true
+}
+
 # --- dispatch --------------------------------------------------------------
 
 [ $# -ge 1 ] || die "usage: worktree.sh {create|remove} <STORY-ID>... | remove --merged | <STORY-ID>..."
 
 case "$1" in
   create) shift; [ $# -ge 1 ] || die "create needs at least one story id"; do_create "$@" ;;
-  remove) shift; [ $# -ge 1 ] || die "remove needs a story id or --merged"; do_remove "$@" ;;
+  remove) shift; [ $# -ge 1 ] || die "remove needs a story id or --merged"; do_remove "$@"; reconcile_plan ;;
   *)      do_create "$@" ;;
 esac
