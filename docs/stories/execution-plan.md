@@ -107,7 +107,7 @@
 | Story | Repo | Description |
 |-------|------|-------------|
 | ~~[BE-021](backend.md)~~ | ~~Backend~~ | ~~`GET /dispatcher/fleet`~~ |
-| [BE-022](backend.md) | Backend | `POST /dispatcher/redirect` — eligibility rules, cooldown, displaced-request flow |
+| ~~[BE-022](backend.md)~~ | ~~Backend~~ | ~~`POST /dispatcher/redirect` — eligibility rules, cooldown, displaced-request flow~~ |
 
 **Exit criteria:** Redirect works end-to-end via API: displaced request re-queues, new rep receives `RedirectReceived`, Gold requester receives `RepAssigned`.
 
