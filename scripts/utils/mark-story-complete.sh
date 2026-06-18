@@ -80,16 +80,24 @@ input=$(cat)
 cmd=$(echo "$input" | jq -r '.tool_input.command // ""')
 pr_num=$(echo "$cmd" | grep -oE '\bgh pr merge [0-9]+' | grep -oE '[0-9]+$' || true)
 
-# Extract GitHub remote URL from the git pull output embedded in the response
-response=$(echo "$input" | jq -r '
-  .tool_response |
-  if type == "string" then .
-  elif type == "object" then (.output // .stdout // .result // "")
-  else ""
-  end // ""
-' 2>/dev/null || true)
+# Resolve the target repo. Prefer the explicit --repo flag on the command — it
+# is exact and collision-proof. PR numbers repeat across the four repos (e.g.
+# backend #16 and simulator #16 both exist), so guessing by PR number alone can
+# strike the wrong story. Supports "--repo slug" and "--repo=slug".
+repo=$(echo "$cmd" | grep -oE '\-\-repo[ =]+[^ ]+' | head -1 | sed -E 's/^--repo[ =]+//' || true)
 
-repo=$(echo "$response" | grep -oE 'github\.com/[^/]+/service-delivery-[a-z]+' | head -1 | sed 's|github.com/||' || true)
+# Only when no --repo flag was given, fall back to scraping a GitHub URL out of
+# the merge output embedded in the tool response.
+if [ -z "$repo" ]; then
+  response=$(echo "$input" | jq -r '
+    .tool_response |
+    if type == "string" then .
+    elif type == "object" then (.output // .stdout // .result // "")
+    else ""
+    end // ""
+  ' 2>/dev/null || true)
+  repo=$(echo "$response" | grep -oE 'github\.com/[^/]+/service-delivery-[a-z]+' | head -1 | sed 's|github.com/||' || true)
+fi
 
 # Resolve head branch
 branch=""
@@ -97,8 +105,11 @@ if [ -n "$pr_num" ] && [ -n "$repo" ]; then
   branch=$(gh pr view "$pr_num" --repo "$repo" --json headRefName -q '.headRefName' 2>/dev/null || true)
 fi
 
-# Fallback: try each repo — only accept if branch contains a story/bug ID
-if [ -z "$branch" ] && [ -n "$pr_num" ]; then
+# Last-resort fallback — ONLY when the repo could not be determined at all.
+# Guarded by "[ -z "$repo" ]" so it never overrides a known repo: a PR-number
+# collision across repos must not be able to strike the wrong story when the
+# correct repo was on the command line.
+if [ -z "$branch" ] && [ -z "$repo" ] && [ -n "$pr_num" ]; then
   for repo_dir in \
     "$CENTRAL_REPO" \
     "$CENTRAL_REPO/service-delivery-backend" \
