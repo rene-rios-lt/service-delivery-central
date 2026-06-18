@@ -71,7 +71,7 @@ Azure infrastructure provisioned via Terraform (not active for POC local dev)
 ./scripts/utils/<script-name>.sh
 ```
 
-`scripts/utils/mark-story-complete.sh` is not run by hand — it is fired by a PostToolUse hook after `gh pr merge` succeeds, and crosses the merged story/bug ID out in `docs/stories/execution-plan.md`.
+`scripts/utils/mark-story-complete.sh` crosses a merged story/bug ID out in `docs/stories/execution-plan.md`. It usually runs unattended — fired by a PostToolUse hook after `gh pr merge` succeeds — but it also accepts an explicit ID (`mark-story-complete.sh SIM-008`) for cases the hook can't catch. **The hook does not fire when a PR is merged from a `/worktree` session** (the worktree is a separate project dir, so central's project-scoped hook is inactive there). `scripts/utils/reconcile-plan.sh` is the backstop: it lists merged PRs across all repos and crosses out every merged story — run it directly, or let `scripts/utils/worktree.sh remove --merged` run it for you during worktree cleanup.
 
 All scripts must be runnable from the repo root and must be executable (`chmod +x`).
 

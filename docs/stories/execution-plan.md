@@ -106,7 +106,7 @@
 
 | Story | Repo | Description |
 |-------|------|-------------|
-| [BE-021](backend.md) | Backend | `GET /dispatcher/fleet` |
+| ~~[BE-021](backend.md)~~ | ~~Backend~~ | ~~`GET /dispatcher/fleet`~~ |
 | [BE-022](backend.md) | Backend | `POST /dispatcher/redirect` — eligibility rules, cooldown, displaced-request flow |
 
 **Exit criteria:** Redirect works end-to-end via API: displaced request re-queues, new rep receives `RedirectReceived`, Gold requester receives `RepAssigned`.
@@ -118,7 +118,7 @@
 
 | Story | Repo | Description |
 |-------|------|-------------|
-| [SIM-008](simulator.md) | Simulator | Reconcile against `GET /simulator/fleet-state` each tick; drive all vehicles; operate only non-human reps |
+| ~~[SIM-008](simulator.md)~~ | ~~Simulator~~ | ~~Reconcile against `GET /simulator/fleet-state` each tick; drive all vehicles; operate only non-human reps~~ |
 | [SIM-005](simulator.md) | Simulator | Auto-accept (~85%) / auto-decline (~15%) job offers with a 1–5s delay — only for reps the simulator still operates (skips human-controlled, per SIM-008). Moved here from Phase 4: depends on SIM-011 (per-rep identity) and SIM-008 (human-controlled signal) |
 | [SIM-006](simulator.md) | Simulator | Navigate toward requester on accept (automated **or** human rep); hold for a human's Arrived/Complete |
 | [SIM-007](simulator.md) | Simulator | Return to nearest loop waypoint on job completion |

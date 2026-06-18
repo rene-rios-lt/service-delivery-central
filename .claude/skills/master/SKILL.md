@@ -67,6 +67,7 @@ Then apply these overrides to the rest of this skill:
 | Skill / Required-Reading paths | `.claude/skills/...` | `$CENTRAL/.claude/skills/...` |
 | Audit files (`.stories/<ID>/`) | in the working repo | `$WORKTREE/.stories/<ID>/` |
 | Feature branch (Step 2) | `git checkout -b feature/<ID>-...` | **already on the branch — do NOT create or switch; skip branch creation** |
+| Plan strikethrough on merge | PostToolUse hook crosses the story out automatically | **hook does NOT fire from a worktree** — after the PR merges, run `$CENTRAL/scripts/utils/mark-story-complete.sh <ID>` (or `scripts/utils/worktree.sh remove --merged`, which reconciles the whole plan) |
 
 When invoking every pipeline agent in worktree mode, pass it explicitly: the story ID, `$WORKTREE` as the working repo (all code/test/git work happens there), `$CENTRAL` for reading story/docs/skill files by absolute path, and the audit-file path under `$WORKTREE/.stories/<ID>/`. Tell each agent it is running in a worktree and must NOT assume the central repo is at `../` or that working repos are subdirectories. Everything else in the Lifecycle is unchanged.
 
