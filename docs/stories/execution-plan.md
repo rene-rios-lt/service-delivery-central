@@ -119,7 +119,7 @@
 | Story | Repo | Description |
 |-------|------|-------------|
 | ~~[SIM-008](simulator.md)~~ | ~~Simulator~~ | ~~Reconcile against `GET /simulator/fleet-state` each tick; drive all vehicles; operate only non-human reps~~ |
-| [SIM-005](simulator.md) | Simulator | Auto-accept (~85%) / auto-decline (~15%) job offers with a 1–5s delay — only for reps the simulator still operates (skips human-controlled, per SIM-008). Moved here from Phase 4: depends on SIM-011 (per-rep identity) and SIM-008 (human-controlled signal) |
+| ~~[SIM-005](simulator.md)~~ | ~~Simulator~~ | ~~Auto-accept (~85%) / auto-decline (~15%) job offers with a 1–5s delay — only for reps the simulator still operates (skips human-controlled, per SIM-008). Moved here from Phase 4: depends on SIM-011 (per-rep identity) and SIM-008 (human-controlled signal)~~ |
 | [SIM-006](simulator.md) | Simulator | Navigate toward requester on accept (automated **or** human rep); hold for a human's Arrived/Complete |
 | [SIM-007](simulator.md) | Simulator | Return to nearest loop waypoint on job completion |
 | [SIM-009](simulator.md) | Simulator | Yield a rep on human takeover; never re-assume it for the run (sticky) |
