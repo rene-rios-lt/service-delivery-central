@@ -94,7 +94,7 @@
 | ~~[BE-023](backend.md)~~ | ~~Backend~~ | ~~`OnDisconnectedAsync` — offline detection, re-queue (re-match), DispatchHub alert; human reps not re-assumed~~ |
 | ~~[BE-026](backend.md)~~ | ~~Backend~~ | ~~`POST /vehicles/{id}/take-over` — idle rep assumes an idle vehicle, supersedes simulator, marks human-controlled~~ |
 | ~~[BE-027](backend.md)~~ | ~~Backend~~ | ~~`GET /simulator/fleet-state` — Simulator-role read of per-vehicle rep state + active-request location + human-controlled flag~~ |
-| [BE-028](backend.md) | Backend | `POST /rep/heartbeat` + go-off-duty; human-controlled timeout → park + re-match; sim does not re-assume |
+| ~~[BE-028](backend.md)~~ | ~~Backend~~ | ~~`POST /rep/heartbeat` + go-off-duty; human-controlled timeout → park + re-match; sim does not re-assume~~ |
 | ~~[BE-029](backend.md)~~ | ~~Backend~~ | ~~Background reconciler — re-match `Pending` requests with no active offer (backstop for dropped re-matches; reuses the BE-018 hosted-service pattern)~~ |
 
 **Exit criteria:** A full job lifecycle (submit → match → offer → accept → arrive → complete) works via API calls; re-matching after completion creates a new offer if other requests are pending; a human can take over an idle vehicle (superseding the simulator) and is parked on logout/timeout without the simulator re-assuming them.
