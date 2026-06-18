@@ -38,6 +38,40 @@ Invoked with a story ID:
 
 ---
 
+## Worktree Execution Mode
+
+`/master` may run from one of two locations, and must detect which **before Step 1**:
+
+- **Central mode (default):** cwd is the central repo. Working repos are subdirectories (`service-delivery-backend/` etc.); story docs are at `docs/stories/<repo>.md`; skills at `.claude/skills/...`.
+- **Worktree mode:** cwd is a per-story git worktree created by `/worktree` (`scripts/utils/worktree.sh`) — the cwd **is** the working repo, already checked out on the story branch, and its `.claude` is a symlink into the central repo.
+
+**Detect worktree mode** at the start of the run:
+
+```bash
+readlink .claude 2>/dev/null   # non-empty (…/.claude) ⇒ worktree mode
+```
+
+If `.claude` is a symlink to a central repo's `.claude`, resolve the central root once and use **absolute paths** for everything central thereafter:
+
+```bash
+CENTRAL="$(cd "$(dirname "$(readlink .claude)")" && pwd)"   # e.g. /Users/rrios/dev/ServiceDelivery
+WORKTREE="$(pwd)"                                            # the working repo for this story
+```
+
+Then apply these overrides to the rest of this skill:
+
+| Concern | Central mode | Worktree mode |
+|---------|--------------|---------------|
+| Working repo | `<central>/service-delivery-<x>/` | `$WORKTREE` (the cwd itself) |
+| Story / docs files | `docs/stories/<repo>.md` | `$CENTRAL/docs/stories/<repo>.md` |
+| Skill / Required-Reading paths | `.claude/skills/...` | `$CENTRAL/.claude/skills/...` |
+| Audit files (`.stories/<ID>/`) | in the working repo | `$WORKTREE/.stories/<ID>/` |
+| Feature branch (Step 2) | `git checkout -b feature/<ID>-...` | **already on the branch — do NOT create or switch; skip branch creation** |
+
+When invoking every pipeline agent in worktree mode, pass it explicitly: the story ID, `$WORKTREE` as the working repo (all code/test/git work happens there), `$CENTRAL` for reading story/docs/skill files by absolute path, and the audit-file path under `$WORKTREE/.stories/<ID>/`. Tell each agent it is running in a worktree and must NOT assume the central repo is at `../` or that working repos are subdirectories. Everything else in the Lifecycle is unchanged.
+
+---
+
 ## Agent Files
 
 | Agent name | File |
@@ -65,7 +99,7 @@ A documentation-only bug (no code or tests) does not belong in this TDD pipeline
 In the working repo for this story, at the start of every execution:
 1. Delete `.stories/<STORY-ID>/` if it exists (clean slate).
 2. Create `.stories/<STORY-ID>/`.
-3. Create the feature branch (title from the story heading, lowercased and hyphenated):
+3. Create the feature branch (title from the story heading, lowercased and hyphenated). **In worktree mode (see Worktree Execution Mode), skip this step entirely — the worktree is already checked out on the story branch; do steps 1–2 under `$WORKTREE/.stories/` and proceed to Step 3.**
    ```bash
    git checkout -b feature/<STORY-ID>-<kebab-case-title>
    ```

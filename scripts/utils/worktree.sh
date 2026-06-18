@@ -4,9 +4,12 @@
 #
 # Worktrees live INSIDE the central repo at .worktrees/<STORY-ID> — gitignored
 # and excluded from all AI analysis via .claude/settings.json (permissions.deny).
-# Each `create` opens a new Terminal.app window already running `claude
-# "/master <STORY-ID>"`, so a story goes from idea to running pipeline in one
-# command.
+# Each `create` symlinks central's .claude into the worktree (so /master + the
+# story-* agents are discoverable there), opens a new Terminal.app window with
+# Claude running in the worktree, and sends the `/master <STORY-ID>` command as
+# text once the session is up. (It is sent as typed text, not a launch argument:
+# a slash-command passed as the startup prompt resolves before project skills
+# register and fails with "Unknown command".)
 #
 # Usage:
 #   worktree.sh create <STORY-ID> [<STORY-ID> ...]
@@ -20,6 +23,7 @@
 # Env:
 #   SD_WORKTREES_DIR        override worktree root (default: <central>/.worktrees)
 #   SD_WORKTREE_NO_LAUNCH=1 skip opening Terminal (print the command instead)
+#   SD_WORKTREE_LAUNCH_DELAY seconds to wait before sending /master (default 6)
 #   SD_WORKTREE_FORCE=1     allow removing a worktree with uncommitted changes
 #
 # Idempotent. macOS bash 3.2 compatible.
@@ -117,24 +121,51 @@ do_create() {
       fi
     fi
 
+    link_central_claude "$path"
     launch_session "$id" "$path"
   done
 }
 
+# Symlink central's .claude into the worktree so its slash-command skills
+# (/master) and subagents (story-*) are discoverable from inside the worktree.
+# A worktree's git root is the working repo, which has no .claude, and discovery
+# does not walk out to the central repo — without this the worktree session has
+# no /master. Kept out of the worktree's git status via its local exclude.
+link_central_claude() {
+  local path="$1" excl
+  ln -snf "$CENTRAL/.claude" "$path/.claude"
+  excl="$(git -C "$path" rev-parse --git-path info/exclude 2>/dev/null || true)"
+  if [ -n "$excl" ] && [ -f "$excl" ] && ! grep -qxF ".claude" "$excl" 2>/dev/null; then
+    printf '.claude\n' >> "$excl"
+  fi
+}
+
 launch_session() {
-  local id="$1" path="$2" inner esc ascript
-  inner="cd \"$path\" && claude \"/master $id\""
+  local id="$1" path="$2" open_cmd type_cmd esc_open esc_type delay
+  # Open Claude BARE in the worktree, then send the /master command as text once
+  # the session is up. We do NOT pass "/master <id>" as a launch argument: a
+  # project slash-command given as the startup prompt is resolved before project
+  # skills register and fails with "Unknown command".
+  open_cmd="cd \"$path\" && claude"
+  type_cmd="/master $id"
+  delay="${SD_WORKTREE_LAUNCH_DELAY:-6}"
   if [ "${SD_WORKTREE_NO_LAUNCH:-0}" = "1" ]; then
-    info "$id: (no-launch) would run: $inner"
+    info "$id: (no-launch) would open Terminal at $path and send: $type_cmd"
     return 0
   fi
-  # escape backslashes then double-quotes for embedding in an AppleScript string
-  esc="${inner//\\/\\\\}"; esc="${esc//\"/\\\"}"
-  ascript="tell application \"Terminal\" to do script \"$esc\""
-  if osascript -e "$ascript" >/dev/null 2>&1; then
-    info "$id: opened Terminal window → /master $id"
+  esc_open="${open_cmd//\\/\\\\}"; esc_open="${esc_open//\"/\\\"}"
+  esc_type="${type_cmd//\\/\\\\}"; esc_type="${esc_type//\"/\\\"}"
+  if osascript \
+       -e 'tell application "Terminal"' \
+       -e 'activate' \
+       -e "set t to do script \"$esc_open\"" \
+       -e "delay $delay" \
+       -e "do script \"$esc_type\" in t" \
+       -e 'end tell' >/dev/null 2>&1; then
+    info "$id: opened Terminal at $path and sent: $type_cmd"
+    info "$id: (if a trust prompt appeared first, just type '$type_cmd' yourself)"
   else
-    die "$id: could not open Terminal.app (macOS only). Worktree is ready at $path"
+    die "$id: could not open Terminal.app (macOS only). Worktree ready at $path — run 'claude' there, then: $type_cmd"
   fi
 }
 
