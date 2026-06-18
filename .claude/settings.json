@@ -1,4 +1,11 @@
 {
+  "permissions": {
+    "deny": [
+      "Read(.worktrees/**)",
+      "Grep(.worktrees/**)",
+      "Glob(.worktrees/**)"
+    ]
+  },
   "hooks": {
     "PostToolUse": [
       {

@@ -1,3 +1,7 @@
+# Git worktrees created by /worktree (scripts/utils/worktree.sh) for parallel
+# story work. Excluded from AI analysis too — see .claude/settings.json.
+.worktrees/
+
 # OS
 .DS_Store
 Thumbs.db

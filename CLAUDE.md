@@ -146,6 +146,7 @@ Skills are Claude Code slash commands — each lives in `.claude/skills/<name>/S
 | `audit-skills/` | `/audit-skills` | Full audit of all pipeline skills — ratings across 8 dimensions, strengths, weaknesses, inconsistencies, contradictions, improvement backlog |
 | `validate-ai-system/` | `/validate-ai-system` | Pipeline health check — required sections, resolvable Required Reading paths, intact cross-references in all AGENT.md and SKILL.md files |
 | `ship-it/` | `/ship-it` | Branch, commit, push, PR, and merge in one shot — lands out-of-pipeline changes (docs/config/housekeeping); story commits/PRs go through `/master` |
+| `worktree/` | `/worktree` | Create/tear down per-story git worktrees under `.worktrees/<ID>` and launch a `claude "/master <ID>"` session per story (Terminal.app); backed by `scripts/utils/worktree.sh` |
 
 ### AI Agents (`.claude/agents/`)
 
