@@ -200,6 +200,17 @@
 
 ---
 
+## Cross-Cutting — Engineering Quality
+**Goal:** Harden the AI pipeline against defect classes that have slipped through. Not tied to a feature phase; runs whenever picked up.
+
+| Story | Repo | Description |
+|-------|------|-------------|
+| [QUAL-001](quality.md) | Central + Simulator | Catch "masking" tests in AI Review: strengthen `/test-quality` (+ `story-ai-reviewer`) so tests that pass by placeholder reuse / mirroring the code's wrong assumption are flagged; audit the simulator suite for other instances. Motivated by BUG-016/017 shipping green. |
+
+**Depends on:** nothing (process improvement). Central skill/agent edits ship via `/ship-it`; any simulator test-code changes from the audit go via `/master`.
+
+---
+
 ## Dependency Graph
 
 ```
