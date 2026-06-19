@@ -167,3 +167,103 @@ A dispatcher cannot recover a stuck/offline rep's vehicle through the UI, despit
 - **Issue:** Both directories now contain real scripts, so the `.gitkeep` placeholders are obsolete.
 - **Fix:** Remove `scripts/local/.gitkeep` and `scripts/utils/.gitkeep`.
 - **Done when:** Both `.gitkeep` files are gone.
+
+---
+
+## BUG-016 — Simulator crashes on startup: `/vehicles/available` response shape mismatch
+
+- **Status:** Open
+- **Severity:** High (simulator cannot start — blocks any end-to-end run)
+- **Repo / Area:** Simulator — `BackendApiClient.GetAvailableVehicleIdsAsync` / `IBackendApiClient` / `FleetClaimCoordinator`
+- **Related stories:** `SIM-008` (fleet reconciliation / initial vehicle claim), `BE-004` (`GET /vehicles/available`)
+- **Found:** First headless end-to-end run (backend + simulator together). Caught by integration, not unit tests — both repos were tested against their own mock of this call, so the wire-contract drift was invisible until they ran together.
+
+**Summary**
+On startup, `FleetClaimCoordinator.ClaimInitialVehiclesAsync` calls `GET /vehicles/available` and the simulator deserializes the response as `IReadOnlyList<string>` (an array of bare vehicle-id strings). The backend (`BE-004`) actually returns an array of **objects**: `{ vehicleId, registration, equipment[] }`. Deserialization throws and the host crashes before the simulator can operate any rep.
+
+**Exact error**
+```
+System.Text.Json.JsonException: The JSON value could not be converted to System.String. Path: $[0]
+  ---> Cannot get the value of a token type 'StartObject' as a string.
+  at ServiceDelivery.Simulator.Services.BackendApiClient.GetJsonAsync[T](...)  // BackendApiClient.cs:131
+  at ServiceDelivery.Simulator.Services.FleetClaimCoordinator.ClaimOneFreeVehicleAsync(...)  // FleetClaimCoordinator.cs:54
+  at ServiceDelivery.Simulator.Workers.SimulatorStartupService.StartAsync(...)  // SimulatorStartupService.cs:81
+```
+
+**Expected**
+The simulator parses the `GET /vehicles/available` response and obtains the available vehicle ids to claim.
+
+**Actual**
+`GetAvailableVehicleIdsAsync` requests `GetJsonAsync<string>` against an endpoint that returns objects; the JSON value `{...}` cannot be read as a `string`, so the call throws and the simulator process exits on startup.
+
+**Root cause**
+Contract drift between repos: the simulator assumed `GET /vehicles/available` returns `["id", ...]`; the backend returns `[{ "vehicleId": "...", "registration": "...", "equipment": [...] }, ...]`. Note the id field is `vehicleId`, not `id`.
+
+**Proposed fix (simulator-side)**
+- Deserialize `GET /vehicles/available` into the object shape and project out `vehicleId`, returning the list of ids from `GetAvailableVehicleIdsAsync` (keep the public `IReadOnlyList<string>` contract its callers rely on).
+- Add a small model record mirroring the backend's available-vehicle item (`VehicleId`, `Registration`, `Equipment`) rather than reusing `GetJsonAsync<string>`.
+
+**Acceptance criteria (bug resolved when):**
+- A unit test deserializes a realistic `GET /vehicles/available` JSON body (array of `{ vehicleId, registration, equipment }`) and asserts `GetAvailableVehicleIdsAsync` returns the expected ids.
+- `FleetClaimCoordinator.ClaimInitialVehiclesAsync` no longer throws on that response shape.
+- The simulator starts cleanly against the running backend and claims initial vehicles (verified by the headless smoke: reps reach `Available` with a posted position).
+
+---
+
+## BUG-017 — Simulator never posts positions: VehicleWorker keyed by registration, fleet-state uses GUIDs
+
+- **Status:** Open
+- **Severity:** High (no vehicle position is ever driven/posted — the fleet never moves, reps never get a position, so matching cannot select them; blocks any end-to-end run and the whole visual demo)
+- **Repo / Area:** Simulator — `Workers/FleetPositionDriver`, `Models/IowaRoutes`, `Workers/VehicleWorker` (possible Backend touch: `GET /simulator/fleet-state` payload)
+- **Related stories:** `SIM-003`/`SIM-004` (route loops + position posting), `SIM-006`/`SIM-008` (fleet-state-driven position), `BE-008`/`BE-027` (position endpoint / fleet-state read)
+- **Found:** Second headless backend+simulator run, immediately after BUG-016 was fixed (the simulator now starts and claims, exposing the next layer).
+
+**Summary**
+`FleetPositionDriver` holds one `VehicleWorker` per `IowaRoutes` entry, keyed by `VehicleWorker.VehicleId` — which is the **registration string** (`"V-001"`…`"V-008"`). Each tick it looks up the worker for a fleet-state row by `row.VehicleId`, but the backend's `GET /simulator/fleet-state` identifies vehicles by **GUID** (`30000000-…-01`). The key never matches, so every vehicle is skipped and **no position is ever posted**.
+
+**Exact symptom (live log, repeated every tick for all 8 vehicles)**
+```
+warn: ServiceDelivery.Simulator.Workers.FleetPositionDriver[0]
+      No VehicleWorker registered for vehicle 30000000-0000-0000-0000-000000000001; skipping drive.
+```
+Consequence verified via `GET /dispatcher/fleet`: all reps are `Available` (claims succeeded) but every `lastPosition` is `null`.
+
+**Root cause**
+Vehicle-identity mismatch. The simulator's hardcoded routes/workers key off registration strings; the backend identifies vehicles by GUID everywhere (fleet-state, claim, position endpoint). `FleetStateRow` carries `VehicleId` (GUID) but **no registration**, so the simulator currently has no field to bridge GUID → route.
+
+**Design decision required (surface at Checkpoint #1)**
+- **(A) Simulator-only — recommended:** assign `IowaRoutes` to vehicle **GUIDs dynamically** as they appear in fleet-state (route choice is cosmetic — each Iowa loop is an arbitrary patrol pattern, so it doesn't matter which GUID drives which route). Key `FleetPositionDriver` by the GUID. No backend change.
+- **(B) Backend-assisted:** add `registration` to the `GET /simulator/fleet-state` payload and key/map routes by registration. Requires a backend change (cross-repo) and only matters if a vehicle must always drive its "named" territory — not needed for the POC.
+
+**Acceptance criteria (bug resolved when):**
+- `FleetPositionDriver` resolves a worker/route for every fleet-state row by the backend's vehicle GUID (no `No VehicleWorker registered` warnings).
+- Each operated vehicle's position is posted every tick; `GET /dispatcher/fleet` shows `lastPosition != null` for operated reps.
+- A unit test feeds GUID-keyed fleet-state rows and asserts each row maps to a route/worker and a position is driven (no silent skip).
+- Verified by the headless smoke: the warm-up gate passes (reps reach `Available` **with** a posted position) and a submitted request matches and runs through the cycle.
+
+---
+
+## BUG-018 — Automated job stalls at `Within15Miles`: simulator stops navigating before reaching the requester
+
+- **Status:** Open
+- **Severity:** High (an automated job never auto-arrives or completes — the full cycle never closes; blocks the end-to-end demo)
+- **Repo / Area:** Simulator — `Services/VehicleDriveResolver` (drive-mode mapping), with `Workers/FleetReconciler` / `Services/ArrivalReporter` / `Workers/VehicleWorker` (navigation→arrival handoff)
+- **Related stories:** `SIM-006` (navigate to requester + arrive), `SIM-010` (dwell + complete), `BE-008` (15-mile detection)
+- **Found:** Third headless backend+simulator run, after BUG-016 + BUG-017 were fixed (the job now reaches `Within15Miles`, exposing the next layer).
+
+**Summary**
+After an automated rep accepts, the truck navigates toward the requester and the backend correctly flips `EnRoute → Within15Miles`. But the truck then **stops closing the final distance** and parks ~1–2 km short of the requester — never reaching the ~50 m arrival threshold — so `ArrivalReporter` never fires `POST /rep/arrive`, the job never reaches `OnSite`, and SIM-010's dwell/`complete` never runs. The request is stuck at `Assigned` indefinitely.
+
+**Evidence (live)**
+- Submitted a request at Rep One's position; job went `Pending → Assigned` (accepted) within seconds.
+- After 6 min: `GET /dispatcher/fleet` shows Rep One `state: Within15Miles`, `lastPosition ≈ (41.718, -93.586)` vs requester `(41.7308, -93.6064)` — ~1.8 km apart and not moving closer.
+- Simulator log: `0` calls to `/rep/arrive` or `/rep/complete`; positions still posting for the fleet.
+
+**Likely root cause (confirm in evaluation/plan)**
+`VehicleDriveResolver` appears to return `Navigate` only while the rep is `EnRoute`; once the backend flips the rep to `Within15Miles`, the resolver no longer drives the truck toward the requester, so it never reaches the arrival threshold. Navigation must continue **through `Within15Miles`** until the truck reaches the requester (and an automated rep then auto-arrives).
+
+**Acceptance criteria (bug resolved when):**
+- An automated rep continues navigating toward the requester while `Within15Miles` until it reaches the arrival threshold (does not park short).
+- On reaching the requester, an automated rep auto-arrives (`POST /rep/arrive`) → `OnSite`, then SIM-010's dwell + `POST /rep/complete` runs.
+- A unit test covers the `Within15Miles` drive mode (truck keeps navigating, not held/idle) and the resulting arrival trigger.
+- Verified by the headless smoke: a submitted job reaches `Completed`, then the rep returns to the loop (SIM-007).

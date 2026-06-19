@@ -163,3 +163,17 @@
 - The dwell is randomized per job so completions stagger across the fleet
 - The 120–240s window is a code constant (no config-file knob)
 - Applies to automated reps only — a human controls their own arrive/complete timing
+
+---
+
+### SIM-012 — Local config & secrets via `appsettings.Local.json`
+**As a** developer running the simulator locally,
+**I want** credentials and machine-specific settings kept in a gitignored `appsettings.Local.json` loaded by environment,
+**so that** the committed `appsettings.json` holds no secrets and local runs never risk committing creds.
+
+**Acceptance Criteria:**
+- `appsettings.json` (committed) contains no credentials — `SimulatorPassword` / `RepPassword` are empty placeholders; non-secret defaults (e.g. `BackendBaseUrl`) may remain
+- `appsettings.Local.json` (gitignored) holds the local creds and is layered on top via `DOTNET_ENVIRONMENT=Local` (the `Host.CreateDefaultBuilder` convention)
+- A committed `appsettings.Local.json.example` documents the shape and the env-var mechanism
+- Local run scripts set `DOTNET_ENVIRONMENT=Local` so the override loads (`scripts/local/start.sh`)
+- The same pattern is the template for future `appsettings.Development.json` / `appsettings.Test.json` / `appsettings.Production.json`
