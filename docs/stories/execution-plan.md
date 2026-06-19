@@ -122,8 +122,8 @@
 | ~~[SIM-005](simulator.md)~~ | ~~Simulator~~ | ~~Auto-accept (~85%) / auto-decline (~15%) job offers with a 1–5s delay — only for reps the simulator still operates (skips human-controlled, per SIM-008). Moved here from Phase 4: depends on SIM-011 (per-rep identity) and SIM-008 (human-controlled signal)~~ |
 | ~~[SIM-006](simulator.md)~~ | ~~Simulator~~ | ~~Navigate toward requester on accept (automated **or** human rep); hold for a human's Arrived/Complete~~ |
 | ~~[SIM-007](simulator.md)~~ | ~~Simulator~~ | ~~Return to nearest loop waypoint on job completion~~ |
-| [SIM-009](simulator.md) | Simulator | Yield a rep on human takeover; never re-assume it for the run (sticky) |
-| [SIM-010](simulator.md) | Simulator | Automated on-site work dwell (randomized 120–240s) |
+| ~~[SIM-009](simulator.md)~~ | ~~Simulator~~ | ~~Yield a rep on human takeover; never re-assume it for the run (sticky)~~ |
+| ~~[SIM-010](simulator.md)~~ | ~~Simulator~~ | ~~Automated on-site work dwell (randomized 120–240s)~~ |
 
 **Depends on:** Phase 4 (SIM-011 — per-rep identities), Phase 5 (BE-026/027/028 — takeover, fleet-state read, presence). SIM-005's AC-1 specifically needs BE-027's `human-controlled` flag surfaced via SIM-008.
 **Exit criteria:** During a simulated job, vehicle position updates show movement toward the requester's coordinates, then resume loop traversal after the job ends; when a human takes over a rep, the simulator stops deciding for it but keeps driving its position, and never re-assumes it once the human leaves.
