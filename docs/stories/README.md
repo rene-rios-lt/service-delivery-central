@@ -4,11 +4,12 @@ This directory contains the full user story backlog for the Service Delivery sys
 
 | File | Contents |
 |------|----------|
-| [`simulator.md`](simulator.md) | 10 stories — SIM-001 to SIM-010 |
-| [`backend.md`](backend.md) | 28 stories — BE-001 to BE-028 |
+| [`simulator.md`](simulator.md) | 12 stories — SIM-001 to SIM-012 |
+| [`backend.md`](backend.md) | 29 stories — BE-001 to BE-029 |
 | [`frontend.md`](frontend.md) | 23 stories — FE-001 to FE-023 |
-| [`bug.md`](bug.md) | Bugs — BUG-001 to BUG-015 (all fixed) |
-| [`execution-plan.md`](execution-plan.md) | 11-phase plan sequencing all 61 stories |
+| [`quality.md`](quality.md) | Cross-cutting engineering-quality stories — QUAL-001+ |
+| [`bug.md`](bug.md) | Bugs — BUG-001 to BUG-018 (BUG-016/017 fixed; BUG-018 open) |
+| [`execution-plan.md`](execution-plan.md) | Phase-based plan (+ a Cross-Cutting section) sequencing all stories in dependency order |
 
 ## Quick Reference
 

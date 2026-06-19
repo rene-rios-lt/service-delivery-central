@@ -61,8 +61,11 @@ Azure infrastructure provisioned via Terraform (not active for POC local dev)
 # Run the full test suite (backend + frontend + simulator) with a live results table
 ./scripts/local/test-all.sh
 
-# Bring up the full system locally (once scripts are populated)
+# Bring up the full system locally (backend on HTTP profile + simulator; exports DOTNET_ENVIRONMENT=Local so the simulator loads appsettings.Local.json)
 ./scripts/local/start.sh
+
+# Drive one service-delivery job end-to-end by API (requires start.sh already running) — the headless integration smoke
+./scripts/local/smoke.sh
 
 # Tear down local environment
 ./scripts/local/stop.sh
@@ -87,7 +90,7 @@ scripts/
 docs/
   architecture/ # Architecture diagrams and decision context
   adr/          # Architecture Decision Records (ADRs)
-  stories/      # Full user story backlog (backend.md, frontend.md, simulator.md), bug backlog (bug.md), execution plan (execution-plan.md), parallel-tracks.md, and a stories README.md
+  stories/      # Full user story backlog (backend.md, frontend.md, simulator.md), engineering-quality backlog (quality.md, QUAL-), bug backlog (bug.md), execution plan (execution-plan.md), parallel-tracks.md, and a stories README.md
 ```
 
 ## Engineering Standards

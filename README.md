@@ -115,6 +115,30 @@ Runs `dotnet test` against the simulator repo.
 
 Runs the backend and simulator test suites in sequence.
 
+### Bring up the full system locally
+
+```bash
+./scripts/local/start.sh
+```
+
+Starts the backend (HTTP profile, `http://localhost:5180`) and the simulator as background processes, exporting `DOTNET_ENVIRONMENT=Local` so both load `appsettings.Local.json` for local credentials. The backend seeds its data on startup. Logs: `/tmp/sd-backend.log`, `/tmp/sd-sim.log`.
+
+### Drive one job end-to-end (headless smoke)
+
+```bash
+./scripts/local/smoke.sh
+```
+
+Logs in as a dispatcher + requester, submits a service request near an available rep, and watches the automated cycle (offer → accept → en route → arrive → dwell → complete) over the API — the integration check that exercises the backend↔simulator contract without the frontend.
+
+### Tear down
+
+```bash
+./scripts/local/stop.sh
+```
+
+Stops the backend and simulator.
+
 ### `mark-story-complete.sh` (automated)
 
 `scripts/utils/mark-story-complete.sh` is not run by hand. A PostToolUse hook fires it after `gh pr merge` succeeds; it extracts the story/bug ID from the merged branch name and crosses that row out in `docs/stories/execution-plan.md`.
