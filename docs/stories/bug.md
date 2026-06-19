@@ -247,7 +247,7 @@ Vehicle-identity mismatch. The simulator's hardcoded routes/workers key off regi
 
 - **Status:** Open
 - **Severity:** High (an automated job never auto-arrives or completes — the full cycle never closes; blocks the end-to-end demo)
-- **Repo / Area:** Simulator — `Services/VehicleDriveResolver` (drive-mode mapping), with `Workers/FleetReconciler` / `Services/ArrivalReporter` / `Workers/VehicleWorker` (navigation→arrival handoff)
+- **Repo / Area:** Simulator — navigation-step / position-threading (`Services/StraightLineNavigator`, `Workers/VehicleWorker`, `Workers/FleetPositionDriver`, `Services/ArrivalReporter`). **NOT** `VehicleDriveResolver` (ruled out — see root cause).
 - **Related stories:** `SIM-006` (navigate to requester + arrive), `SIM-010` (dwell + complete), `BE-008` (15-mile detection)
 - **Found:** Third headless backend+simulator run, after BUG-016 + BUG-017 were fixed (the job now reaches `Within15Miles`, exposing the next layer).
 
@@ -259,11 +259,14 @@ After an automated rep accepts, the truck navigates toward the requester and the
 - After 6 min: `GET /dispatcher/fleet` shows Rep One `state: Within15Miles`, `lastPosition ≈ (41.718, -93.586)` vs requester `(41.7308, -93.6064)` — ~1.8 km apart and not moving closer.
 - Simulator log: `0` calls to `/rep/arrive` or `/rep/complete`; positions still posting for the fleet.
 
-**Likely root cause (confirm in evaluation/plan)**
-`VehicleDriveResolver` appears to return `Navigate` only while the rep is `EnRoute`; once the backend flips the rep to `Within15Miles`, the resolver no longer drives the truck toward the requester, so it never reaches the arrival threshold. Navigation must continue **through `Within15Miles`** until the truck reaches the requester (and an automated rep then auto-arrives).
+**Root cause — UNCONFIRMED (two hypotheses ruled out 2026-06-19; do not chase them again)**
+- ❌ **Resolver halts at `Within15Miles`** — ruled out. `VehicleDriveResolver.Resolve` already maps `Within15Miles` (with an active request) to `Navigate`, and `VehicleDriveResolverTests` already asserts it (passing). No red test exists for this; "fixing" it is a no-op.
+- ❌ **Fleet-state drops `ActiveRequestLocation` at `Within15Miles`** — ruled out. `VehicleRepository.GetFleetJobStateByDealerAsync` populates `ActiveRequestLatitude/Longitude` by joining the rep's `ActiveRequestId` to the service request, **independent of rep state**; the `EnRoute→Within15Miles` flip does not clear `ActiveRequestId`, so the location is present at `Within15Miles`.
+- ⏳ **Real cause: still to be diagnosed in the simulator navigation step.** The truck is in `Navigate` mode with a valid target yet stops converging ~1.8 km short. Suspect the per-tick step / position threading: e.g. `VehicleWorker` interpolating from a stale or route-derived position rather than its last-posted position (so it never closes the gap), or a convergence issue in `StraightLineNavigator`, possibly interacting with the BUG-017 GUID→worker pool model.
+- **How to confirm (needs a LIVE run — sim-side mocks won't show it):** run `scripts/local/start.sh` + drive a job to `Within15Miles`, then poll `GET /simulator/fleet-state` and the vehicle's posted positions over several ticks — check whether the posted position actually advances toward the requester each tick or is stuck. Re-diagnose, then update this entry and Repo/Area before `/master`.
 
 **Acceptance criteria (bug resolved when):**
 - An automated rep continues navigating toward the requester while `Within15Miles` until it reaches the arrival threshold (does not park short).
 - On reaching the requester, an automated rep auto-arrives (`POST /rep/arrive`) → `OnSite`, then SIM-010's dwell + `POST /rep/complete` runs.
-- A unit test covers the `Within15Miles` drive mode (truck keeps navigating, not held/idle) and the resulting arrival trigger.
+- A failing-first unit test reproduces the actual defect — over successive ticks the driven/posted position monotonically advances toward the requester and reaches the arrival threshold (NOT the already-passing resolver drive-mode assertion, which is a no-op red).
 - Verified by the headless smoke: a submitted job reaches `Completed`, then the rep returns to the loop (SIM-007).
