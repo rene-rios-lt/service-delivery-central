@@ -38,7 +38,7 @@ for repo in "${repos[@]}"; do
   branches="$(cd "$repo" && gh pr list --state merged --limit 300 \
                 --json headRefName -q '.[].headRefName' 2>/dev/null || true)"
   for b in $branches; do
-    id="$(printf '%s' "$b" | grep -oE '(BE|FE|SIM|BUG)-[0-9]+' || true)"
+    id="$(printf '%s' "$b" | grep -oE '(BE|FE|SIM|BUG|QUAL)-[0-9]+' || true)"
     [ -n "$id" ] && ids="$ids $id"
   done
 done

@@ -67,7 +67,7 @@ PYEOF
 
 # --- Mode 1: explicit story ID ------------------------------------------------
 if [ "$#" -ge 1 ]; then
-  story_id=$(printf '%s' "$1" | grep -oE '(BE|FE|SIM|BUG)-[0-9]+' || true)
+  story_id=$(printf '%s' "$1" | grep -oE '(BE|FE|SIM|BUG|QUAL)-[0-9]+' || true)
   [ -z "$story_id" ] && { echo "mark-story-complete: '$1' is not a story/bug id" >&2; exit 1; }
   cross_out "$story_id"
   exit 0
@@ -117,7 +117,7 @@ if [ -z "$branch" ] && [ -z "$repo" ] && [ -n "$pr_num" ]; then
     "$CENTRAL_REPO/service-delivery-simulator"; do
     if [ -d "$repo_dir" ]; then
       candidate=$(cd "$repo_dir" && gh pr view "$pr_num" --json headRefName -q '.headRefName' 2>/dev/null || true)
-      if echo "$candidate" | grep -qE '(BE|FE|SIM|BUG)-[0-9]+'; then
+      if echo "$candidate" | grep -qE '(BE|FE|SIM|BUG|QUAL)-[0-9]+'; then
         branch="$candidate"
         break
       fi
@@ -128,5 +128,5 @@ fi
 [ -z "$branch" ] && exit 0
 
 # Extract ID: feature/BE-025-... -> BE-025 ; fix/BUG-001-... -> BUG-001
-story_id=$(echo "$branch" | grep -oE '(BE|FE|SIM|BUG)-[0-9]+' || true)
+story_id=$(echo "$branch" | grep -oE '(BE|FE|SIM|BUG|QUAL)-[0-9]+' || true)
 cross_out "$story_id"
