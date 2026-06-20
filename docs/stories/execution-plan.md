@@ -209,7 +209,7 @@
 | Story | Repo | Description |
 |-------|------|-------------|
 | ~~[QUAL-001](quality.md)~~ | ~~Central + Simulator~~ | ~~Catch "masking" tests in AI Review: strengthen `/test-quality` (+ `story-ai-reviewer`) so tests that pass by placeholder reuse / mirroring the code's wrong assumption are flagged; audit the simulator suite for other instances. Motivated by BUG-016/017 shipping green.~~ |
-| [QUAL-002](quality.md) | Central | Mockup-driven fidelity: every pipeline stage treats a frontend story's mockup as the visual spec — evaluator gates on its availability, planner reads it into a UI Composition Map, implementor builds to it, AI reviewer adds Check 10 (Mockup Fidelity), master surfaces it at Checkpoint #1. Motivated by BUG-021 (login shipped diverging from its mockup because no stage read it). |
+| ~~[QUAL-002](quality.md)~~ | ~~Central~~ | ~~Mockup-driven fidelity: every pipeline stage treats a frontend story's mockup as the visual spec — evaluator gates on its availability, planner reads it into a UI Composition Map, implementor builds to it, AI reviewer adds Check 10 (Mockup Fidelity), master surfaces it at Checkpoint #1. Motivated by BUG-021 (login shipped diverging from its mockup because no stage read it).~~ |
 
 **Depends on:** nothing (process improvement). Central skill/agent edits ship via `/ship-it`; test-only fidelity fixes from the audit ship via `/ship-it` as their own PR; substantive simulator production changes go via `/master`.
 
