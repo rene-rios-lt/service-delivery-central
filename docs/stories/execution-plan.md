@@ -141,6 +141,7 @@
 | Story | Repo | Description |
 |-------|------|-------------|
 | ~~[FE-001](frontend.md)~~ | ~~Frontend~~ | ~~Login screen → JWT → route by role~~ |
+| ~~[**BUG-020**](bug.md)~~ | ~~Frontend~~ | ~~**Bug** — Web client renders unstyled: `AddMudServices()` + providers are wired, but `index.html` never loads `_content/MudBlazor/MudBlazor.min.css`/`.js`, so every `Mud*` component is bare HTML. Found launching the web app after FE-001. Fix: add the MudBlazor CSS/font/JS to the Web host's `index.html`.~~ |
 | [FE-002](frontend.md) | Frontend | JWT expiry detection → redirect to login |
 | [FE-021](frontend.md) | Frontend | App shell, navigation menu & logout (per-persona) |
 
