@@ -339,7 +339,7 @@ Incomplete MudBlazor wiring in the Web host: services + providers were set up, b
 
 ## BUG-021 — Login screen does not match the approved mockup (FE-001 fidelity gap)
 
-- **Status:** Open
+- **Status:** **Fixed** 2026-06-20 — restyled `Login.razor` to pixel-match the mockup (gradient background, 🛰️ brand mark, bold title, labels-above-fields, sentence-case rounded button) via a shared `AppTheme` + scoped `Login.razor.css`; verified visually against both mockups (web + mobile). Shipped via `/master` (frontend PR #16).
 - **Severity:** Medium (login works, but the implemented UI diverges substantially from the approved design — wrong field-label placement, no brand mark, no background, wrong button styling)
 - **Repo / Area:** Frontend — `src/ServiceDelivery.Client.UI/Features/Authentication/Pages/Login.razor` (+ MudTheme / brand asset; possibly `MainLayout.razor` background)
 - **Related stories:** `FE-001` (login screen), ADR-0007 (MudBlazor), `docs/ui-mockups/images/login__web-1280x800.png` and `login__mobile-390x844.png` (the authoritative design)
