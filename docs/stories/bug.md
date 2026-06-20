@@ -243,30 +243,58 @@ Vehicle-identity mismatch. The simulator's hardcoded routes/workers key off regi
 
 ---
 
-## BUG-018 — Automated job stalls at `Within15Miles`: simulator stops navigating before reaching the requester
+## BUG-018 — Headless smoke can falsely time out: long navigate legs + on-site dwell exceed the observation window
 
-- **Status:** Open
-- **Severity:** High (an automated job never auto-arrives or completes — the full cycle never closes; blocks the end-to-end demo)
-- **Repo / Area:** Simulator — navigation-step / position-threading (`Services/StraightLineNavigator`, `Workers/VehicleWorker`, `Workers/FleetPositionDriver`, `Services/ArrivalReporter`). **NOT** `VehicleDriveResolver` (ruled out — see root cause).
+- **Status:** Open (reframed 2026-06-19 — the original "navigation stall" was a misdiagnosis; see below)
+- **Severity:** Medium (no product defect — the automated cycle completes end-to-end; but `smoke.sh` can report a false failure, which undermines the integration net that QUAL-001 relies on)
+- **Repo / Area:** Central — `scripts/local/smoke.sh` (requester placement + watch-window). Simulator route/speed tuning is a *separate, optional* POC decision (see notes), **not** a bug fix. **No navigation defect exists.**
 - **Related stories:** `SIM-006` (navigate to requester + arrive), `SIM-010` (dwell + complete), `BE-008` (15-mile detection)
-- **Found:** Third headless backend+simulator run, after BUG-016 + BUG-017 were fixed (the job now reaches `Within15Miles`, exposing the next layer).
+- **Found:** Third headless run flagged an apparent stall at `Within15Miles`. Re-diagnosed via live runs 2026-06-19 — the stall does not exist (see root cause).
 
 **Summary**
-After an automated rep accepts, the truck navigates toward the requester and the backend correctly flips `EnRoute → Within15Miles`. But the truck then **stops closing the final distance** and parks ~1–2 km short of the requester — never reaching the ~50 m arrival threshold — so `ArrivalReporter` never fires `POST /rep/arrive`, the job never reaches `OnSite`, and SIM-010's dwell/`complete` never runs. The request is stuck at `Assigned` indefinitely.
+The original report claimed an automated job "stalls ~1–2 km short of the requester, never auto-arrives, never completes." A live re-diagnosis disproved this: navigation converges correctly and the full cycle (`accept → en route → arrive → dwell → complete`) runs end-to-end. The real issue is that `smoke.sh` can **falsely time out**: it places the requester at a *stale* idle-vehicle position and watches for only ~6 min, but a matched rep can start a job up to ~12 km away — a leg that, plus the 120–240 s on-site dwell, can exceed the watch window even though everything is working.
 
-**Evidence (live)**
-- Submitted a request at Rep One's position; job went `Pending → Assigned` (accepted) within seconds.
-- After 6 min: `GET /dispatcher/fleet` shows Rep One `state: Within15Miles`, `lastPosition ≈ (41.718, -93.586)` vs requester `(41.7308, -93.6064)` — ~1.8 km apart and not moving closer.
-- Simulator log: `0` calls to `/rep/arrive` or `/rep/complete`; positions still posting for the fleet.
-
-**Root cause — UNCONFIRMED (two hypotheses ruled out 2026-06-19; do not chase them again)**
-- ❌ **Resolver halts at `Within15Miles`** — ruled out. `VehicleDriveResolver.Resolve` already maps `Within15Miles` (with an active request) to `Navigate`, and `VehicleDriveResolverTests` already asserts it (passing). No red test exists for this; "fixing" it is a no-op.
-- ❌ **Fleet-state drops `ActiveRequestLocation` at `Within15Miles`** — ruled out. `VehicleRepository.GetFleetJobStateByDealerAsync` populates `ActiveRequestLatitude/Longitude` by joining the rep's `ActiveRequestId` to the service request, **independent of rep state**; the `EnRoute→Within15Miles` flip does not clear `ActiveRequestId`, so the location is present at `Within15Miles`.
-- ⏳ **Real cause: still to be diagnosed in the simulator navigation step.** The truck is in `Navigate` mode with a valid target yet stops converging ~1.8 km short. Suspect the per-tick step / position threading: e.g. `VehicleWorker` interpolating from a stale or route-derived position rather than its last-posted position (so it never closes the gap), or a convergence issue in `StraightLineNavigator`, possibly interacting with the BUG-017 GUID→worker pool model.
-- **How to confirm (needs a LIVE run — sim-side mocks won't show it):** run `scripts/local/start.sh` + drive a job to `Within15Miles`, then poll `GET /simulator/fleet-state` and the vehicle's posted positions over several ticks — check whether the posted position actually advances toward the requester each tick or is stuck. Re-diagnose, then update this entry and Repo/Area before `/master`.
+**Root cause — CONFIRMED via live runs (2026-06-19)**
+Three independent end-to-end completions observed (two at the stock 65 mph, one via `smoke.sh` at a temporary 200 mph debug speed):
+- **No navigation stall.** The posted position advances **monotonically at ~87 m/tick (65 mph)** the entire leg — verified over 100+ consecutive ticks. `ArrivalReporter` fires `POST /rep/arrive` at the ~50 m threshold (`vstate → OnSite`, request `→ InProgress`), SIM-010's dwell runs (~228 s observed, within 120–240 s), then `POST /rep/complete` lands (request `→ Completed`, rep `→ Available`). The earlier "1.8 km after 6 min, not moving closer" was simply where the original observation window *ended* on a ~10 km leg that was still closing at 87 m/tick.
+- **Why legs are long & the smoke is flaky:** idle vehicles **teleport between sparse Iowa loop waypoints** (`VehicleWorker.PostLoopPositionAsync` posts the *next waypoint* each tick; waypoints are ~6–12 km apart). `smoke.sh` samples an Available rep's `lastPosition`, then submits a request there — but by the next tick that vehicle has jumped to its next waypoint, so the matched rep can be ~10 km from the fixed requester point. At 65 mph that leg ≈ 6 min; plus the dwell it can exceed `smoke.sh`'s 120-tick (~6 min) watch loop.
+- Both prior "ruled out" hypotheses (resolver halting at `Within15Miles`; fleet-state dropping `ActiveRequestLocation`) remain correctly ruled out — confirmed by the live trace (vehicle stayed in `Navigate` with a valid target throughout).
 
 **Acceptance criteria (bug resolved when):**
-- An automated rep continues navigating toward the requester while `Within15Miles` until it reaches the arrival threshold (does not park short).
-- On reaching the requester, an automated rep auto-arrives (`POST /rep/arrive`) → `OnSite`, then SIM-010's dwell + `POST /rep/complete` runs.
-- A failing-first unit test reproduces the actual defect — over successive ticks the driven/posted position monotonically advances toward the requester and reaches the arrival threshold (NOT the already-passing resolver drive-mode assertion, which is a no-op red).
-- Verified by the headless smoke: a submitted job reaches `Completed`, then the rep returns to the loop (SIM-007).
+- `smoke.sh` deterministically reaches `Completed` and then sees the rep return to the loop (SIM-007), without false timeouts. Achieve this by some combination of: (a) submitting the request near the matched vehicle's *current* position (re-read position immediately before submit, or accept a short fixed leg), and/or (b) widening the watch window to cover the worst-case leg + max dwell, and logging elapsed time so a slow-but-working run is distinguishable from a real failure.
+- A run that genuinely fails (no arrive, or no completion) is still reported as a failure — the fix must not mask real regressions (it widens tolerance for *known* slow paths only).
+
+**Notes**
+- **Delivery:** this is a `scripts/local/smoke.sh` change in the **central** repo → ships via `/ship-it`, not `/master` (the pipeline never targets central). No simulator production change is required.
+- **Optional POC tuning (separate decision, not part of this fix):** raising the navigation speed and/or densifying the loop waypoints would shrink legs and make the demo snappier. A temporary 200 mph bump was validated as a debug accelerant (`smoke.sh` completed in 135 s) then reverted — it is **not** the official speed. The on-site dwell (120–240 s) is the remaining floor on cycle time.
+- **Status of the smoke fix:** drafted (short-leg submit + widened window + slow-vs-stall diagnosis) but **HELD** pending [`BUG-019`](#bug-019) — the smoke can't be a reliable net while the offer/RepHub path is intermittently dead. Land the smoke change once BUG-019 is understood.
+
+---
+
+## BUG-019 — Simulator intermittently never accepts offers / drops an OnSite job (suspected RepHub or heartbeat instability)
+
+- **Status:** Open — **UNCONFIRMED (needs a clean repro to rule out an environmental cause)**
+- **Severity:** High *if real* (intermittently breaks the automated cycle — either no rep ever accepts, or an in-progress job is abandoned), but unverified; could be local environment artifact.
+- **Repo / Area:** Simulator — per-rep RepHub connection lifecycle, auto-decision (`Services/*SignalR*`, `JobOfferDecisionEngine`), and heartbeat for operated reps. Possibly interacts with backend `BE-023` (offline-detection re-queue) / `BE-028` (heartbeat timeout). **To be narrowed once reproduced.**
+- **Related stories:** `SIM-005` (auto-accept), `SIM-002`/`SIM-011` (per-rep RepHub), `BE-018` (offer expiry), `BE-023` (offline re-queue), `BE-028` (heartbeat timeout)
+- **Found:** 2026-06-20, while validating the BUG-018 smoke fix — on a simulator instance started after several rebuilds/restarts in a long session.
+
+**Symptoms (observed live, one sim instance)**
+1. **Cold-start: no acceptance.** For ~7 min after startup every job offer `Expired`; the sim made **zero** `POST /job-offers/*` calls (no accept/decline) — the per-rep RepHub offer path was not delivering offers, while position-posting (the `Simulator` account) worked normally. `offerHistory` showed 9 offers cycled across all 8 reps, all `Expired` (not `Declined`) → the sim never responded. Later in the same instance's life acceptance worked (a fresh request was accepted on the first offer within 9 s).
+2. **Mid-job drop.** A request that was accepted, navigated cleanly to the requester, and reached `OnSite` (`InProgress`) dwelled ~162 s, then **reverted to `Pending`** (re-queued, unassigned) instead of completing; subsequent offers expired again. Consistent with the rep's RepHub disconnecting (`BE-023` re-queue) or a missing/late heartbeat (`BE-028` timeout).
+
+**Why it might NOT be a product bug (do not over-commit):** three earlier end-to-end runs in the *same session* completed cleanly; only this 4th instance (after many rebuilds/restarts) was flaky. Could be local resource/state exhaustion rather than a defect.
+
+**How to confirm**
+- Clean restart: `scripts/local/stop.sh`, verify no stale `dotnet` processes, `scripts/local/start.sh`; wait for claims + hub connect; run `scripts/local/smoke.sh`. Repeat several times from cold. If offers expire on cold start, or an `OnSite` job re-queues with no human-takeover/decline cause, it is real.
+- The sim currently logs **no** RepHub connect/disconnect/reconnect lifecycle at info level — add that logging; it is needed to diagnose either way (and is a gap regardless).
+- Check whether the sim sends `POST /rep/heartbeat` for operated reps and whether `BE-028`'s timeout could fire during a 120–240 s dwell.
+
+**Acceptance criteria (resolved when)**
+- Across N consecutive cold starts the sim reliably connects every operated rep's RepHub and accepts offers (no all-expire window); a started job is never re-queued while its automated rep is actively on it.
+- The sim logs per-rep RepHub connect/disconnect/reconnect so this is diagnosable.
+- The BUG-018 headless-smoke fix then passes reliably from a cold start (unblocks landing it).
+
+**Notes**
+- **Blocks** finishing BUG-018's `smoke.sh` fix (held until this is understood).
+- **Delivery:** if a real sim defect → `/master` (simulator); if backend heartbeat/offline tuning → `/master` (backend); logging-only or smoke harness changes → `/ship-it`. Decide after the root cause is confirmed.
