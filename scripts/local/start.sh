@@ -14,6 +14,16 @@ BASE="http://localhost:5180"
 # future Development / Test / Production environments.
 export DOTNET_ENVIRONMENT=Local
 
+# Keep the host awake for the lifetime of the local system. On macOS, idle sleep / App Nap
+# suspends the dotnet processes and drops the simulator's SignalR (RepHub) connections — which
+# makes jobs silently fail (offers expire, an in-progress job re-queues) without any code being
+# wrong. A standalone `caffeinate -i` asserts "no idle sleep" until stop.sh kills it (its own
+# pidfile keeps the dotnet process tree untouched so teardown is unchanged). See BUG-019.
+if command -v caffeinate >/dev/null 2>&1; then
+  caffeinate -i > /dev/null 2>&1 & echo $! > /tmp/sd-caffeinate.pid
+  echo "==> caffeinate holding off idle sleep (PID $(cat /tmp/sd-caffeinate.pid))."
+fi
+
 echo "==> Starting backend (HTTP profile, $BASE, env=$DOTNET_ENVIRONMENT) ..."
 ( cd "$BACKEND" && nohup dotnet run --project src/ServiceDelivery.Api --launch-profile http \
     > /tmp/sd-backend.log 2>&1 & echo $! > /tmp/sd-backend.pid )

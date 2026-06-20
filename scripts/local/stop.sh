@@ -16,6 +16,13 @@ for svc in sim backend; do
   fi
 done
 
+# Release the idle-sleep assertion held by start.sh (see BUG-019).
+if [ -f /tmp/sd-caffeinate.pid ]; then
+  cpid="$(cat /tmp/sd-caffeinate.pid)"
+  kill "$cpid" 2>/dev/null && echo "==> Released caffeinate (PID $cpid)."
+  rm -f /tmp/sd-caffeinate.pid
+fi
+
 # Belt-and-braces: free the backend port if anything is still holding it.
 lingering=$(lsof -nP -iTCP:5180 -sTCP:LISTEN -t 2>/dev/null)
 [ -n "$lingering" ] && { echo "==> Freeing port 5180 (PIDs: $lingering)"; kill $lingering 2>/dev/null; }
