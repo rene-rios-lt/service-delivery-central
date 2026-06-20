@@ -334,3 +334,41 @@ Incomplete MudBlazor wiring in the Web host: services + providers were set up, b
 **Acceptance criteria (bug resolved when):**
 - `index.html` references `_content/MudBlazor/MudBlazor.min.css` and `.min.js`, and both resolve (HTTP 200) when the app is served.
 - The login page renders with MudBlazor styling (centered card, Material text fields, themed primary button).
+
+---
+
+## BUG-021 — Login screen does not match the approved mockup (FE-001 fidelity gap)
+
+- **Status:** Open
+- **Severity:** Medium (login works, but the implemented UI diverges substantially from the approved design — wrong field-label placement, no brand mark, no background, wrong button styling)
+- **Repo / Area:** Frontend — `src/ServiceDelivery.Client.UI/Features/Authentication/Pages/Login.razor` (+ MudTheme / brand asset; possibly `MainLayout.razor` background)
+- **Related stories:** `FE-001` (login screen), ADR-0007 (MudBlazor), `docs/ui-mockups/images/login__web-1280x800.png` and `login__mobile-390x844.png` (the authoritative design)
+- **Found:** Visual comparison of the running web client against `docs/ui-mockups/images/login__web-1280x800.png` after BUG-020 made MudBlazor styling load. Surfaced only after BUG-020 — before that everything was unstyled.
+
+**Summary**
+With MudBlazor now loading (BUG-020), the login page renders as default MudBlazor Material rather than the approved mockup. FE-001 was implemented to component defaults and never reproduced the design.
+
+**Differences (live vs. `login__web-1280x800.png`)**
+| Aspect | Approved mockup | Live |
+|--------|-----------------|------|
+| Page background | Soft lavender→grey gradient | Flat white |
+| Brand logo | Purple rounded-square mark above the title | Absent |
+| Title | "Service Delivery" bold, near-black | Light-grey, regular weight |
+| Field labels | Bold labels **above** each input | Floating placeholder **inside** the field |
+| Inputs | Clean bordered box, label outside | Material outlined input with garbled glyph artifacts at the right edge |
+| Button | "Sign in" sentence case, pill-rounded | "SIGN IN" (auto-uppercased), standard radius |
+| Card | Pronounced soft shadow | Faint shadow |
+
+**Expected** — Pixel-match the approved mockup (web + mobile):
+- Light gradient page background behind a centered white card with a soft shadow.
+- A brand mark above the title (no logo asset exists in `docs/ui-mockups/images/` — render it from a MudBlazor icon inside a rounded primary-coloured square, or add a committed asset).
+- Title "Service Delivery" in bold near-black; "Sign in to continue" sub-caption.
+- "Username" / "Password" as static labels **above** their inputs; inputs are bordered boxes with no floating-label-inside and no stray adornment glyphs.
+- Primary "Sign in" button, sentence case (disable MudBlazor's uppercase), full-width, rounded.
+- Keep all existing `data-testid` hooks and the LoginViewModel binding/behaviour intact.
+
+**Acceptance criteria (bug resolved when):**
+- The web login renders to match `login__web-1280x800.png`: gradient background, brand mark, bold title, labels-above-fields, sentence-case rounded primary button, no glyph artifacts.
+- The mobile login matches `login__mobile-390x844.png`.
+- No regression to login behaviour: existing LoginViewModel tests and component tests still pass; `data-testid` hooks (`login-card`, `email-input`, `password-input`, `sign-in-button`, `login-error`) are preserved.
+- Any new conditional/render logic is covered by a bUnit test (pure styling needs no test, per the frontend CLAUDE.md).
