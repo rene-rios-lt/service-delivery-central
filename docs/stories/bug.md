@@ -372,3 +372,27 @@ With MudBlazor now loading (BUG-020), the login page renders as default MudBlazo
 - The mobile login matches `login__mobile-390x844.png`.
 - No regression to login behaviour: existing LoginViewModel tests and component tests still pass; `data-testid` hooks (`login-card`, `email-input`, `password-input`, `sign-in-button`, `login-error`) are preserved.
 - Any new conditional/render logic is covered by a bUnit test (pure styling needs no test, per the frontend CLAUDE.md).
+
+---
+
+## BUG-022 — Desktop & Mobile hosts render unstyled: MudBlazor assets not loaded in their `index.html`
+
+- **Status:** **Fixed** 2026-06-20 — added the MudBlazor CSS, Roboto font, and JS to both the Mobile and Desktop host `index.html` files; verified all three hosts now reference the assets.
+- **Severity:** Medium (auth/routing work, but every `Mud*` component renders as bare unstyled HTML on the MAUI hosts, so the UI is visually broken on Desktop and Mobile)
+- **Repo / Area:** Frontend — Desktop & Mobile host bootstrapping (`src/ServiceDelivery.Client.Desktop/wwwroot/index.html`, `src/ServiceDelivery.Client.Mobile/wwwroot/index.html`)
+- **Related stories:** `FE-001` (login screen), ADR-0007 (MudBlazor), `BUG-020` (same fix, Web host only)
+- **Found:** Tracing the MAUI mobile startup→render chain after BUG-020/BUG-021. BUG-020 fixed only the **Web** host's `index.html`; each host has its own, and the two MAUI BlazorWebView hosts were never updated.
+
+**Summary**
+`BUG-020` added the MudBlazor stylesheet/font/JS to `ServiceDelivery.Client.Web/wwwroot/index.html`, but the Desktop and Mobile hosts each ship their **own** `wwwroot/index.html` (the BlazorWebView `HostPage`), and neither links `_content/MudBlazor/MudBlazor.min.css`/`.min.js` or the Roboto font. Services (`AddMudServices()`) and the providers in `MainLayout.razor` are wired on all hosts, but on Desktop/Mobile the static assets are absent, so every MudBlazor component renders unstyled — same defect class as BUG-020, just on the other two hosts.
+
+**Root cause**
+Per-host `index.html`: the BUG-020 fix was scoped to the Web host only and not propagated to the two MAUI hosts. Host-bootstrapping config, not component logic — no test covers it (hosts are bootstrapping-only per the frontend CLAUDE.md).
+
+**Fix**
+- In both `Desktop/wwwroot/index.html` and `Mobile/wwwroot/index.html`, add to `<head>`: the Roboto font and `<link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />`; and after the `blazor.webview.js` script: `<script src="_content/MudBlazor/MudBlazor.min.js"></script>`.
+
+**Acceptance criteria (bug resolved when):**
+- Both the Desktop and Mobile host `index.html` reference `_content/MudBlazor/MudBlazor.min.css` and `.min.js` (matching the Web host).
+- All three hosts are consistent in how they load MudBlazor's assets.
+- The login screen renders styled when the Desktop or Mobile host is run (human-verified on a simulator/desktop window).
