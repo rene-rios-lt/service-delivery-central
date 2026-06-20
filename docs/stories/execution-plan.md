@@ -140,7 +140,7 @@
 
 | Story | Repo | Description |
 |-------|------|-------------|
-| [FE-001](frontend.md) | Frontend | Login screen → JWT → route by role |
+| ~~[FE-001](frontend.md)~~ | ~~Frontend~~ | ~~Login screen → JWT → route by role~~ |
 | [FE-002](frontend.md) | Frontend | JWT expiry detection → redirect to login |
 | [FE-021](frontend.md) | Frontend | App shell, navigation menu & logout (per-persona) |
 
