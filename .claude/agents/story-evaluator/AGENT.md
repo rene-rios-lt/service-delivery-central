@@ -98,7 +98,19 @@ For each referenced component, confirm the relevant doc exists:
 
 If a doc is **missing**, flag it as a **blocker**. If the doc exists but the story references a specific entity (a state name, event name, or hub name) that is absent from the doc, flag it as a **Warning** (not a blocker).
 
-### Step 5 — Verify .gitignore
+### Step 4a — Verify mockup availability (frontend UI stories only)
+
+*Run this step only for `FE-` stories, and for `BUG-` stories whose **Repo / Area** is the frontend and whose fix changes a UI component. Skip it entirely for backend and simulator work.*
+
+A frontend UI story is built to a mockup — the rendered component must match a specific screen image. The Planner and Implementor cannot build to a mockup that is absent.
+
+1. In the story text, find every embedded mockup reference — an `<img src="../ui-mockups/images/<screen>__<platform>-WxH.png">` tag, or a screen named in the [Story ↔ Screen Traceability](../docs/stories/frontend.md#story--screen-traceability) table. From a working repo these resolve to `../docs/ui-mockups/images/<file>.png`.
+2. For each referenced image, confirm the PNG file exists with `Glob`.
+3. Classify:
+   - **Hard BLOCKED:** the story describes a visible UI state (any AC that names a screen, button, label, indicator, or layout) but references **no** mockup image, or the referenced image file is absent.
+   - **Warning (not a blocker):** the story is a UI story whose mockup exists but the traceability table and the embedded `<img>` disagree on which screen it is — report the discrepancy and proceed as READY with a note.
+
+A purely behavioural frontend story with no visible UI surface (e.g. FE-002 JWT expiry → redirect, FE-023 background heartbeat) has no mockup by design — do not block it. The traceability table marks these `— (no screen)`.
 
 Confirm `.stories/` is listed in the working repo's `.gitignore`. If not, flag it as a **blocker** — the audit directory must never be committed.
 
@@ -115,10 +127,13 @@ Story: BE-010 — Submit a service request
 Phase: 3 (upstream Phases 1 and 2 complete ✓)
 AC count: 5 (all testable ✓)
 Reference docs: state-machines.md, data-flow.md (both present ✓)
+Mockups: rep-job-offer__mobile-390x844.png (present ✓)   ← frontend UI stories only; omit otherwise
 
 Notes:
 - [Warning] BE-009 primary file (DtcsController.cs) exists — file presence confirmed, completeness not verifiable without a test run.
 ```
+
+For a frontend UI story, include the `Mockups:` line listing each referenced image and whether it resolves. Omit the line for backend, simulator, and behaviour-only frontend stories.
 
 Include a `Notes:` section only if Warnings were produced in Steps 2 or 4. Omit it entirely if no Warnings exist.
 

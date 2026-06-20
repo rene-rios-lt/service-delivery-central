@@ -93,6 +93,8 @@ Read `docs/stories/<repo>.md` in the central repo (match story prefix: `BE-` →
 
 If the story ID does not appear in the file, stop and report: `Story [ID] not found in docs/stories/[repo].md. Verify the ID and re-run.`
 
+For a frontend UI story, the embedded mockup image (`docs/ui-mockups/images/...`) is part of the story — it is the visual spec the component is built to. The Evaluator confirms it resolves, the Planner reads it into a UI Composition Map, the Implementor builds the component to match it, and the AI Reviewer checks fidelity. Surface the mockup reference when displaying the story so the developer can review it at Checkpoint #1.
+
 A documentation-only bug (no code or tests) does not belong in this TDD pipeline — handle it as a direct doc edit via `/ship-it` instead.
 
 ### 2. Setup
