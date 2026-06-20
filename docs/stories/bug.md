@@ -310,3 +310,27 @@ The original symptoms (cold-start all-offers-expire; `OnSite` job re-queued mid-
 **Notes**
 - **Blocks** finishing BUG-018's `smoke.sh` fix (held until this is understood).
 - **Delivery:** if a real sim defect → `/master` (simulator); if backend heartbeat/offline tuning → `/master` (backend); logging-only or smoke harness changes → `/ship-it`. Decide after the root cause is confirmed.
+
+---
+
+## BUG-020 — Web client renders unstyled: MudBlazor stylesheet/JS not loaded in `index.html`
+
+- **Status:** **Fixed** 2026-06-20 — added the MudBlazor CSS, Roboto font, and JS to the Web host's `index.html`; verified the assets resolve (200) and the login page renders styled.
+- **Severity:** Medium (no broken behaviour — auth/routing work — but every `Mud*` component renders as bare unstyled HTML, so the UI is visually broken on Web)
+- **Repo / Area:** Frontend — Web host bootstrapping (`src/ServiceDelivery.Client.Web/wwwroot/index.html`)
+- **Related stories:** `FE-001` (login screen), ADR-0007 (MudBlazor)
+- **Found:** Manual launch of `scripts/local/launchWebPage.sh` after FE-001 merged — the login page appeared unstyled.
+
+**Summary**
+The Web host registers MudBlazor services (`AddMudServices()` in `Program.cs`) and the providers are present in `MainLayout.razor`, but `wwwroot/index.html` never links MudBlazor's stylesheet or script. Without `_content/MudBlazor/MudBlazor.min.css`, every MudBlazor component (`MudCard`, `MudTextField`, `MudButton`, …) renders as unstyled HTML — the login page has no card, no Material styling, no theme.
+
+**Root cause**
+Incomplete MudBlazor wiring in the Web host: services + providers were set up, but the required static assets (CSS, Roboto font, JS) were missing from `index.html`. This is host-bootstrapping config, not component logic — no test covers it (hosts are bootstrapping-only per the frontend CLAUDE.md).
+
+**Fix**
+- Add to `<head>`: the Roboto font and `<link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />`.
+- Add before `</body>`: `<script src="_content/MudBlazor/MudBlazor.min.js"></script>`.
+
+**Acceptance criteria (bug resolved when):**
+- `index.html` references `_content/MudBlazor/MudBlazor.min.css` and `.min.js`, and both resolve (HTTP 200) when the app is served.
+- The login page renders with MudBlazor styling (centered card, Material text fields, themed primary button).
