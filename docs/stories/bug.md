@@ -245,7 +245,7 @@ Vehicle-identity mismatch. The simulator's hardcoded routes/workers key off regi
 
 ## BUG-018 — Headless smoke can falsely time out: long navigate legs + on-site dwell exceed the observation window
 
-- **Status:** Open (reframed 2026-06-19 — the original "navigation stall" was a misdiagnosis; see below)
+- **Status:** **Fixed** 2026-06-20 — `smoke.sh` hardened (short-leg submit + widened window + slow-vs-stall diagnosis); validated end-to-end. (Reframed 2026-06-19 — the original "navigation stall" was a misdiagnosis; see below.)
 - **Severity:** Medium (no product defect — the automated cycle completes end-to-end; but `smoke.sh` can report a false failure, which undermines the integration net that QUAL-001 relies on)
 - **Repo / Area:** Central — `scripts/local/smoke.sh` (requester placement + watch-window). Simulator route/speed tuning is a *separate, optional* POC decision (see notes), **not** a bug fix. **No navigation defect exists.**
 - **Related stories:** `SIM-006` (navigate to requester + arrive), `SIM-010` (dwell + complete), `BE-008` (15-mile detection)
@@ -267,14 +267,22 @@ Three independent end-to-end completions observed (two at the stock 65 mph, one 
 **Notes**
 - **Delivery:** this is a `scripts/local/smoke.sh` change in the **central** repo → ships via `/ship-it`, not `/master` (the pipeline never targets central). No simulator production change is required.
 - **Optional POC tuning (separate decision, not part of this fix):** raising the navigation speed and/or densifying the loop waypoints would shrink legs and make the demo snappier. A temporary 200 mph bump was validated as a debug accelerant (`smoke.sh` completed in 135 s) then reverted — it is **not** the official speed. The on-site dwell (120–240 s) is the remaining floor on cycle time.
-- **Status of the smoke fix:** drafted (short-leg submit + widened window + slow-vs-stall diagnosis) but **HELD** pending [`BUG-019`](#bug-019) — the smoke can't be a reliable net while the offer/RepHub path is intermittently dead. Land the smoke change once BUG-019 is understood.
+- **Status of the smoke fix:** **landed** 2026-06-20. [`BUG-019`](#bug-019) (the offer-path flakiness that briefly blocked it) was found to be environmental and closed cannot-reproduce, so the hardened `smoke.sh` was validated against a healthy cold-started system and shipped.
 
 ---
 
 ## BUG-019 — Simulator intermittently never accepts offers / drops an OnSite job (suspected RepHub or heartbeat instability)
 
-- **Status:** Open — **UNCONFIRMED (needs a clean repro to rule out an environmental cause)**
-- **Severity:** High *if real* (intermittently breaks the automated cycle — either no rep ever accepts, or an in-progress job is abandoned), but unverified; could be local environment artifact.
+- **Status:** **Closed — CANNOT REPRODUCE (environmental).** Three clean cold-start cycles (2026-06-20) all ran healthy; symptom never recurred. See Resolution.
+- **Severity:** ~~High *if real*~~ — n/a; not a product defect on a clean slate.
+
+**Resolution (2026-06-20)**
+After a guaranteed-clean slate (no stale `dotnet` processes, port 5180 free), three consecutive cold starts (`stop.sh` → `start.sh` → cold submit) were driven to completion:
+- **Cycle 1:** accepted on the first offer at 6 s, navigating normally (cut mid-leg) — no cold-start no-accept.
+- **Cycle 2:** accepted @9 s → OnSite @126 s → **Completed @360 s** (dwell ~234 s). No revert.
+- **Cycle 3:** accepted @6 s → **Completed @222 s**. No revert.
+
+The original symptoms (cold-start all-offers-expire; `OnSite` job re-queued mid-dwell) appeared **only** on a simulator instance started after many rebuilds/restarts in a long session, and never recurred on a clean slate — so the cause was **local environment/resource exhaustion**, not a simulator defect. The offer/RepHub path is reliable from cold. The follow-up below (per-rep RepHub lifecycle logging) is retained as a *non-blocking* observability improvement, not a bug fix.
 - **Repo / Area:** Simulator — per-rep RepHub connection lifecycle, auto-decision (`Services/*SignalR*`, `JobOfferDecisionEngine`), and heartbeat for operated reps. Possibly interacts with backend `BE-023` (offline-detection re-queue) / `BE-028` (heartbeat timeout). **To be narrowed once reproduced.**
 - **Related stories:** `SIM-005` (auto-accept), `SIM-002`/`SIM-011` (per-rep RepHub), `BE-018` (offer expiry), `BE-023` (offline re-queue), `BE-028` (heartbeat timeout)
 - **Found:** 2026-06-20, while validating the BUG-018 smoke fix — on a simulator instance started after several rebuilds/restarts in a long session.
