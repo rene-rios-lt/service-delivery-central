@@ -45,8 +45,8 @@ Write findings to `.stories/<STORY-ID>/04-ai-review.md` in the working repo befo
 Run each check in order. A finding in any check does not stop the remaining checks — complete all checks before producing the output.
 
 **Finding severity:**
-- **Blocking** — prevents APPROVED. Must be resolved before the Implementor cycle closes. Checks 0, 1, 2, 5, 6, 7, 8, and 9 produce blocking findings. Check 3's masking sub-finding (3b) is also blocking — see Check 3.
-- **Advisory** — flagged but does not prevent APPROVED. Check 3's test-value findings (3a) and all of Check 4 are advisory. Advisory findings are listed in the APPROVED output under a separate "Advisory Notes" section.
+- **Blocking** — prevents APPROVED. Must be resolved before the Implementor cycle closes. Checks 0, 1, 2, 5, 6, 7, 8, and 9 produce blocking findings. Check 3's masking sub-finding (3b) is also blocking — see Check 3. Check 10's AC-element sub-finding (10a) is also blocking — see Check 10.
+- **Advisory** — flagged but does not prevent APPROVED. Check 3's test-value findings (3a), all of Check 4, and Check 10's non-AC fidelity findings (10b) are advisory. Advisory findings are listed in the APPROVED output under a separate "Advisory Notes" section.
 
 ### Check 0 — Produce the diff and run the tests
 
@@ -163,6 +163,17 @@ For each modified interface in the production diff (an interface that existed be
 
 Do **not** flag new methods on interfaces that are themselves new in this diff — those are expected from the plan's "Interfaces Required" section.
 
+### Check 10 — Mockup Fidelity *(frontend UI stories only)*
+
+*Run this check only when the plan's `02-plan.md` contains a UI Composition Map. Skip it for backend, simulator, and behaviour-only frontend stories.*
+
+The component must reproduce the mockup, not an invented layout. `Read` the mockup PNG(s) named in the UI Composition Map (`../docs/ui-mockups/images/<file>.png`) and compare against the rendered markup in the production diff (the `.razor` files) and the bUnit assertions.
+
+- **10a — AC-bound elements *(Blocking)*.** For each Composition Map row tied to an AC, confirm the element is present in the diff's markup **and** asserted by a bUnit test — the labelled text/chip/indicator, the bound data, and (where the AC names one) the state. A named AC element that is absent from the markup, or present but unasserted, is a blocking finding — overlaps with Check 1 but is reported here as **[Mockup fidelity]** with the specific element.
+- **10b — Visual composition *(Advisory)*.** Flag, as advisory, structural drift from the mockup that no AC pins down: missing non-critical elements, wrong element order/hierarchy, one-off styling where a `design-system.css` / MudBlazor token exists, or a platform variant (mobile vs web/desktop) the story shows but the diff omits.
+
+Do **not** flag pixel-level differences — the mockups are stylized (maps are placeholders). Judge structure, labels, components, states, and tokens, not exact rendering.
+
 ---
 
 ## Output Format
@@ -180,6 +191,7 @@ Test levels: Unit (Application.Tests) ✓  Integration (Api.Tests) ✓
 SOLID: No violations ✓
 Clean Architecture: No boundary violations ✓
 Hallucination Guard: No invented calls, no unplanned interface extensions ✓
+Mockup Fidelity: rep-job-offer__mobile — all AC elements present & asserted ✓   ← frontend UI stories only; omit otherwise
 
 AC → Test Mapping:
 | # | AC | Test Method | Level | Status |

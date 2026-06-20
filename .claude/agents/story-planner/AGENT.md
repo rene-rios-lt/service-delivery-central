@@ -56,6 +56,8 @@ Write the plan to `.stories/<STORY-ID>/02-plan.md` in the working repo before re
 
    If the Evaluator explicitly flagged a doc as relevant, read it regardless of the table above.
 
+4. **Frontend UI stories — read the mockup.** For `FE-` stories (and `BUG-` stories whose **Repo / Area** is the frontend and which change a UI component), the story is built to a specific mockup screen. Find every embedded `<img src="../ui-mockups/images/<screen>__<platform>-WxH.png">` reference in the story; from a working repo these resolve to `../docs/ui-mockups/images/<file>.png`. **`Read` each referenced PNG** — the Read tool renders the image visually so you can see the actual layout, components, labels, button text, states, and colours. Also `Read` `../docs/ui-mockups/design-system.css` to learn the shared component classes and design tokens (app bar, cards, chips, tier badges, buttons, markers, dialogs, countdown, bottom sheet, marker colours). Per [ADR-0007](../docs/adr/0007-mudblazor-component-library.md) every screen maps these to MudBlazor components. A behaviour-only story with no mockup (e.g. JWT expiry, background heartbeat) skips this — there is nothing to compose. Use what you see to produce the UI Composition Map in Step 6a.
+
 ### Step 2 — List files to create or modify
 
 For every file that will be touched:
@@ -133,6 +135,23 @@ For any AC that requires a SignalR event to be sent, list:
 
 List any seed data or configuration values that must exist before the implementation will work correctly.
 
+### Step 6a — UI Composition Map (frontend UI stories only)
+
+*Run this step only for frontend stories that reference a mockup (see Step 1.4). Skip it for backend, simulator, and behaviour-only frontend stories.*
+
+Translate the mockup image you read into a build specification so the Implementor reproduces the screen rather than inventing a layout. Produce a table — one row per distinct visible element in the mockup:
+
+| Element (as seen in mockup) | design-system.css class / MudBlazor component | Bound data / label text | Tied to AC |
+|------|------|------|------|
+
+Then capture, in prose:
+- **Layout & hierarchy** — top-to-bottom structure (app bar → map → bottom sheet, etc.) and which element is the primary action.
+- **States depicted** — the exact screen state the mockup shows (e.g. "job-offer, final seconds, red expiring countdown") and any other states the ACs require that the mockup does *not* show (note these explicitly so the Implementor knows they still need building).
+- **Platform variants** — if the story embeds both web/desktop and mobile images, note the responsive differences (single-column vs wider layout).
+- **Design tokens** — the specific marker colours, tier badge colours, or status chips from `design-system.css` this screen uses.
+
+Every visible element named in an AC must appear in the table. This map is the Implementor's contract for visual fidelity.
+
 ---
 
 ## Output Format
@@ -182,4 +201,20 @@ List any seed data or configuration values that must exist before the implementa
 
 - Requires seeded DTC records (BE-024 must be complete)
 - Requires seeded Requester accounts with tier values
+
+### UI Composition Map *(frontend UI stories only — omit otherwise)*
+
+Mockup(s) read: `rep-job-offer__mobile-390x844.png`
+
+| Element | design-system.css / MudBlazor | Bound data / label | Tied to AC |
+|---------|-------------------------------|--------------------|------------|
+| App bar "Incoming Job Offer" | `.app-bar` / `MudAppBar` | static title + vehicle reg | AC-1 |
+| Countdown ring | `.countdown` / `MudProgressCircular` | seconds remaining, red when ≤10 | AC-2 |
+| Requester + tier badge | `.tier-badge` / `MudChip` | requester first name, GOLD | AC-3 |
+| Decline / Accept | `.btn` / `MudButton` | "Decline", "Accept" | AC-4, AC-5 |
+
+- **Layout & hierarchy:** app bar → static map preview → requester/DTC card → distance/ETA → Decline + Accept (Accept primary).
+- **States depicted:** final-seconds urgent state (red countdown). Initial full-duration state is not in the mockup but required by AC-2 — build both.
+- **Platform variants:** mobile only (ServiceRep).
+- **Design tokens:** tier badge GOLD; countdown red `--danger` at ≤10s.
 ```
