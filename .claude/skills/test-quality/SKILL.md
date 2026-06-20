@@ -69,6 +69,57 @@ For the criteria that distinguish Partial from Covered on SignalR AC bullets spe
 
 ---
 
+## Anti-Masking Rule
+
+A **masking test** passes by coincidence: it would *still pass against the wrong or old contract*, so it guards nothing. A green suite full of masking tests gives false confidence — this is exactly how `BUG-016` and `BUG-017` shipped behind 150 passing simulator unit tests. Flag every masking test; a masking test provides no protection and must be called out even if it asserts on state.
+
+Two patterns to hunt for:
+
+**1. Placeholder reuse collapsing two distinct identities.** A test reuses one literal for two conceptually different things, so an assertion that *should* prove the code picked the right one passes trivially.
+
+```csharp
+// MASKING — route registration and the backend GUID are the SAME literal,
+// so this assertion passes whether the worker posts the registration OR the GUID.
+var route = new VehicleRoute { VehicleId = "V-TEST", ... };
+var row   = new FleetStateRow("V-TEST", "rep-1", ...);   // ← same value, two identities
+...
+Assert.Equal(route.VehicleId, post.VehicleId);           // proves nothing (BUG-017)
+
+// FAITHFUL — distinct values for distinct concepts; the assertion now has teeth.
+const string RouteRegistration = "V-TEST";
+const string BackendGuid       = "30000000-0000-0000-0000-000000000001";
+var route = new VehicleRoute { VehicleId = RouteRegistration, ... };
+var row   = new FleetStateRow(BackendGuid, "rep-1", ...);
+...
+Assert.Equal(BackendGuid, post.VehicleId);
+Assert.NotEqual(RouteRegistration, post.VehicleId);      // would FAIL on the wrong contract
+```
+
+**2. Fixtures mirroring the code's own wrong assumption.** A request/response fixture is shaped to match what the production code *expects* rather than what the real API actually returns, so the test confirms the bug instead of catching it.
+
+```csharp
+// MASKING — production wrongly deserializes string[]; the fixture feeds string[] too,
+// so the test is green while the real API returns objects (BUG-016).
+var json = """["V-001","V-002"]""";
+
+// FAITHFUL — fixture mirrors the REAL contract: GET /vehicles/available returns
+// objects { vehicleId, registration, equipment }. A wrong deserialization now fails.
+var json = """[{"vehicleId":"...","registration":"V-001","equipment":["..."]}]""";
+```
+
+**The rule:**
+- Use realistic, contract-faithful, **distinct** identifiers. Never reuse one placeholder for two distinct concepts (backend GUID vs registration string, route id vs fleet-state row id, request id vs offer id).
+- Request/response fixtures must match the **real** API shape — verify against the actual backend DTO / endpoint, not against what the code under test happens to parse.
+- Litmus test for every assertion: *would this test still pass if the production code mirrored the wrong/old contract?* If yes, it is masking — flag it.
+
+### Mocked unit tests cannot verify a cross-process contract
+
+A mocked unit test can never verify a cross-process **wire or identity contract** — the mock answers whatever the test tells it to, so it agrees with the code's assumption by construction (both masking patterns above live here). Serialization shape, field names, GUID-vs-registration keying, and HTTP status semantics across the simulator↔backend boundary are only proven by an integration run.
+
+The **headless smoke is the integration net**: `scripts/local/start.sh` (full system up) followed by `scripts/local/smoke.sh` (drives one job end-to-end by API). Run it before declaring a repo "done" — a repo whose only evidence is a green mocked unit suite has **not** verified its wire contracts. `BUG-016` and `BUG-017` were both caught only by this smoke, never by unit tests.
+
+---
+
 ## Duplication Check
 
 Two tests are duplicates if they exercise the **same code path** with the **same inputs** and assert the **same outputs**. Duplicates add noise without adding coverage.
@@ -106,6 +157,7 @@ This is a quick reference. Each item is governed by its own skill — consult th
 |----------------|----------------|
 | Unit and integration tests present | this skill (Two Required Levels) |
 | Every test asserts on state or output | this skill (Value-Add Check) |
+| No masking tests (placeholder reuse / fixtures mirroring the wrong contract) | this skill (Anti-Masking Rule) |
 | No duplicate tests | this skill (Duplication Check) |
 | Every AC maps to a test | ac-coverage skill |
 | `GivenA_When_Then` naming | tdd-cycle skill |
@@ -115,6 +167,7 @@ For each test file, verify:
 
 - [ ] Both unit and integration tests present (if Application or Infrastructure layer touched — see Repo Adaptations below for the equivalent check per repo)
 - [ ] Every test method asserts on state or output, not only on mock interactions
+- [ ] No masking tests — distinct identifiers for distinct concepts; fixtures match the real API shape; every assertion would fail against the wrong/old contract
 - [ ] No two tests are duplicates
 - [ ] Every AC bullet maps to at least one test
 - [ ] All test methods follow `GivenA_When_Then` naming

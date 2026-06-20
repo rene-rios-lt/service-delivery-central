@@ -45,8 +45,8 @@ Write findings to `.stories/<STORY-ID>/04-ai-review.md` in the working repo befo
 Run each check in order. A finding in any check does not stop the remaining checks — complete all checks before producing the output.
 
 **Finding severity:**
-- **Blocking** — prevents APPROVED. Must be resolved before the Implementor cycle closes. Checks 0, 1, 2, 5, 6, 7, 8, and 9 produce blocking findings.
-- **Advisory** — flagged but does not prevent APPROVED. Checks 3 and 4 produce advisory findings. Advisory findings are listed in the APPROVED output under a separate "Advisory Notes" section.
+- **Blocking** — prevents APPROVED. Must be resolved before the Implementor cycle closes. Checks 0, 1, 2, 5, 6, 7, 8, and 9 produce blocking findings. Check 3's masking sub-finding (3b) is also blocking — see Check 3.
+- **Advisory** — flagged but does not prevent APPROVED. Check 3's test-value findings (3a) and all of Check 4 are advisory. Advisory findings are listed in the APPROVED output under a separate "Advisory Notes" section.
 
 ### Check 0 — Produce the diff and run the tests
 
@@ -83,12 +83,20 @@ Apply the level check using the repo-appropriate projects (see the test-quality 
 
 If the required test level is missing, flag it as a blocking finding.
 
-### Check 3 — Test Value *(Advisory)*
+### Check 3 — Test Value & Masking
 
-For each test method in the diff:
+Two sub-checks. See the test-quality skill's **Value-Add Check** and **Anti-Masking Rule**.
+
+**3a — Test value *(Advisory)*.** For each test method in the diff:
 - Does it assert on state or output? (high value)
 - Does it only assert that a mock was called, with no state or return value assertion? (low value — flag it)
 - Is it a trivial getter test with no logic? (low value — flag it)
+
+**3b — Masking *(Blocking)*.** A masking test passes by coincidence and would still pass against the wrong or old contract, so it guards nothing — this is how `BUG-016` and `BUG-017` shipped behind a green suite. Apply the test-quality skill's Anti-Masking Rule. For each test, run the litmus question: *would this test still pass if the production code mirrored the wrong/old contract?* Flag as **[Masking]** (blocking) when either pattern is present:
+- **Placeholder reuse** — one literal stands in for two distinct concepts (backend GUID vs registration, route id vs fleet-state row id, request id vs offer id) **and** an assertion's correctness depends on which one the code chose. Use `Grep` to confirm the two concepts are genuinely distinct types/fields in production. Do **not** flag incidental reuse where no assertion turns on the collapsed identity.
+- **Fixture mirrors the wrong contract** — a request/response fixture's shape matches what the code under test parses rather than the real API. Verify the fixture against the actual backend DTO / endpoint shape (use `Grep` to find the real response type); if they disagree, the test confirms the bug instead of catching it.
+
+Fix guidance to include in a 3b finding: give the test distinct, contract-faithful values and add an assertion that would fail on the wrong contract (e.g. `Assert.NotEqual(routeRegistration, post.VehicleId)`), or correct the fixture to the real shape.
 
 ### Check 4 — Test Duplication *(Advisory)*
 

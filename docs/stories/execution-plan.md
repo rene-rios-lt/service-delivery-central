@@ -205,9 +205,9 @@
 
 | Story | Repo | Description |
 |-------|------|-------------|
-| [QUAL-001](quality.md) | Central + Simulator | Catch "masking" tests in AI Review: strengthen `/test-quality` (+ `story-ai-reviewer`) so tests that pass by placeholder reuse / mirroring the code's wrong assumption are flagged; audit the simulator suite for other instances. Motivated by BUG-016/017 shipping green. |
+| ~~[QUAL-001](quality.md)~~ | ~~Central + Simulator~~ | ~~Catch "masking" tests in AI Review: strengthen `/test-quality` (+ `story-ai-reviewer`) so tests that pass by placeholder reuse / mirroring the code's wrong assumption are flagged; audit the simulator suite for other instances. Motivated by BUG-016/017 shipping green.~~ |
 
-**Depends on:** nothing (process improvement). Central skill/agent edits ship via `/ship-it`; any simulator test-code changes from the audit go via `/master`.
+**Depends on:** nothing (process improvement). Central skill/agent edits ship via `/ship-it`; test-only fidelity fixes from the audit ship via `/ship-it` as their own PR; substantive simulator production changes go via `/master`.
 
 ---
 
