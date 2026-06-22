@@ -49,6 +49,12 @@ Azure infrastructure provisioned via Terraform (not active for POC local dev)
 # Launch the web client (kills any existing instance, starts the Blazor WASM app, opens browser)
 ./scripts/local/launchWebPage.sh
 
+# Build the MAUI frontend (ServiceDelivery.Client.Mobile) and deploy + launch it on an iOS simulator.
+# Both boot the device (preferring one already booted), open Simulator.app, then build/deploy/run;
+# they block streaming the app console (Ctrl-C to stop). They do NOT start the backend (see start.sh).
+./scripts/local/startInPhone.sh    # iPhone 17 Pro
+./scripts/local/startInTablet.sh   # iPad mini (A17 Pro)
+
 # Run all backend tests
 ./scripts/local/test-backend.sh
 
@@ -75,6 +81,8 @@ Azure infrastructure provisioned via Terraform (not active for POC local dev)
 ```
 
 `scripts/utils/mark-story-complete.sh` crosses a merged story/bug ID out in `docs/stories/execution-plan.md`. It usually runs unattended — fired by a PostToolUse hook after `gh pr merge` succeeds — but it also accepts an explicit ID (`mark-story-complete.sh SIM-008`) for cases the hook can't catch. **The hook does not fire when a PR is merged from a `/worktree` session** (the worktree is a separate project dir, so central's project-scoped hook is inactive there). `scripts/utils/reconcile-plan.sh` is the backstop: it lists merged PRs across all repos and crosses out every merged story — run it directly, or let `scripts/utils/worktree.sh remove --merged` run it for you during worktree cleanup.
+
+`scripts/utils/run-on-simulator.sh` is the shared helper behind `startInPhone.sh` / `startInTablet.sh` — it takes a simulator device name (e.g. `"iPhone 17 Pro"`), resolves an available device (preferring one already booted), boots it, and builds + deploys + launches the MAUI Mobile app on it. The two `startIn*.sh` scripts are thin wrappers that pass the device name.
 
 All scripts must be runnable from the repo root and must be executable (`chmod +x`).
 
