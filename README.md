@@ -91,6 +91,15 @@ From the repo root:
 
 This will kill any existing instance on port 5023, start the Blazor WASM web app, and open it in your browser at `http://localhost:5023`.
 
+### Run the app on an iOS simulator (iPhone / iPad)
+
+```bash
+./scripts/local/startInPhone.sh    # iPhone 17 Pro
+./scripts/local/startInTablet.sh   # iPad mini (A17 Pro)
+```
+
+Each builds the MAUI Mobile app (`ServiceDelivery.Client.Mobile`) and deploys + launches it on the named simulator (booting it and opening Simulator.app if needed). They block streaming the app console — Ctrl-C to stop. Both are thin wrappers over `scripts/utils/run-on-simulator.sh`, which resolves a device by name (preferring one already booted) and does the build/deploy/run.
+
 ### Run all backend tests
 
 ```bash
@@ -107,13 +116,21 @@ Runs `dotnet test` across all backend test projects (Domain, Application, Infras
 
 Runs `dotnet test` against the simulator repo.
 
+### Run all frontend tests
+
+```bash
+./scripts/local/test-frontend.sh
+```
+
+Runs `dotnet test` against the frontend repo.
+
 ### Run the full test suite
 
 ```bash
 ./scripts/local/test-all.sh
 ```
 
-Runs the backend and simulator test suites in sequence.
+Runs the backend, frontend, and simulator test suites with a live results table.
 
 ### Bring up the full system locally
 
@@ -122,6 +139,14 @@ Runs the backend and simulator test suites in sequence.
 ```
 
 Starts the backend (HTTP profile, `http://localhost:5180`) and the simulator as background processes, exporting `DOTNET_ENVIRONMENT=Local` so both load `appsettings.Local.json` for local credentials. The backend seeds its data on startup. Logs: `/tmp/sd-backend.log`, `/tmp/sd-sim.log`.
+
+### Bring up the full demo (backend + sim + all three clients)
+
+```bash
+./scripts/local/startSystem.sh
+```
+
+One command for a live multi-persona demo: runs `start.sh` (backend + simulator), then opens a separate Terminal.app window for each frontend client — **Dispatcher** on Web, **ServiceRep** on the iPhone simulator, **Requester** on the iPad simulator. Idempotent (skips `start.sh` if `:5180` is already up). Three distinct host surfaces means three independent login sessions with no token collision.
 
 ### Drive one job end-to-end (headless smoke)
 
@@ -138,6 +163,14 @@ Logs in as a dispatcher + requester, submits a service request near an available
 ```
 
 Stops the backend and simulator.
+
+To tear down the **full demo** brought up by `startSystem.sh` (backend + simulator **plus** the web client and the iPhone/iPad simulator apps):
+
+```bash
+./scripts/local/stopSystem.sh
+```
+
+The inverse of `startSystem.sh`: runs `stop.sh`, frees the web client port (`:5023`), kills the mobile build/deploy sessions, and shuts down the demo simulators (leaving any other booted simulators alone).
 
 ### `mark-story-complete.sh` (automated)
 
