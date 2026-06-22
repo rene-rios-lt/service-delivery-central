@@ -144,7 +144,7 @@
 | ~~[**BUG-020**](bug.md)~~ | ~~Frontend~~ | ~~**Bug** — Web client renders unstyled: `AddMudServices()` + providers are wired, but `index.html` never loads `_content/MudBlazor/MudBlazor.min.css`/`.js`, so every `Mud*` component is bare HTML. Found launching the web app after FE-001. Fix: add the MudBlazor CSS/font/JS to the Web host's `index.html`.~~ |
 | ~~[**BUG-021**](bug.md)~~ | ~~Frontend~~ | ~~**Bug** — Login screen doesn't match the approved mockup (`login__web-1280x800.png`): labels float inside fields instead of above, no brand mark, no gradient background, button auto-uppercases. FE-001 was built to MudBlazor defaults. Surfaced once BUG-020 made styling load. Fix via `/master`: pixel-match the mockup.~~ |
 | ~~[**BUG-022**](bug.md)~~ | ~~Frontend~~ | ~~**Bug** — Desktop & Mobile hosts render unstyled: BUG-020 added MudBlazor's CSS/JS only to the Web host's `index.html`, but each MAUI host ships its own `index.html` and neither loaded the assets. Found tracing the mobile startup→render chain. Fix: add the MudBlazor CSS/font/JS to both `Desktop/wwwroot/index.html` and `Mobile/wwwroot/index.html`.~~ |
-| [FE-002](frontend.md) | Frontend | JWT expiry detection → redirect to login |
+| ~~[FE-002](frontend.md)~~ | ~~Frontend~~ | ~~JWT expiry detection → redirect to login~~ |
 | [FE-021](frontend.md) | Frontend | App shell, navigation menu & logout (per-persona) |
 
 **Depends on:** Phase 1 (BE-001, BE-002)
