@@ -70,11 +70,21 @@ Azure infrastructure provisioned via Terraform (not active for POC local dev)
 # Bring up the full system locally (backend on HTTP profile + simulator; exports DOTNET_ENVIRONMENT=Local so the simulator loads appsettings.Local.json)
 ./scripts/local/start.sh
 
+# Bring up the full DEMO in one command: backend + simulator (via start.sh), then the three
+# frontend clients each in its own Terminal.app window — Dispatcher on Web, ServiceRep on the
+# iPhone sim, Requester on the iPad sim. Idempotent (skips start.sh if :5180 is already up).
+# Tear down backend + simulator with stop.sh; Ctrl-C each client window.
+./scripts/local/startSystem.sh
+
 # Drive one service-delivery job end-to-end by API (requires start.sh already running) — the headless integration smoke
 ./scripts/local/smoke.sh
 
-# Tear down local environment
+# Tear down local environment (backend + simulator)
 ./scripts/local/stop.sh
+
+# Tear down the full DEMO — the inverse of startSystem.sh: stops backend + simulator (via stop.sh),
+# frees the web client (:5023), kills the mobile build/deploy sessions, and shuts down the demo simulators.
+./scripts/local/stopSystem.sh
 
 # Run a utility script
 ./scripts/utils/<script-name>.sh
