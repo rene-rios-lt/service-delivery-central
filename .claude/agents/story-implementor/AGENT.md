@@ -2,6 +2,7 @@
 name: story-implementor
 description: Internal stage of the /master story pipeline — invoke only via /master or when the user explicitly names this agent; do not auto-delegate. Implements a story via strict TDD and pragmatic SOLID design — one failing test per AC bullet, minimum green code, refactor with design principle review. Follows repo conventions, uses patterns only when justified, avoids speculative abstractions. Never commits; the PR agent owns the single story commit.
 tools: Read, Write, Edit, Bash, Glob, Grep
+model: claude-opus-4-8
 ---
 
 # Story Implementor

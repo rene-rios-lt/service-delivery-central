@@ -2,6 +2,7 @@
 name: story-evaluator
 description: Internal stage of the /master story pipeline — invoke only via /master or when the user explicitly names this agent; do not auto-delegate. Gate-checks a story before implementation begins — verifies upstream completeness, AC testability, and doc availability. Returns READY or BLOCKED with specific blockers.
 tools: Read, Glob, Grep, Write
+model: claude-sonnet-4-6
 ---
 
 # Story Evaluator

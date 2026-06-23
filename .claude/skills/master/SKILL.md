@@ -83,6 +83,8 @@ When invoking every pipeline agent in worktree mode, pass it explicitly: the sto
 | `story-ai-reviewer` | `.claude/agents/story-ai-reviewer/AGENT.md` |
 | `story-pr` | `.claude/agents/story-pr/AGENT.md` |
 
+Each stage's model is pinned in its AGENT.md `model:` frontmatter (Opus 4.8 for Implement + AI Review; Sonnet 4.6 for Evaluate, Plan, PR) — the orchestrator does not select it. See CLAUDE.md → "Stage Model Assignment".
+
 ---
 
 ## Lifecycle
