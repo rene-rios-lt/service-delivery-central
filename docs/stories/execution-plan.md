@@ -159,7 +159,7 @@
 |-------|------|-------------|
 | ~~[FE-007](frontend.md)~~ | ~~Frontend~~ | ~~Take over an idle vehicle (dropdown) — supersedes the simulator~~ |
 | ~~[FE-020](frontend.md)~~ | ~~Frontend~~ | ~~Idle / waiting-for-offers view~~ |
-| [FE-008](frontend.md) | Frontend | Job offer screen with 60-second countdown |
+| ~~[FE-008](frontend.md)~~ | ~~Frontend~~ | ~~Job offer screen with 60-second countdown~~ |
 | [FE-009](frontend.md) | Frontend | Accept offer → navigate to active job view |
 | [FE-010](frontend.md) | Frontend | Decline offer → return to idle |
 | [FE-011](frontend.md) | Frontend | Active job map with live (simulator-driven) position and ETA |
