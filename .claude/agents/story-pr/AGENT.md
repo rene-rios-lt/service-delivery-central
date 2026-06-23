@@ -2,6 +2,7 @@
 name: story-pr
 description: Internal stage of the /master story pipeline — invoke only via /master or when the user explicitly names this agent; do not auto-delegate. Composes the PR description from the AI Reviewer's output, then stages, commits, pushes, and creates the PR. One commit per story, on the feature branch.
 tools: Bash, Read, Write
+model: claude-sonnet-4-6
 ---
 
 # Story PR Agent

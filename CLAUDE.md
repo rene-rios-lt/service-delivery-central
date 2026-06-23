@@ -175,8 +175,21 @@ Agents are Claude Code subagents — each runs in an isolated context window wit
 
 - One folder per agent: `.claude/agents/<name>/AGENT.md`
 - Each AGENT.md must have `name:`, `description:`, and `tools:` frontmatter fields
+- An AGENT.md **may** also pin a `model:` frontmatter field to override the session model for that stage (see Stage Model Assignment below). It is optional; without it the stage inherits the session model.
 - Each AGENT.md must contain: a persona paragraph (who the agent is, immediately under the `# <Name>` heading — not a `## Persona` header), **Required Reading** (skill file paths to read first), **Inputs**, **Audit Output** (the `.stories/<STORY-ID>/NN-<name>.md` file it writes), **Process** (numbered steps), and **Output Format**
 - Agents must write their audit file before returning — it is the contract between pipeline stages
+
+**Stage Model Assignment.** The pipeline runs a hybrid model split, pinned per stage via each agent's `model:` frontmatter. The two stages where code quality and the masking-test safety net live (Implement, AI Review) run on Opus 4.8; the structured, contract-driven stages (Evaluate, Plan, PR) run on the cheaper/faster Sonnet 4.6. Exact version IDs are pinned (not tracking aliases) so runs are reproducible until bumped deliberately.
+
+| Stage | Agent | `model:` |
+|-------|-------|----------|
+| Evaluate | `story-evaluator` | `claude-sonnet-4-6` |
+| Plan | `story-planner` | `claude-sonnet-4-6` |
+| Implement | `story-implementor` | `claude-opus-4-8` |
+| AI Review | `story-ai-reviewer` | `claude-opus-4-8` |
+| PR | `story-pr` | `claude-sonnet-4-6` |
+
+The `/master` orchestrator itself runs on the **session model** (set via `/model`, not in any file); pairing it with Sonnet 4.6 realises the full hybrid, while the two Opus pins keep Implement and AI Review on Opus 4.8 regardless of the session model.
 
 **Existing agents** (do not duplicate — extend in place):
 
