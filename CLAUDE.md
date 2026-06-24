@@ -64,6 +64,9 @@ Azure infrastructure provisioned via Terraform (not active for POC local dev)
 # Run all frontend tests
 ./scripts/local/test-frontend.sh
 
+# Run the Appium end-to-end suite on an iOS simulator (requires start.sh running + Appium installed)
+./scripts/local/test-appium.sh
+
 # Run the full test suite (backend + frontend + simulator) with a live results table
 ./scripts/local/test-all.sh
 
