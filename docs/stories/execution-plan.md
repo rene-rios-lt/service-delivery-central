@@ -204,6 +204,18 @@
 
 ---
 
+## Phase 12 — Backend Supplement: Active Job State
+**Goal:** Extend the backend with a dedicated polling endpoint for the rep navigation view, making FE-011's live map (AC-1/AC-2/AC-4) work end-to-end against the running system.
+
+| Story | Repo | Description |
+|-------|------|-------------|
+| [BE-030](backend.md) | Backend | `GET /rep/active-job-state` — rep position, requester location, ETA, rep state for the FE-011 map poll |
+
+**Depends on:** Phase 5 (rep state machine), BE-012 (active request read), BE-008 (position storage).
+**Exit criteria:** The FE-011 active job navigation view renders a moving rep marker, live ETA, and enables "I've Arrived" at the correct distance — all driven by the running backend with no stubs.
+
+---
+
 ## Cross-Cutting — Engineering Quality
 **Goal:** Harden the AI pipeline against defect classes that have slipped through. Not tied to a feature phase; runs whenever picked up.
 
@@ -231,6 +243,8 @@ Phase 1
             └── Phase 9 (Frontend ServiceRep)   ← needs Phases 2–5
             └── Phase 10 (Frontend Requester)   ← needs Phases 3–5
             └── Phase 11 (Frontend Dispatcher)  ← needs Phases 2, 5, 6
+Phase 5
+    └── Phase 12 (BE-030 active-job-state)      ← unblocks FE-011 AC-1/AC-2/AC-4 end-to-end
 ```
 
 Frontend phases (8–11) can begin in parallel with Phase 2+ on the backend — the frontend can be built against mock data / a stub API while backend phases progress. Full integration testing starts once the corresponding backend phase is complete.
@@ -241,9 +255,9 @@ Frontend phases (8–11) can begin in parallel with Phase 2+ on the backend — 
 
 | Repo | Stories | Phases |
 |------|---------|--------|
-| Backend | BE-001 – BE-029 (29 stories) | 1–6 |
+| Backend | BE-001 – BE-030 (30 stories) | 1–6, 12 |
 | Simulator | SIM-001 – SIM-011 (11 stories) | 2, 4, 7 |
 | Frontend | FE-001 – FE-023 (23 stories) | 8–11 |
-| **Total** | **63 stories** | **11 phases** |
+| **Total** | **64 stories** | **12 phases** |
 
 Plus **15 open bugs** ([`bug.md`](bug.md)) — `BUG-001` – `BUG-015` — sequenced in Phase 3 ahead of `BE-014`. `BUG-003`–`BUG-015` are central-repo doc/pipeline fixes (handle via `/ship-it`).
