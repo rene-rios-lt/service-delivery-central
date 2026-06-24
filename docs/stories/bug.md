@@ -423,7 +423,7 @@ if (response.StatusCode == HttpStatusCode.Unauthorized
 
 ## BUG-025 — Dispatcher app-shell menu (`PersonaMenu`) does not render after login: Blazor skips child re-render when parent parameter reference is unchanged
 
-- **Status:** **Open**
+- **Status:** **Fixed** 2026-06-24 — `_shellVersion` counter and `ShellVersion` parameter on `PersonaShell` added; see BUG-026 for follow-up correction to the lifecycle method.
 - **Severity:** Medium (after logging in as a Dispatcher, the `PersonaMenu` (avatar + account dropdown) never appears in the DOM even though the user profile loads successfully; Dispatcher cannot log out or access the menu via the web host; two AppShellNav Playwright E2E tests fail as a result)
 - **Repo / Area:** Frontend — `src/ServiceDelivery.Client.UI/Layout/MainLayout.razor`
 - **Related stories:** `FE-021` (app shell + nav drawer), `QUAL-003` (Playwright E2E)
@@ -468,6 +468,47 @@ With a corresponding `[Parameter] public int ShellVersion { get; set; }` added t
 - Clicking the avatar opens the account panel (`[data-testid='persona-menu-account-panel']`)
 - Clicking "Log out" navigates back to the login screen
 - `GivenAuthenticatedDispatcher_WhenAvatarClicked_ThenAccountMenuPanelIsVisible` and `GivenAuthenticatedDispatcher_WhenLogoutClicked_ThenRedirectedToLoginScreen` Playwright E2E tests pass
+
+---
+
+## BUG-026 — `MainLayout` uses `OnInitializedAsync` instead of `OnParametersSetAsync`, so `Shell.Load` is never called on Blazor navigation from `/login`
+
+- **Status:** **Fixed** 2026-06-24 — changed `OnInitializedAsync` to `OnParametersSetAsync` (guarded by `Shell.Menu is null`); all 8 Playwright E2E tests pass.
+- **Severity:** High (BUG-025's fix shipped the `_shellVersion` counter increment inside `OnInitializedAsync`, which only runs once — when `MainLayout` first loads on `/login`. Blazor's Router reuses the layout instance across navigations and never calls `OnInitializedAsync` again, so `Shell.Load` was never reached in the normal login flow. The `persona-avatar` never appeared; all three `AppShellNavTests` E2E tests timed out.)
+- **Repo / Area:** Frontend — `src/ServiceDelivery.Client.UI/Layout/MainLayout.razor`
+- **Related stories:** `FE-021` (app shell + nav drawer), `QUAL-003` (Playwright E2E)
+- **Found:** Running `test-e2e.sh` against the live web host (2026-06-24) after BUG-025 was merged — all three `AppShellNavTests` Playwright tests still timed out waiting for `[data-testid='persona-avatar']`. The unit test passed in CI because bUnit renders `MainLayout` directly on a non-login route, bypassing the login→navigate lifecycle entirely.
+
+**Summary**
+
+BUG-025 introduced `_shellVersion` as a counter parameter to force `PersonaShell` to re-render when the profile loads. The counter increment was placed inside `OnInitializedAsync`. When the E2E test opens `/login` first, `MainLayout` initialises with `IsLoginRoute = true` and skips the `Shell.Load` block entirely. After login, `NavigationManager.NavigateTo("/dispatcher")` is called by the app; the Router updates the `Body` parameter on the existing `MainLayout` instance and re-renders, but `OnInitializedAsync` is not called again. `Shell.Load` is never reached, `Menu` stays `null`, and `persona-avatar` never appears.
+
+**Root cause**
+
+`OnInitializedAsync` fires exactly once per component lifetime. In the E2E login flow the layout initialises on `/login`, so the `!IsLoginRoute` guard skips `Shell.Load`. The Blazor Router reuses the layout instance on navigation — it updates parameters (triggering `OnParametersSetAsync`) but does not re-initialise the component.
+
+**Fix**
+
+Replace `OnInitializedAsync` with `OnParametersSetAsync` and guard with `Shell.Menu is null` to avoid redundant calls:
+
+```csharp
+protected override async Task OnParametersSetAsync()
+{
+    if (!IsLoginRoute && Shell.Menu is null)
+    {
+        var profile = await AuthService.GetCurrentUserAsync();
+        Shell.Load(profile);
+        _shellVersion++;
+    }
+}
+```
+
+`OnParametersSetAsync` fires on every navigation (the Router updates `Body`), so the shell loads as soon as the user transitions to any authenticated route, regardless of where the app session started.
+
+**Acceptance criteria (bug resolved when):**
+
+- After logging in as `dispatcher1` via the normal login flow (starting at `/login`), the app bar shows the avatar (`[data-testid='persona-avatar']`) within 5 seconds
+- All 8 Playwright E2E tests in `tests/ServiceDelivery.Client.E2E/` pass against a locally running system (`start.sh` up, web host running)
 
 ---
 
