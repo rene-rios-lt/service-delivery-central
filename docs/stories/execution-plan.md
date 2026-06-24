@@ -223,8 +223,10 @@
 |-------|------|-------------|
 | ~~[QUAL-001](quality.md)~~ | ~~Central + Simulator~~ | ~~Catch "masking" tests in AI Review: strengthen `/test-quality` (+ `story-ai-reviewer`) so tests that pass by placeholder reuse / mirroring the code's wrong assumption are flagged; audit the simulator suite for other instances. Motivated by BUG-016/017 shipping green.~~ |
 | ~~[QUAL-002](quality.md)~~ | ~~Central~~ | ~~Mockup-driven fidelity: every pipeline stage treats a frontend story's mockup as the visual spec — evaluator gates on its availability, planner reads it into a UI Composition Map, implementor builds to it, AI reviewer adds Check 10 (Mockup Fidelity), master surfaces it at Checkpoint #1. Motivated by BUG-021 (login shipped diverging from its mockup because no stage read it).~~ |
+| [QUAL-003](quality.md) | Frontend | Playwright E2E suite (web host) — real-browser coverage of Dispatcher, Requester, and ServiceRep-web flows including Google Maps interop and SignalR events |
+| [QUAL-004](quality.md) | Frontend | Appium E2E suite (iOS simulator) — mobile coverage of the ServiceRep flow (take over vehicle → offer → accept → navigate → arrive → complete → release); depends on QUAL-003 overlay-element strategy |
 
-**Depends on:** nothing (process improvement). Central skill/agent edits ship via `/ship-it`; test-only fidelity fixes from the audit ship via `/ship-it` as their own PR; substantive simulator production changes go via `/master`.
+**Depends on:** nothing (process improvement). Central skill/agent edits ship via `/ship-it`; test-only fidelity fixes from the audit ship via `/ship-it` as their own PR; substantive simulator production changes go via `/master`. QUAL-003 and QUAL-004 add test projects to the frontend repo and ship via `/master`.
 
 ---
 
@@ -261,3 +263,5 @@ Frontend phases (8–11) can begin in parallel with Phase 2+ on the backend — 
 | **Total** | **64 stories** | **12 phases** |
 
 Plus **15 open bugs** ([`bug.md`](bug.md)) — `BUG-001` – `BUG-015` — sequenced in Phase 3 ahead of `BE-014`. `BUG-003`–`BUG-015` are central-repo doc/pipeline fixes (handle via `/ship-it`).
+
+Plus **4 engineering-quality stories** ([`quality.md`](quality.md)) — `QUAL-001` – `QUAL-004` (QUAL-001 and QUAL-002 complete; QUAL-003 Playwright + QUAL-004 Appium pending).
