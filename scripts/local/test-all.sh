@@ -27,7 +27,7 @@ TMP="$(mktemp -d)"
 mkdir -p "$TMP/trx"
 trap 'rm -rf "$TMP"' EXIT
 
-REDRAW_LINES=12
+REDRAW_LINES=13
 first_render=1
 
 # Run one test project in the background, recording status and a TRX result file.
@@ -113,7 +113,7 @@ render() {
   pln "$(fmt_row 'Backend'   'Unit'        "$be_unit")"
   pln "$(fmt_row 'Backend'   'Integration' "$be_integ")"
   pln "$(fmt_row 'Frontend'  'Unit'        "$fe_unit")"
-  pln "$(fmt_row 'Frontend'  'Integration' '0 0 0 na')"
+  pln "$(fmt_row 'Frontend'  'E2E (PW)'    '0 0 0 na')"
   pln "$(fmt_row 'Simulator' 'Unit'        "$sim_unit")"
   pln "$(fmt_row 'Simulator' 'Integration' '0 0 0 na')"
 
@@ -128,6 +128,7 @@ render() {
     pass)            pln "  ${C_GREEN}${C_BOLD}All ${gt} tests passed.${C_RESET}" ;;
     fail)            pln "  ${C_RED}${C_BOLD}${gf} failed, ${gp} passed of ${gt} tests.${C_RESET}" ;;
   esac
+  pln "  ${C_DIM}Frontend E2E (Playwright) needs a live system — run scripts/local/test-e2e.sh.${C_RESET}"
 }
 
 all_done() {
