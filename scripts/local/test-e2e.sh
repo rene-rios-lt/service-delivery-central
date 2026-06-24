@@ -91,7 +91,7 @@ fi
 # 4. Run the suite.
 echo "==> Running Playwright E2E suite ..."
 export E2E_BASE_URL="$WEB_URL"
-export E2E_DISPATCHER_PASSWORD="${E2E_DISPATCHER_PASSWORD:-Password1!}"
+export E2E_DISPATCHER_PASSWORD="${E2E_DISPATCHER_PASSWORD:-Password123!}"
 dotnet test "$E2E_PROJECT" --nologo
 RESULT=$?
 
