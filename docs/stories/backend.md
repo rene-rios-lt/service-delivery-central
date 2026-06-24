@@ -449,3 +449,26 @@
 - Explicit logout / `POST /vehicles/{id}/release` also clears `humanControlled` and parks the vehicle
 - Once a human has taken a rep over, the simulator does **not** re-assume that rep or re-claim that vehicle for the remainder of the run (the simulator enforces this via its reconciler — see SIM-009); the backend simply reports the cleared state
 - The vehicle remains available for a dispatcher `force-release` or a fresh human takeover
+
+---
+
+### BE-030 — Active job state endpoint for the rep navigation view
+**As a** ServiceRep,
+**I want to** `GET /rep/active-job-state` to fetch my vehicle's current position, the requester's location, my ETA, and my current rep state,
+**so that** the active job navigation view (FE-011) can display a live map with an accurate countdown and enable the "I've Arrived" button at the right moment.
+
+**Context:** `GET /service-requests/my-active` (BE-012) returns the service request record (`requestId`, `tier`, `dtcTitle`, `status`, `requesterLatitude`, `requesterLongitude`, `createdAt`) but does not carry the rep's current GPS position, real-time ETA, or rep state. The FE-011 map polls for position every ~3 seconds — a dedicated endpoint keeps that polling concern separate from the request record and returns only what the map needs.
+
+**Acceptance Criteria:**
+- `GET /rep/active-job-state` returns `200` with:
+  - `requestId` — the active `Assigned` service request's ID
+  - `requesterName` — first name of the requester (from the `Users` table via the service request)
+  - `dtcTitle` — DTC title from the active service request
+  - `requesterLatitude`, `requesterLongitude` — requester's pinned location (unchanged for the life of the request, but updated if the dispatcher redirects — see BE-022)
+  - `repLatitude`, `repLng` — the rep's current vehicle position (most recent `POST /vehicles/{id}/position` value stored on the `RepSession` or `Vehicle`)
+  - `etaMinutes` — estimated minutes to the requester, recomputed from the current Haversine distance ÷ assumed average speed (same formula used by BE-010 matching; see [ADR-0004](../adr/0004-haversine-distance-for-matching.md)); returns `0` when rep state is `OnSite`
+  - `repState` — the rep's current state string: `EnRoute`, `Within15Miles`, or `OnSite`
+- Returns `404` when the authenticated rep has no active `Assigned` request
+- Requires ServiceRep role
+- Read-only; no side effects
+- The frontend `IActiveJobService` (FE-011) polls this endpoint every ~3 seconds; the response shape must match `ActiveJobContext` in `ServiceDelivery.Client.Core/Models/ActiveJobContext.cs`
