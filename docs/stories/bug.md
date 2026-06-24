@@ -375,6 +375,102 @@ With MudBlazor now loading (BUG-020), the login page renders as default MudBlazo
 
 ---
 
+## BUG-024 — `SessionExpiryHttpHandler` fires on login's 401, causing unhandled exception instead of inline error
+
+- **Status:** **Open**
+- **Severity:** High (entering wrong credentials on the web login screen produces an unhandled exception and a Blazor error banner instead of the inline "Invalid email or password." message; the sign-in button stays permanently disabled until the page is reloaded; the login error E2E test also fails as a result)
+- **Repo / Area:** Frontend — `src/ServiceDelivery.Client.UI/Features/Authentication/Services/SessionExpiryHttpHandler.cs`
+- **Related stories:** `FE-002` (JWT expiry), `FE-001` (login), `QUAL-003` (Playwright E2E)
+- **Found:** Running `test-e2e.sh` against the live web host (2026-06-24) after BUG-023 was fixed. Browser console showed: `Unhandled exception rendering component: The session has expired; the in-flight request was aborted. SessionExpiredException at SessionExpiryHttpHandler.SendAsync`.
+
+**Summary**
+
+`SessionExpiryHttpHandler` intercepts every HTTP response with status 401 and throws `SessionExpiredException`. This is correct for authenticated requests where a stored JWT has expired mid-session. However, the handler is also attached to the same `HttpClient` used by `HttpAuthService.LoginAsync` — which deliberately uses 401 as the "wrong credentials" signal. When a user enters bad credentials, the backend returns 401, `SessionExpiryHttpHandler` fires before `HttpAuthService` can inspect the status code, and throws an unhandled exception. `LoginViewModel.LoginAsync` never reaches the `if (response is null) { ErrorMessage = ...; }` branch. Blazor's global error handler surfaces the exception as a crash rather than an inline validation message. The `IsBusy = false` finally-block runs but `StateHasChanged()` is never called (the exception prevents it), so the button stays disabled permanently.
+
+**Root cause**
+
+The handler's 401 guard has no exception for the login endpoint:
+
+```csharp
+if (response.StatusCode == HttpStatusCode.Unauthorized)
+{
+    await _expiryHandler.HandleExpiredSessionAsync();
+    throw new SessionExpiredException(); // fires for /auth/login too
+}
+```
+
+**Fix**
+
+Add a path guard so the handler only fires on authenticated endpoints (not the login endpoint itself):
+
+```csharp
+if (response.StatusCode == HttpStatusCode.Unauthorized
+    && !request.RequestUri!.AbsolutePath.Contains("/auth/login", StringComparison.OrdinalIgnoreCase))
+{
+    await _expiryHandler.HandleExpiredSessionAsync();
+    throw new SessionExpiredException();
+}
+```
+
+**Acceptance criteria (bug resolved when):**
+
+- Entering wrong credentials on the login screen shows the inline `MudAlert` with "Invalid email or password." (the `[data-testid='login-error']` element is visible in the DOM)
+- The sign-in button is re-enabled after a failed login attempt
+- `SessionExpiryHttpHandler` still fires correctly for authenticated endpoint 401s (verify via a unit test that the handler is a no-op for `/auth/login`)
+- `GivenInvalidCredentials_WhenLoginSubmitted_ThenInlineErrorIsShown` Playwright E2E test passes
+
+---
+
+## BUG-025 — Dispatcher app-shell menu (`PersonaMenu`) does not render after login: Blazor skips child re-render when parent parameter reference is unchanged
+
+- **Status:** **Open**
+- **Severity:** Medium (after logging in as a Dispatcher, the `PersonaMenu` (avatar + account dropdown) never appears in the DOM even though the user profile loads successfully; Dispatcher cannot log out or access the menu via the web host; two AppShellNav Playwright E2E tests fail as a result)
+- **Repo / Area:** Frontend — `src/ServiceDelivery.Client.UI/Layout/MainLayout.razor`
+- **Related stories:** `FE-021` (app shell + nav drawer), `QUAL-003` (Playwright E2E)
+- **Found:** Running `test-e2e.sh` against the live web host (2026-06-24) after BUG-023 was fixed. Browser network inspection confirmed both `POST /auth/login` (200) and `GET /users/me` (200) succeed, but `[data-testid='persona-avatar']` is never in the DOM.
+
+**Summary**
+
+After login, `MainLayout.razor.OnInitializedAsync()` calls `AuthService.GetCurrentUserAsync()`, receives the `UserProfile`, and calls `Shell.Load(profile)` to set `ShellViewModel.Menu`. `PersonaMenu.razor` is conditionally rendered (`@if (ViewModel.Menu is not null)`). However, `PersonaMenu` never renders because Blazor skips re-rendering `PersonaShell` and its children: when `MainLayout` re-renders after `OnInitializedAsync()` completes, it passes the same `ShellViewModel` reference (`Shell`) to `PersonaShell.ViewModel`. Blazor's parameter-diffing optimisation sees an unchanged reference and does not re-render `PersonaShell` or `PersonaMenu`, so `ViewModel.Menu is not null` is never re-evaluated.
+
+**Root cause**
+
+`ShellViewModel.Menu` is a mutable property on an injected scoped service. Blazor does not track inner property changes on reference-type parameters — it only detects that the `ShellViewModel` reference itself has not changed, and therefore skips the child component's render cycle.
+
+**Fix**
+
+In `MainLayout.razor`, introduce a local state variable that changes when the profile loads, forcing `PersonaShell` to see a changed parameter and re-render:
+
+```csharp
+private int _shellVersion = 0;
+
+protected override async Task OnInitializedAsync()
+{
+    if (!IsLoginRoute)
+    {
+        var profile = await AuthService.GetCurrentUserAsync();
+        Shell.Load(profile);
+        _shellVersion++; // signals PersonaShell that state has changed
+    }
+}
+```
+
+And in `MainLayout.razor`'s template:
+```razor
+<PersonaShell ViewModel="Shell" Body="@Body" ShellVersion="@_shellVersion" />
+```
+
+With a corresponding `[Parameter] public int ShellVersion { get; set; }` added to `PersonaShell.razor` (unused in template — its only role is to change on load so Blazor re-renders the child).
+
+**Acceptance criteria (bug resolved when):**
+
+- After logging in as `dispatcher1`, the app bar shows the avatar (`[data-testid='persona-avatar']`) within 5 seconds of the dispatcher dashboard appearing
+- Clicking the avatar opens the account panel (`[data-testid='persona-menu-account-panel']`)
+- Clicking "Log out" navigates back to the login screen
+- `GivenAuthenticatedDispatcher_WhenAvatarClicked_ThenAccountMenuPanelIsVisible` and `GivenAuthenticatedDispatcher_WhenLogoutClicked_ThenRedirectedToLoginScreen` Playwright E2E tests pass
+
+---
+
 ## BUG-023 — Web host cannot reach the backend: CORS not configured in `Program.cs`
 
 - **Status:** **Open**
