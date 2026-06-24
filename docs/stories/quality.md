@@ -52,61 +52,88 @@
 ## QUAL-003 — Playwright end-to-end test suite (web host)
 
 **As a** developer on the Service Delivery system,
-**I want** a Playwright test suite that drives the three persona flows in a real browser against the running backend,
+**I want** a Playwright test suite that drives all implemented web-visible persona flows in a real browser against the running backend,
 **so that** broken navigation targets, failed JavaScript interop (Google Maps, SignalR), and UI regressions that unit tests cannot catch are detected before merge.
 
 **Motivation**
 The unit and bUnit suites verify code structure and component rendering in isolation but cannot exercise the full browser stack. During FE-011 a broken FE-009 navigation target and unverified Google Maps JS interop were flagged only after merge — the gap between "all tests green" and "feature actually works" was exposed. Every frontend story that involves JS interop, SignalR events, or multi-page navigation has the same blind spot. Playwright fills it by running the app as a real user would.
 
 **Acceptance Criteria:**
+
+**Infrastructure:**
 - A `tests/ServiceDelivery.Client.E2E/` project is added to the frontend repo targeting the Web host (`ServiceDelivery.Client.Web`); uses `Microsoft.Playwright.NUnit` or `Microsoft.Playwright.MSTest`
 - `scripts/local/test-e2e.sh` starts the backend (`start.sh`), waits for `:5180` to be ready, runs `dotnet test` on the E2E project, and tears down on exit; it is idempotent and safe to run more than once
-- `scripts/local/test-all.sh` is updated to include the E2E suite in its results table
-- The suite covers the following flows end-to-end in a headless Chromium browser:
-  - **Dispatcher:** login → fleet map loads with at least one vehicle marker → request queue shows at least one card (requires the simulator to be running)
-  - **Requester:** login → submit a service request (place pin + select DTC + submit) → pending spinner shown → (simulator assigns a rep) → tracking map with moving rep marker
-  - **ServiceRep (web):** login → take-over screen shown with idle vehicle list → select a vehicle → idle waiting view → (simulator sends a job offer) → job offer screen with countdown → accept → active job map renders with rep marker, requester pin, and route line → ETA shown and updates → "I've Arrived" button disabled until within 15 miles
-- Each test flow is independent: it creates its own seeded state via the API (or relies on `start.sh` seed data) and does not depend on other tests having run first
-- Tests assert on DOM-observable outcomes (element presence, text content, `data-testid` attributes) — not on pixel screenshots
-- Google Maps is allowed to render in the test browser; assertions target the overlay elements (`[data-testid="rep-marker"]`, `[data-testid="requester-pin"]`, `[data-testid="route-line"]`), not the underlying Google Maps tile layer
-- SignalR assertions use `page.WaitForSelector` with a generous timeout (≥ 10 s) to allow real hub events to arrive
-- The suite must pass against a locally running system (`start.sh` up, simulator running) before this story is considered done
-- `test-all.sh` output distinguishes E2E pass/fail from unit pass/fail so a flaky E2E does not mask a unit failure
+- `scripts/local/test-all.sh` is updated to include the E2E suite in its results table, distinguishing E2E pass/fail from unit pass/fail
+- Each test is independent: does not depend on other tests having run first; relies on `start.sh` seed data or creates its own state via the API
+- Tests assert on DOM-observable outcomes (`data-testid` attributes, text content, element presence) — not on pixel screenshots
+- Google Maps assertions target overlay elements (e.g. `[data-testid="rep-marker"]`, `[data-testid="requester-pin"]`, `[data-testid="route-line"]`), not the tile layer
+- SignalR assertions use `page.WaitForSelector` with a timeout of ≥ 10 s to allow real hub events to arrive
 
-**Out of scope:** CI pipeline integration (that is an infrastructure decision); visual regression / screenshot diffing; Cypress (Playwright is the chosen tool per this story); mobile/MAUI testing (see QUAL-004).
+**Per-story coverage (all implemented FE stories that are web-visible at the time this story runs):**
 
-**Done when:** `tests/ServiceDelivery.Client.E2E/` exists, `test-e2e.sh` runs the suite green against a live system, `test-all.sh` includes E2E results, and this story is struck in `execution-plan.md`.
+| Story | Platform | Required Playwright scenario |
+|-------|----------|------------------------------|
+| FE-001 — Login | Web + Desktop | Login with valid `dispatcher1` credentials → routed to Dispatcher dashboard; login with invalid credentials → inline error shown; no role-selection screen |
+| FE-002 — JWT expiry | Web (behaviour) | Expire the stored JWT (clear/overwrite localStorage) → redirect to login screen; cleared token not reused on next request |
+| FE-021 — App shell & nav (Dispatcher web menu) | Web + Desktop | Authenticated Dispatcher → account menu reachable from app bar → Log out → redirected to login screen |
+
+> Additional implemented web-visible stories (e.g. Dispatcher queue FE-004, Requester flow FE-015–FE-019, Dispatcher redirect FE-005, force-release FE-022) are **not yet implemented** at the time of this story — their Playwright tests are added when those stories are run through `/master` (see pipeline update below).
+
+**Pipeline update — all three agents must be updated so every future FE story automatically produces a Playwright test alongside its unit/bUnit tests:**
+- `story-planner/AGENT.md` — for any FE story whose platform includes Web or Desktop, include a `tests/ServiceDelivery.Client.E2E/` test file in the Files to Create table and a Playwright scenario per AC in the AC → Test Scenario Mapping (only when `tests/ServiceDelivery.Client.E2E/` already exists in the repo)
+- `story-implementor/AGENT.md` — for any FE story whose platform includes Web or Desktop, write the Playwright test file as part of the TDD cycle (after bUnit tests); note that E2E tests are written but not executed in the pipeline (they require a live system — execution is via `test-e2e.sh`)
+- `story-ai-reviewer/AGENT.md` — update Check 2 (Test Level): for FE stories whose platform includes Web or Desktop and where `tests/ServiceDelivery.Client.E2E/` exists, a missing Playwright test file is a **blocking** finding
+
+**Out of scope:** CI pipeline integration; visual regression / screenshot diffing; Cypress; mobile/MAUI testing (see QUAL-004).
+
+**Done when:** `tests/ServiceDelivery.Client.E2E/` exists with green Playwright tests for FE-001, FE-002, and FE-021; `test-e2e.sh` runs the suite against a live system; `test-all.sh` includes E2E results; the three pipeline agents are updated; and this story is struck in `execution-plan.md`.
 
 ---
 
 ## QUAL-004 — Appium end-to-end test suite (mobile host)
 
 **As a** developer on the Service Delivery system,
-**I want** an Appium test suite that drives the ServiceRep mobile flow on an iOS simulator,
-**so that** MAUI-specific rendering issues, touch interactions, and mobile-only navigation paths are caught before merge and cannot hide behind the Playwright web suite.
+**I want** an Appium test suite that drives all implemented mobile-visible ServiceRep flows on an iOS simulator,
+**so that** MAUI-specific rendering issues, touch interactions, Google Maps interop, and mobile-only navigation paths are caught before merge and cannot hide behind the Playwright web suite.
 
 **Motivation**
 The ServiceRep persona is **mobile-only** (ADR-0008) — no web or desktop host. Playwright (QUAL-003) covers the web host but cannot reach the MAUI iOS app. All ServiceRep stories (FE-007 through FE-014, FE-020, FE-021, FE-023) land in the Mobile host; a Google Maps render failure, a tap-target too small to register, or a MAUI lifecycle event mishandled on iOS are invisible to bUnit and Playwright alike. Appium exercises the running app on a booted iOS simulator at the same layer a human tester would.
 
 **Acceptance Criteria:**
-- An `tests/ServiceDelivery.Client.Appium/` project is added to the frontend repo using `Appium.WebDriver` (NUnit or MSTest); targets `XCUITest` on iOS
-- `scripts/local/test-appium.sh` boots the target iOS simulator (preferring one already booted, matching `startInPhone.sh`'s `"iPhone 17 Pro"` target), builds and installs the Mobile app, starts the Appium server, runs `dotnet test` on the Appium project, and tears down on exit; it must not require the app to already be installed
-- `scripts/local/test-all.sh` is updated to include the Appium suite in its results table, distinguished from unit and Playwright E2E results
-- The suite covers the following flows end-to-end on the iOS simulator:
-  - **Take over a vehicle:** app launches → login screen → enter `rep1` credentials → submit → take-over screen → idle vehicle dropdown populated → select first vehicle → confirm → idle waiting view shown
-  - **Job offer:** (simulator sends a job offer to `rep1`) → job offer screen appears with countdown → countdown decrements in real time → "Accept" and "Decline" buttons visible
-  - **Accept and navigate:** tap "Accept" → active job map screen loads → rep marker and requester pin visible → ETA shown → "I've Arrived" button present (disabled or enabled based on distance)
-  - **Arrive and complete:** (simulator drives rep to within 15 miles) → "I've Arrived" button becomes enabled → tap it → on-site view shown with "Mark Complete" button → tap it → idle waiting view returns
-  - **Release vehicle:** open nav drawer → tap "Release Vehicle" → confirmation dialog → confirm → take-over screen shown
-- Each test flow is independent and can be run in isolation; tests use `rep1`–`rep8` seed accounts and rely on `start.sh` seed data
-- Assertions target `accessibilityIdentifier` / `name` attributes set on key interactive elements in the Razor components (add these where missing as part of this story's implementation scope)
-- Google Maps renders in the simulator; assertions target the overlay elements added for QUAL-003 (shared `data-testid` strategy via `accessibilityId` in MAUI BlazorWebView) rather than the tile layer
-- SignalR assertions use polling with a generous timeout (≥ 15 s) to allow real hub events to arrive over the simulator network stack
+
+**Infrastructure:**
+- A `tests/ServiceDelivery.Client.Appium/` project is added to the frontend repo using `Appium.WebDriver` (NUnit or MSTest); targets `XCUITest` on iOS
+- `scripts/local/test-appium.sh` boots the target iOS simulator (preferring one already booted, matching `startInPhone.sh`'s `"iPhone 17 Pro"` target), builds and installs the Mobile app, starts the Appium server, runs `dotnet test` on the Appium project, and tears down on exit; must not require the app to already be installed; reuses `scripts/utils/run-on-simulator.sh` for device boot — no duplicated boot logic
+- `scripts/local/test-all.sh` is updated to include the Appium suite in its results table, distinguished from unit, bUnit, and Playwright E2E results
+- Each test is independent; uses `rep1`–`rep8` seed accounts and relies on `start.sh` seed data
+- Assertions target `accessibilityIdentifier` / `name` attributes on key interactive elements (add these to Razor components where missing as part of this story's implementation scope); Google Maps overlay assertions use the same `data-testid` strategy established in QUAL-003
+- SignalR assertions use polling with a timeout of ≥ 15 s to allow real hub events to arrive over the simulator network stack
 - The suite must pass against a locally running system (`start.sh` up, simulator running) before this story is considered done
-- `scripts/utils/run-on-simulator.sh` is the authoritative device-boot helper; `test-appium.sh` must reuse it rather than duplicating boot logic
 
-**Out of scope:** CI pipeline integration; Android testing; physical device testing; screenshot diffing; coverage of the Dispatcher or Requester flows (those are on the web host and covered by QUAL-003).
+**Per-story coverage (all implemented FE stories that are mobile-visible at the time this story runs):**
 
-**Depends on:** QUAL-003 (the `accessibilityId` / overlay-element strategy established there is reused here); `startInPhone.sh` and `run-on-simulator.sh` (the device-boot pattern is already defined).
+| Story | Required Appium scenario |
+|-------|--------------------------|
+| FE-001 — Login | Launch app → login screen shown → enter `rep1` credentials → submit → take-over screen shown (not idle view — login routes to vehicle selection for ServiceRep) |
+| FE-002 — JWT expiry | Login → expire token (overwrite stored JWT) → next API call triggers `401` → redirected to login screen |
+| FE-007 — Take over vehicle | Login as `rep1` → take-over screen → vehicle dropdown populated with idle vehicles (registration + equipment visible) → select first vehicle → `POST /vehicles/{id}/take-over` called → idle waiting view shown |
+| FE-020 — Idle waiting view | (After FE-007) idle view shows "Available" state indicator and claimed vehicle registration; no manual refresh needed |
+| FE-008 — Job offer + countdown | (Simulator sends offer to `rep1`) → job offer screen appears automatically → requester name, tier badge, DTC title, distance, ETA visible → countdown decrements in real time → turns red in final 10 seconds → "Accept" and "Decline" buttons visible |
+| FE-009 — Accept offer | On job offer screen → tap "Accept" → `POST /job-offers/{id}/accept` called → transitions to active job map screen (FE-011) |
+| FE-011 — Active job navigation | Active job map screen → rep marker visible → requester pin visible → route line visible → ETA shown → "I've Arrived" button present and disabled (rep not yet within 15 miles) |
+| FE-010 — Decline offer | (New offer) on job offer screen → tap "Decline" → `POST /job-offers/{id}/decline` called → returns to idle waiting view |
+| FE-021 — App shell + nav drawer | Authenticated ServiceRep → nav drawer opens on swipe/tap → "Release Vehicle" option visible and distinct → "Log out" option visible and distinct |
 
-**Done when:** `tests/ServiceDelivery.Client.Appium/` exists, `test-appium.sh` runs the suite green on an iOS simulator against a live system, `test-all.sh` includes Appium results, and this story is struck in `execution-plan.md`.
+> Additional implemented mobile stories (FE-012 Mark arrived, FE-013 Mark complete, FE-014 Release vehicle, FE-023 Heartbeat) are **not yet implemented** at the time of this story — their Appium tests are added when those stories are run through `/master` (see pipeline update below).
+
+**Pipeline update — story-implementor and story-ai-reviewer must be updated so every future FE mobile story automatically produces an Appium test:**
+- `story-implementor/AGENT.md` — for any FE story whose platform includes Mobile, write an Appium test file as part of the TDD cycle (after bUnit tests); note that Appium tests are written but not executed in the pipeline (they require a live system and booted simulator — execution is via `test-appium.sh`); only applies when `tests/ServiceDelivery.Client.Appium/` already exists
+- `story-ai-reviewer/AGENT.md` — update Check 2 (Test Level): for FE stories whose platform includes Mobile and where `tests/ServiceDelivery.Client.Appium/` exists, a missing Appium test file is a **blocking** finding
+
+> Note: the story-planner update was already applied in QUAL-003 and covers both Playwright and Appium (the planner checks both project existence and story platform before including E2E files in the plan).
+
+**Out of scope:** CI pipeline integration; Android testing; physical device testing; screenshot diffing; Dispatcher or Requester flows (web host — covered by QUAL-003).
+
+**Depends on:** QUAL-003 (`tests/ServiceDelivery.Client.E2E/` project establishes the `data-testid` overlay-element strategy reused here; pipeline agent updates for Playwright are a prerequisite for the Appium pipeline update).
+
+**Done when:** `tests/ServiceDelivery.Client.Appium/` exists with green Appium tests for all 9 stories in the per-story coverage table above; `test-appium.sh` runs the suite on an iOS simulator against a live system; `test-all.sh` includes Appium results; `story-implementor` and `story-ai-reviewer` are updated; and this story is struck in `execution-plan.md`.

@@ -84,6 +84,19 @@ Apply the level check using the repo-appropriate projects (see the test-quality 
 
 If the required test level is missing, flag it as a blocking finding.
 
+**Frontend E2E test check** *(applies to `FE-` stories and `BUG-` frontend stories that change a UI component — skip for all other repos and for behaviour-only frontend stories with no screen):*
+
+Determine the story's platform(s) from the story text:
+
+- **Web or Desktop platform:** check whether `tests/ServiceDelivery.Client.E2E/` exists in the repo (`Glob("tests/ServiceDelivery.Client.E2E/**/*.csproj")`).
+  - Project exists + E2E test file absent from the diff → **blocking** finding: `[Missing E2E test — Playwright]`
+  - Project absent → **advisory** only: `[E2E project not set up — run QUAL-003 first]`
+- **Mobile platform:** check whether `tests/ServiceDelivery.Client.Appium/` exists (`Glob("tests/ServiceDelivery.Client.Appium/**/*.csproj")`).
+  - Project exists + Appium test file absent from the diff → **blocking** finding: `[Missing E2E test — Appium]`
+  - Project absent → **advisory** only: `[E2E project not set up — run QUAL-004 first]`
+
+Do **not** execute E2E tests as part of Check 0 — they require a live system. Check only that the test file exists and that each AC bullet has a named scenario in it.
+
 ### Check 3 — Test Value & Masking
 
 Two sub-checks. See the test-quality skill's **Value-Add Check** and **Anti-Masking Rule**.

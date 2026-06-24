@@ -125,6 +125,28 @@ Only after all resolutions succeed and the build is clean: proceed to the TDD cy
 
 ---
 
+### Frontend E2E tests (frontend stories only)
+
+*Applies only to `FE-` stories (and `BUG-` frontend stories that change a UI component). Skip for backend and simulator stories.*
+
+After completing all AC bUnit tests, check whether an E2E test project exists for this story's platform:
+
+```bash
+# Playwright (web/desktop stories)
+ls tests/ServiceDelivery.Client.E2E/*.csproj 2>/dev/null
+
+# Appium (mobile stories)
+ls tests/ServiceDelivery.Client.Appium/*.csproj 2>/dev/null
+```
+
+**If the project exists:** write the E2E test file(s) named in the plan's Files to Create table. Each E2E test method corresponds to a scenario in the plan's "E2E Test Scenarios" sub-section. Follow `GivenA_When_Then` naming and Arrange / Act / Assert structure. Use `data-testid` attributes for element location (Playwright) or `accessibilityIdentifier` (Appium). Do **not** execute E2E tests during the pipeline — they require a live running system. State in the implementation report: "E2E tests written; execute via `test-e2e.sh` / `test-appium.sh` against a live system."
+
+**If the project does not exist:** do not create it. Note in the implementation report: "E2E project absent (QUAL-003/QUAL-004 not yet run) — E2E tests deferred."
+
+E2E tests are driven by the same AC bullets as bUnit tests. Each AC that a bUnit test covers must also have an E2E scenario if the E2E project exists. The E2E test is the live-system complement to the bUnit test, not a replacement.
+
+---
+
 ### Frontend UI stories — build to the mockup
 
 *Applies only when the plan contains a UI Composition Map (frontend UI stories). Skip for backend, simulator, and behaviour-only frontend stories.*
