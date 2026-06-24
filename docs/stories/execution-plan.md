@@ -258,10 +258,10 @@ Frontend phases (8–11) can begin in parallel with Phase 2+ on the backend — 
 | Repo | Stories | Phases |
 |------|---------|--------|
 | Backend | BE-001 – BE-030 (30 stories) | 1–6, 12 |
-| Simulator | SIM-001 – SIM-011 (11 stories) | 2, 4, 7 |
+| Simulator | SIM-001 – SIM-012 (12 stories) | 2, 4, 7 |
 | Frontend | FE-001 – FE-023 (23 stories) | 8–11 |
-| **Total** | **64 stories** | **12 phases** |
+| **Total** | **65 stories** | **12 phases** |
 
-Plus **15 open bugs** ([`bug.md`](bug.md)) — `BUG-001` – `BUG-015` — sequenced in Phase 3 ahead of `BE-014`. `BUG-003`–`BUG-015` are central-repo doc/pipeline fixes (handle via `/ship-it`).
+Plus **22 bugs** ([`bug.md`](bug.md)) — `BUG-001` – `BUG-022` — all filed and resolved. `BUG-003`–`BUG-015` were central-repo doc/pipeline fixes (shipped via `/ship-it`).
 
-Plus **4 engineering-quality stories** ([`quality.md`](quality.md)) — `QUAL-001` – `QUAL-004` (QUAL-001 and QUAL-002 complete; QUAL-003 Playwright + QUAL-004 Appium pending).
+Plus **4 engineering-quality stories** ([`quality.md`](quality.md)) — `QUAL-001` – `QUAL-004` (all complete).

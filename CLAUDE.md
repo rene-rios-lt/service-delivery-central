@@ -64,6 +64,9 @@ Azure infrastructure provisioned via Terraform (not active for POC local dev)
 # Run all frontend tests
 ./scripts/local/test-frontend.sh
 
+# Run the Playwright end-to-end suite against the web host (requires start.sh running)
+./scripts/local/test-e2e.sh
+
 # Run the Appium end-to-end suite on an iOS simulator (requires start.sh running + Appium installed)
 ./scripts/local/test-appium.sh
 
@@ -96,6 +99,10 @@ Azure infrastructure provisioned via Terraform (not active for POC local dev)
 `scripts/utils/mark-story-complete.sh` crosses a merged story/bug ID out in `docs/stories/execution-plan.md`. It usually runs unattended — fired by a PostToolUse hook after `gh pr merge` succeeds — but it also accepts an explicit ID (`mark-story-complete.sh SIM-008`) for cases the hook can't catch. **The hook does not fire when a PR is merged from a `/worktree` session** (the worktree is a separate project dir, so central's project-scoped hook is inactive there). `scripts/utils/reconcile-plan.sh` is the backstop: it lists merged PRs across all repos and crosses out every merged story — run it directly, or let `scripts/utils/worktree.sh remove --merged` run it for you during worktree cleanup.
 
 `scripts/utils/run-on-simulator.sh` is the shared helper behind `startInPhone.sh` / `startInTablet.sh` — it takes a simulator device name (e.g. `"iPhone 17 Pro"`), resolves an available device (preferring one already booted), boots it, and builds + deploys + launches the MAUI Mobile app on it. The two `startIn*.sh` scripts are thin wrappers that pass the device name.
+
+`scripts/utils/test-report.sh` is a sourced helper (not executed directly) that provides the shared TRX-parsing, colour setup, and root-discovery functions used by `test-all.sh`'s live results table.
+
+`scripts/utils/validate-ai-system.sh` validates all `AGENT.md` and `SKILL.md` files for internal consistency — required sections, resolvable Required Reading paths, `name:` ↔ folder matching, and `master/SKILL.md` wiring. Invoked by the `/validate-ai-system` skill and automatically by a PostToolUse hook after any `.claude/` file edit.
 
 All scripts must be runnable from the repo root and must be executable (`chmod +x`).
 
