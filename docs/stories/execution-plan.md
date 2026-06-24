@@ -162,7 +162,7 @@
 | ~~[FE-008](frontend.md)~~ | ~~Frontend~~ | ~~Job offer screen with 60-second countdown~~ |
 | ~~[FE-009](frontend.md)~~ | ~~Frontend~~ | ~~Accept offer → navigate to active job view~~ |
 | ~~[FE-010](frontend.md)~~ | ~~Frontend~~ | ~~Decline offer → return to idle~~ |
-| [FE-011](frontend.md) | Frontend | Active job map with live (simulator-driven) position and ETA |
+| ~~[FE-011](frontend.md)~~ | ~~Frontend~~ | ~~Active job map with live (simulator-driven) position and ETA~~ |
 | [FE-012](frontend.md) | Frontend | "I've Arrived" button → on-site view |
 | [FE-013](frontend.md) | Frontend | "Mark Complete" → return to idle |
 | [FE-014](frontend.md) | Frontend | Release vehicle from menu (goes off-duty; vehicle parks) |
@@ -209,7 +209,7 @@
 
 | Story | Repo | Description |
 |-------|------|-------------|
-| [BE-030](backend.md) | Backend | `GET /rep/active-job-state` — rep position, requester location, ETA, rep state for the FE-011 map poll |
+| ~~[BE-030](backend.md)~~ | ~~Backend~~ | ~~`GET /rep/active-job-state` — rep position, requester location, ETA, rep state for the FE-011 map poll~~ |
 
 **Depends on:** Phase 5 (rep state machine), BE-012 (active request read), BE-008 (position storage).
 **Exit criteria:** The FE-011 active job navigation view renders a moving rep marker, live ETA, and enables "I've Arrived" at the correct distance — all driven by the running backend with no stubs.
