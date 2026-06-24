@@ -147,6 +147,7 @@
 | ~~[**BUG-023**](bug.md)~~ | ~~Backend~~ | ~~**Bug** — Web host cannot reach the backend: CORS not configured in `Program.cs`. The Blazor WASM web host (`:5023`) is cross-origin from the backend (`:5180`); the browser blocks every API and SignalR call with `net::ERR_FAILED`. Found running `test-e2e.sh` for the first time. Fix: `AddCors()` + `UseCors()` in `Program.cs` allowing `localhost:5023`.~~ |
 | ~~[**BUG-024**](bug.md)~~ | ~~Frontend~~ | ~~**Bug** — `SessionExpiryHttpHandler` fires on the login endpoint's 401, throwing an unhandled exception instead of showing the inline "Invalid email or password." error. Found via `test-e2e.sh`. Fix: skip the handler for `/auth/login` requests.~~ |
 | ~~[**BUG-025**](bug.md)~~ | ~~Frontend~~ | ~~**Bug** — Dispatcher `PersonaMenu` never renders after login: `MainLayout.OnInitializedAsync()` sets `Shell.Menu` but Blazor skips re-rendering `PersonaShell` because the `Shell` reference is unchanged. Found via `test-e2e.sh`. Fix: add a `_shellVersion` counter parameter to force the child re-render.~~ |
+| ~~[**BUG-026**](bug.md)~~ | ~~Frontend~~ | ~~**Bug** — BUG-025 fix used `OnInitializedAsync`, which only fires once (on `/login`); `Shell.Load` is never called when Blazor navigates to the authenticated route. Found running `test-e2e.sh` after BUG-025 merged. Fix: switch to `OnParametersSetAsync` guarded by `Shell.Menu is null`.~~ |
 | ~~[FE-002](frontend.md)~~ | ~~Frontend~~ | ~~JWT expiry detection → redirect to login~~ |
 | ~~[FE-021](frontend.md)~~ | ~~Frontend~~ | ~~App shell, navigation menu & logout (per-persona)~~ |
 
@@ -265,6 +266,6 @@ Frontend phases (8–11) can begin in parallel with Phase 2+ on the backend — 
 | Frontend | FE-001 – FE-023 (23 stories) | 8–11 |
 | **Total** | **65 stories** | **12 phases** |
 
-Plus **25 bugs** ([`bug.md`](bug.md)) — `BUG-001` – `BUG-025` — all filed; `BUG-001`–`BUG-023` resolved. `BUG-003`–`BUG-015` were central-repo doc/pipeline fixes (shipped via `/ship-it`). `BUG-024` (SessionExpiryHttpHandler) and `BUG-025` (PersonaMenu re-render) are open.
+Plus **26 bugs** ([`bug.md`](bug.md)) — `BUG-001` – `BUG-026` — all filed and resolved. `BUG-003`–`BUG-015` were central-repo doc/pipeline fixes (shipped via `/ship-it`). `BUG-024`–`BUG-026` were frontend E2E failures found via `test-e2e.sh`.
 
 Plus **4 engineering-quality stories** ([`quality.md`](quality.md)) — `QUAL-001` – `QUAL-004` (all complete).
