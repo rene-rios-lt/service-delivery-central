@@ -375,6 +375,50 @@ With MudBlazor now loading (BUG-020), the login page renders as default MudBlazo
 
 ---
 
+## BUG-023 — Web host cannot reach the backend: CORS not configured in `Program.cs`
+
+- **Status:** **Open**
+- **Severity:** High (the Blazor WASM web host at `:5023` cannot make any API or SignalR calls to the backend at `:5180` from a browser; login always fails with `net::ERR_FAILED`; all Playwright E2E tests fail as a result)
+- **Repo / Area:** Backend — `src/ServiceDelivery.Api/Program.cs` (composition root)
+- **Related stories:** `QUAL-003` (Playwright E2E suite), `FE-001` (login)
+- **Found:** Running `test-e2e.sh` for the first time (2026-06-24). All 7 Playwright tests failed with `net::ERR_FAILED` on the POST `/auth/login` call. Browser network inspection confirmed a CORS block — no `Access-Control-Allow-Origin` header returned by the backend. `curl` from the terminal succeeds (curl does not enforce CORS); only browser contexts are affected.
+
+**Summary**
+
+`Program.cs` has no CORS middleware — `AddCors()` and `UseCors()` are absent. The Blazor WASM web host is served from `http://localhost:5023` and makes cross-origin requests to `http://localhost:5180`. The browser blocks every request because the backend returns no `Access-Control-Allow-Origin` header. MAUI Desktop and Mobile apps are unaffected (native `HttpClient` does not enforce CORS).
+
+**Root cause**
+
+CORS was never added to `Program.cs` when the web host was introduced. The system was developed and tested via `curl`, `smoke.sh`, and MAUI native clients — none of which enforce CORS — so the gap went undetected until the first Playwright browser-based E2E run.
+
+**Fix**
+
+In `src/ServiceDelivery.Api/Program.cs`, add a CORS policy that permits the local frontend origins before `builder.Build()`:
+
+```csharp
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.WithOrigins("http://localhost:5023", "https://localhost:7058")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials(); // required for SignalR
+    });
+});
+```
+
+Then call `app.UseCors()` after `app.UseRouting()` (or at the top of the middleware pipeline, before `app.UseAuthentication()`).
+
+**Acceptance criteria (bug resolved when):**
+
+- `POST http://localhost:5180/auth/login` returns `Access-Control-Allow-Origin: http://localhost:5023` when called from a browser context at `localhost:5023`
+- Login succeeds in the Blazor WASM web host when accessed via a browser at `http://localhost:5023`
+- All 7 Playwright E2E tests in `tests/ServiceDelivery.Client.E2E/` pass against a locally running system (`start.sh` up, web host running)
+- SignalR connections from the web host to `/hubs/*` succeed (CORS with `AllowCredentials` is required for SignalR WebSocket upgrade)
+
+---
+
 ## BUG-022 — Desktop & Mobile hosts render unstyled: MudBlazor assets not loaded in their `index.html`
 
 - **Status:** **Fixed** 2026-06-20 — added the MudBlazor CSS, Roboto font, and JS to both the Mobile and Desktop host `index.html` files; verified all three hosts now reference the assets.

@@ -144,6 +144,7 @@
 | ~~[**BUG-020**](bug.md)~~ | ~~Frontend~~ | ~~**Bug** — Web client renders unstyled: `AddMudServices()` + providers are wired, but `index.html` never loads `_content/MudBlazor/MudBlazor.min.css`/`.js`, so every `Mud*` component is bare HTML. Found launching the web app after FE-001. Fix: add the MudBlazor CSS/font/JS to the Web host's `index.html`.~~ |
 | ~~[**BUG-021**](bug.md)~~ | ~~Frontend~~ | ~~**Bug** — Login screen doesn't match the approved mockup (`login__web-1280x800.png`): labels float inside fields instead of above, no brand mark, no gradient background, button auto-uppercases. FE-001 was built to MudBlazor defaults. Surfaced once BUG-020 made styling load. Fix via `/master`: pixel-match the mockup.~~ |
 | ~~[**BUG-022**](bug.md)~~ | ~~Frontend~~ | ~~**Bug** — Desktop & Mobile hosts render unstyled: BUG-020 added MudBlazor's CSS/JS only to the Web host's `index.html`, but each MAUI host ships its own `index.html` and neither loaded the assets. Found tracing the mobile startup→render chain. Fix: add the MudBlazor CSS/font/JS to both `Desktop/wwwroot/index.html` and `Mobile/wwwroot/index.html`.~~ |
+| [**BUG-023**](bug.md) | Backend | **Bug** — Web host cannot reach the backend: CORS not configured in `Program.cs`. The Blazor WASM web host (`:5023`) is cross-origin from the backend (`:5180`); the browser blocks every API and SignalR call with `net::ERR_FAILED`. Found running `test-e2e.sh` for the first time. Fix: `AddCors()` + `UseCors()` in `Program.cs` allowing `localhost:5023`. |
 | ~~[FE-002](frontend.md)~~ | ~~Frontend~~ | ~~JWT expiry detection → redirect to login~~ |
 | ~~[FE-021](frontend.md)~~ | ~~Frontend~~ | ~~App shell, navigation menu & logout (per-persona)~~ |
 
@@ -262,6 +263,6 @@ Frontend phases (8–11) can begin in parallel with Phase 2+ on the backend — 
 | Frontend | FE-001 – FE-023 (23 stories) | 8–11 |
 | **Total** | **65 stories** | **12 phases** |
 
-Plus **22 bugs** ([`bug.md`](bug.md)) — `BUG-001` – `BUG-022` — all filed and resolved. `BUG-003`–`BUG-015` were central-repo doc/pipeline fixes (shipped via `/ship-it`).
+Plus **23 bugs** ([`bug.md`](bug.md)) — `BUG-001` – `BUG-023` — all filed; `BUG-001`–`BUG-022` resolved. `BUG-003`–`BUG-015` were central-repo doc/pipeline fixes (shipped via `/ship-it`). `BUG-023` (CORS) is open.
 
 Plus **4 engineering-quality stories** ([`quality.md`](quality.md)) — `QUAL-001` – `QUAL-004` (all complete).
