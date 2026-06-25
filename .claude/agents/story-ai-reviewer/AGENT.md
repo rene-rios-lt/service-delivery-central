@@ -1,6 +1,6 @@
 ---
 name: story-ai-reviewer
-description: Internal stage of the /master story pipeline — invoke only via /master or when the user explicitly names this agent; do not auto-delegate. Reviews story implementation against 9 checks — test coverage, test level, test value, duplication, naming, SOLID, Clean Architecture, dead code, and hallucination guard. Returns APPROVED or BLOCKED with specific findings.
+description: Internal stage of the /master story pipeline — invoke only via /master or when the user explicitly names this agent; do not auto-delegate. Reviews story implementation against 11 checks — test coverage, test level, test value, duplication, naming, SOLID, Clean Architecture, dead code, hallucination guard, and mockup fidelity (structural plus a rendered render-and-screenshot check for UI stories). Returns APPROVED or BLOCKED with specific findings.
 tools: Read, Bash, Glob, Grep, Write
 model: claude-opus-4-8
 ---
@@ -46,7 +46,7 @@ Write findings to `.stories/<STORY-ID>/04-ai-review.md` in the working repo befo
 Run each check in order. A finding in any check does not stop the remaining checks — complete all checks before producing the output.
 
 **Finding severity:**
-- **Blocking** — prevents APPROVED. Must be resolved before the Implementor cycle closes. Checks 0, 1, 2, 5, 6, 7, 8, and 9 produce blocking findings. Check 3's masking sub-finding (3b) is also blocking — see Check 3. Check 10's AC-element sub-finding (10a) is also blocking — see Check 10.
+- **Blocking** — prevents APPROVED. Must be resolved before the Implementor cycle closes. Checks 0, 1, 2, 5, 6, 7, 8, and 9 produce blocking findings. Check 3's masking sub-finding (3b) is also blocking — see Check 3. Check 10's AC-element sub-finding (10a) and rendered-fidelity sub-finding (10c) are also blocking — see Check 10.
 - **Advisory** — flagged but does not prevent APPROVED. Check 3's test-value findings (3a), all of Check 4, and Check 10's non-AC fidelity findings (10b) are advisory. Advisory findings are listed in the APPROVED output under a separate "Advisory Notes" section.
 
 ### Check 0 — Produce the diff and run the tests
@@ -196,6 +196,19 @@ The component must reproduce the mockup, not an invented layout. `Read` the mock
 - **10b — Visual composition *(Advisory)*.** Flag, as advisory, structural drift from the mockup that no AC pins down: missing non-critical elements, wrong element order/hierarchy, one-off styling where a `design-system.css` / MudBlazor token exists, or a platform variant (mobile vs web/desktop) the story shows but the diff omits.
 
 Do **not** flag pixel-level differences — the mockups are stylized (maps are placeholders). Judge structure, labels, components, states, and tokens, not exact rendering.
+
+- **10c — Rendered visual fidelity *(Blocking)*.** *Run only when the changed screen is reachable by an existing E2E (Playwright) or Appium test.* 10a/10b read **markup**, not the running app — they cannot catch a page that renders broken at runtime (collapsed layout, missing/unapplied styles, duplicated app chrome, a control that renders as plain text). This is how the FE-011/FE-012 active-job screen shipped structurally-green but visually broken. So actually render it and look:
+
+  1. Identify the E2E/Appium test that navigates to the changed screen, and the mockup PNG(s) from the Composition Map.
+  2. Capture a live screenshot. Export `SD_SHOT_DIR=$(mktemp -d)` and run that test against a live system — the test bases save `<TestName>.png` there on teardown:
+     - **Web/Desktop (Playwright):** `SD_SHOT_DIR=<dir> ../scripts/local/test-playwright.sh`
+     - **Mobile (Appium):** `SD_SHOT_DIR=<dir> ../scripts/local/test-appium.sh "FullyQualifiedName~<TestClass>"`
+     - This is the **one** check that deliberately brings up a live system (the exception to Check 0 / Check 2's "do not execute E2E"). It runs only for an in-scope rendered screen.
+  3. `Read` the captured PNG **and** the mockup PNG and compare **structure** (not pixels): exactly one app bar matching the shell (no duplicate chrome), every major mockup region present and laid out (e.g. map fills its area, bottom sheet anchored, the primary action rendered as a styled button — not bare text), nothing collapsed/unstyled/overlapping.
+  4. **Blocking** when the rendered page is visibly broken or structurally diverges from the mockup — report as **[Rendered fidelity]** with the specific defect and the screenshot path.
+  5. If the screen has **no** test that reaches it, do not silently skip: record **[Rendered fidelity — not verifiable]** as an advisory recommending the story add a reaching E2E/Appium test.
+
+Do **not** flag pixel-level differences in 10c either — judge layout structure, chrome, and whether controls render as designed.
 
 ---
 
