@@ -42,9 +42,17 @@ if [ "$up" -ne 1 ]; then
   exit 1
 fi
 
-echo "==> Starting simulator ..."
-( cd "$SIM" && nohup dotnet run --project src/ServiceDelivery.Simulator \
-    > /tmp/sd-sim.log 2>&1 & echo $! > /tmp/sd-sim.pid )
+# SD_SKIP_SIMULATOR=1 starts the backend alone (no simulator). The Appium offer suite
+# uses this: with no rep-operating simulator, the human-taken-over rep is the only match
+# candidate, so a Requester-submitted service request routes its job offer there
+# deterministically. Default (unset) keeps the simulator running for normal local/demo use.
+if [ "${SD_SKIP_SIMULATOR:-0}" = "1" ]; then
+  echo "==> SD_SKIP_SIMULATOR=1 — skipping simulator (backend-only)."
+else
+  echo "==> Starting simulator ..."
+  ( cd "$SIM" && nohup dotnet run --project src/ServiceDelivery.Simulator \
+      > /tmp/sd-sim.log 2>&1 & echo $! > /tmp/sd-sim.pid )
+fi
 
 echo "==> Started. Backend PID $(cat /tmp/sd-backend.pid 2>/dev/null), Simulator PID $(cat /tmp/sd-sim.pid 2>/dev/null)."
 echo "    Backend log:   /tmp/sd-backend.log"

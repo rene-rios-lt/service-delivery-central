@@ -701,7 +701,7 @@ The backend reads the SignalR token from `?access_token=` (websockets can't send
 
 ## BUG-032 — Appium job-offer tests have no service-request precondition; JwtExpiry test is a documented platform limitation
 
-- **Status:** **Open** — tracked follow-up. 4 job-offer tests + 1 JWT-expiry test fail for reasons unrelated to the auth fixes (BUG-027–031).
+- **Status:** **Fixed** 2026-06-25 (frontend PR #39 + central scripts) — the Appium suite now runs **backend-only** (`SD_SKIP_SIMULATOR=1`, central `start.sh`/`test-appium.sh`) so the human-taken-over rep is the sole match candidate, and a new `BackendApiHelper` establishes the offer precondition: it **positions the dealer fleet** (as the seeded `Simulator` account, via `GET /simulator/fleet-state` + `POST /vehicles/{id}/position`) then submits one Gold-tier request for DTC-001 at the same site. The fleet-positioning step was the missing piece — matching ignores vehicles with no position (`GetAvailableByDealerAsync` inner-joins on `LastLatitude/LastLongitude != null`), and a backend-only run has no simulator posting positions, so earlier "submit a request" attempts found zero candidates and timed out (verified by API repro before the fix). The JwtExpiry test is `[Ignore]`d with the documented Keychain limitation. **Verified live on the iOS simulator: 8 passed, 1 skipped, 0 failed (was 4/9).**
 - **Severity:** Medium (5 of the 9 Appium tests cannot pass as written; the underlying app flows work, but the tests lack the data setup to exercise them)
 - **Repo / Area:** Frontend — `tests/ServiceDelivery.Client.Appium/{JobOfferTests,ActiveJobTests,JwtExpiryTests}.cs`
 - **Related stories:** `QUAL-004`, `BE-014` (matching → job offer), `FE-008`/`FE-011`
