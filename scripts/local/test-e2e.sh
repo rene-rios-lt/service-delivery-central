@@ -10,8 +10,10 @@
 # does NOT tear them down on exit (only what this script starts is stopped).
 #
 # Env overrides:
-#   E2E_BASE_URL             web host base URL          (default http://localhost:5023)
-#   E2E_DISPATCHER_PASSWORD  seeded dispatcher password (default Password1!)
+#   E2E_BASE_URL                  web host base URL          (default http://localhost:5023)
+#   E2E_DISPATCHER_PASSWORD       seeded dispatcher password (default Password1!)
+#   E2E_FORCE_BROWSER_INSTALL=1   reinstall Playwright browsers even if already cached
+#   PLAYWRIGHT_BROWSERS_PATH      browser cache dir (default ~/Library/Caches/ms-playwright)
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -73,19 +75,31 @@ else
   fi
 fi
 
-# 3. Playwright browser binaries — install once (no-op if already present).
-echo "==> Ensuring Playwright browsers are installed ..."
-( cd "$E2E_PROJECT" && dotnet build > /dev/null )
-PW_SCRIPT="$E2E_PROJECT/bin/Debug/net10.0/playwright.ps1"
-if [ -f "$PW_SCRIPT" ]; then
+# 3. Playwright browser binaries — install once. Skipped when a browser cache
+#    already exists (the common case): pwsh is only needed for the first install
+#    or a Playwright version bump. Force a (re)install with E2E_FORCE_BROWSER_INSTALL=1.
+PW_CACHE="${PLAYWRIGHT_BROWSERS_PATH:-$HOME/Library/Caches/ms-playwright}"
+if [ "${E2E_FORCE_BROWSER_INSTALL:-0}" != "1" ] && ls -d "$PW_CACHE"/chromium-* > /dev/null 2>&1; then
+  echo "==> Playwright browsers already cached in $PW_CACHE — skipping install."
+else
+  echo "==> Ensuring Playwright browsers are installed ..."
+  ( cd "$E2E_PROJECT" && dotnet build > /dev/null )
+  PW_SCRIPT="$E2E_PROJECT/bin/Debug/net10.0/playwright.ps1"
+  if [ ! -f "$PW_SCRIPT" ]; then
+    echo "!! playwright.ps1 not found at $PW_SCRIPT — build the E2E project first." >&2
+    exit 1
+  fi
+  if ! command -v pwsh > /dev/null 2>&1; then
+    echo "!! pwsh (PowerShell) not found — needed to install Playwright browsers." >&2
+    echo "   Install it with: brew install powershell" >&2
+    echo "   Then re-run, or install browsers manually: pwsh $PW_SCRIPT install" >&2
+    exit 1
+  fi
   pwsh "$PW_SCRIPT" install chromium || {
-    echo "!! Could not install Playwright browsers. Install pwsh, then run:" >&2
-    echo "   pwsh $PW_SCRIPT install" >&2
+    echo "!! Could not install Playwright browsers." >&2
+    echo "   Install manually: pwsh $PW_SCRIPT install" >&2
     exit 1
   }
-else
-  echo "!! playwright.ps1 not found at $PW_SCRIPT — build the E2E project first." >&2
-  exit 1
 fi
 
 # 4. Run the suite.
