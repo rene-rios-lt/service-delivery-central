@@ -756,7 +756,7 @@ The app styles each page with **scoped CSS** (`Login.razor.css`, `RepIdle.razor.
 
 ## BUG-034 — Idle view (card + app-bar subtitle) shows a hardcoded vehicle, not the one the rep took over
 
-- **Status:** **Open** — fix via `/master`.
+- **Status:** **Fixed** 2026-06-24 (PR #37, via `/master`) — added a scoped `IClaimedVehicleStore` (mirrors `IJobOfferStore`): `TakeOverViewModel` deposits the selected vehicle on success, `RepIdleViewModel` reads-and-clears it; the hardcoded `ClaimedVehicle("IA-4471")` stub is removed and the store registered in all 3 hosts. The idle card and app-bar subtitle now show the actually-taken-over vehicle (empty-store degrades to a neutral vehicle, no NRE). Folded in a Checkpoint #2 fix: extracted the friendly equipment-label map to a shared Core `EquipmentLabels` helper used by both the take-over list and the idle card. Simulator-verified (take over V-001 → card "V-001" + friendly labels, subtitle "Vehicle V-001 · On shift"); 235 frontend unit tests green. Model deferred to [[BUG-035]].
 - **Severity:** High (after taking over vehicle **V-001**, the idle screen and the app-bar subtitle both show **"IA-4471 · Transit 350"** — a hardcoded demo vehicle. The rep sees the wrong vehicle for their entire shift; misleading in the core ServiceRep flow.)
 - **Repo / Area:** Frontend — `src/ServiceDelivery.Client.Mobile/MauiProgram.cs` (hardcoded `ClaimedVehicle` registration), `Core/ViewModels/TakeOverViewModel.cs` + `RepIdleViewModel.cs`, `Features/Authentication/Services/BlazorPersonaNavigator.cs`, `Features/ServiceRep/Pages/RepIdle.razor`. Likely also Backend — `AvailableVehicleDto` / a claimed-vehicle read endpoint (for the model field).
 - **Related stories:** `FE-007` (take-over), `FE-020` (idle view), `BUG-033` (idle/take-over fidelity — folds in its Gap 4: model/loop subtitle)
@@ -779,3 +779,28 @@ No hand-off of the claimed vehicle from take-over to the idle view; the idle VM 
 - The app-bar subtitle reads "Vehicle <selected-reg> · On shift" for the vehicle actually taken over.
 - The hardcoded `ClaimedVehicle` stub is gone.
 - Unit tests cover the take-over→idle hand-off (the idle VM reflects the selected vehicle) and the subtitle derivation.
+
+> **Scope note (2026-06-24):** split during `/master`. The **model** sub-clause is deferred to **BUG-035** (needs a backend DTO field). BUG-034 ships the frontend registration hand-off (card + subtitle show the real vehicle's registration + equipment, stub removed).
+
+---
+
+## BUG-035 — `AvailableVehicleDto` carries no vehicle model, so the rep idle card can't show "<reg> · <model>"
+
+- **Status:** **Open** — backend; fix via `/master`.
+- **Severity:** Low (cosmetic — the idle card and take-over rows show registration + equipment but not the model "Transit 350" the mockups depict; no functional impact)
+- **Repo / Area:** Backend — `src/ServiceDelivery.Application/Features/Vehicles/Queries/GetAvailableVehiclesQuery.cs` (`AvailableVehicleDto`) and its handler; the `Vehicle` entity / seed data must carry a model. Then Frontend — add `Model` to `IdleVehicle`/`ClaimedVehicle` and render "<reg> · <model>".
+- **Related stories:** `BUG-033` (Gap 4), `BUG-034` (registration hand-off — this surfaces the model that BUG-034 deferred), `BE-004` (`GET /vehicles/available`), `FE-007`/`FE-020`
+- **Found:** During BUG-034 evaluation — `AvailableVehicleDto` is `(Guid VehicleId, string Registration, IReadOnlyList<string> Equipment)`; no model field, so a frontend-only fix can't show the model (it would deserialize null).
+
+**Summary**
+The take-over list and idle card show "V-001" but the mockups show "IA-4471 · Transit 350". The model is not in the backend DTO or the frontend model, so it cannot be displayed without a backend change. Deferred from BUG-034 (which is frontend-only).
+
+**Proposed fix (via `/master`)**
+- Ensure the `Vehicle` entity / seed data has a model (e.g. "Transit 350", "Sprinter").
+- Add `Model` to `AvailableVehicleDto` and emit it from `GetAvailableVehiclesQueryHandler`.
+- Add `Model` to the frontend `IdleVehicle` (and `ClaimedVehicle`); render "<reg> · <model>" in the take-over rows and the idle card.
+
+**Acceptance criteria (bug resolved when):**
+- `GET /vehicles/available` returns each vehicle's model.
+- The take-over rows and the idle card show "<registration> · <model>" matching the mockups.
+- Backend + frontend unit tests cover the new field end to end.
