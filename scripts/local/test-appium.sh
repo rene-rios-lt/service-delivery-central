@@ -63,11 +63,21 @@ if ! command -v appium > /dev/null 2>&1; then
 fi
 
 # 1. Backend — start only if it is not already serving on :5180.
+#    The suite runs BACKEND-ONLY (no simulator): the offer tests submit a service request as a
+#    Requester, and with no rep-operating simulator the human-taken-over rep is the sole match
+#    candidate, so the offer routes to it deterministically. A simulator operating rep1..rep8
+#    would win the match instead and the offer would never reach the device under test.
 if curl -s "$BACKEND_URL/health" > /dev/null 2>&1 || curl -s "$BACKEND_URL" > /dev/null 2>&1; then
   echo "==> Backend already up on $BACKEND_URL — reusing."
+  if pgrep -f "ServiceDelivery.Simulator" > /dev/null 2>&1; then
+    echo "!! A simulator is running against the reused backend. The offer tests need a backend-only" >&2
+    echo "   system (a rep-operating simulator steals the job offer). Run scripts/local/stop.sh and" >&2
+    echo "   re-run this script so it brings up the backend alone (SD_SKIP_SIMULATOR=1)." >&2
+    exit 1
+  fi
 else
-  echo "==> Starting backend + simulator (start.sh) ..."
-  "$SCRIPT_DIR/start.sh" || { echo "!! start.sh failed" >&2; exit 1; }
+  echo "==> Starting backend only (start.sh, no simulator) ..."
+  SD_SKIP_SIMULATOR=1 "$SCRIPT_DIR/start.sh" || { echo "!! start.sh failed" >&2; exit 1; }
   STARTED_BACKEND=1
 fi
 
