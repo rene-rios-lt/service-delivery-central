@@ -98,7 +98,7 @@ echo "==> Building ServiceDelivery.Client.Mobile for the iOS simulator ..."
 ( cd "$FRONTEND_DIR" && dotnet build "$MOBILE_PROJECT" -f net10.0-ios -p:Configuration=Debug ) \
   || { echo "!! Mobile build failed" >&2; exit 1; }
 
-APP_PATH="$(find "$MOBILE_PROJECT/bin/Debug" -maxdepth 2 -name '*.app' -type d 2>/dev/null | head -1)"
+APP_PATH="$(find "$MOBILE_PROJECT/bin/Debug" -maxdepth 3 -name '*.app' -type d 2>/dev/null | head -1)"
 if [ -z "$APP_PATH" ]; then
   echo "!! Could not locate the built .app under $MOBILE_PROJECT/bin/Debug" >&2
   exit 1
@@ -129,8 +129,14 @@ export APPIUM_SERVER_URL="$SERVER_URL"
 export APPIUM_DEVICE_UDID="$UDID"
 export APPIUM_APP_PATH="$APP_PATH"
 export APPIUM_BASE_URL="$BACKEND_URL"
-export APPIUM_REP_PASSWORD="${APPIUM_REP_PASSWORD:-Password1!}"
-dotnet test "$APPIUM_PROJECT" --nologo
+export APPIUM_REP_PASSWORD="${APPIUM_REP_PASSWORD:-Password123!}"
+# Optional first argument is an NUnit/xUnit --filter expression (e.g. "FullyQualifiedName~LoginTests")
+# so a single test class can be run for fast iteration; with no argument the whole suite runs.
+if [ -n "${1:-}" ]; then
+  dotnet test "$APPIUM_PROJECT" --nologo --filter "$1"
+else
+  dotnet test "$APPIUM_PROJECT" --nologo
+fi
 RESULT=$?
 
 exit $RESULT

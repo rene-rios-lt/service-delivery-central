@@ -577,3 +577,143 @@ Per-host `index.html`: the BUG-020 fix was scoped to the Web host only and not p
 - Both the Desktop and Mobile host `index.html` reference `_content/MudBlazor/MudBlazor.min.css` and `.min.js` (matching the Web host).
 - All three hosts are consistent in how they load MudBlazor's assets.
 - The login screen renders styled when the Desktop or Mobile host is run (human-verified on a simulator/desktop window).
+
+---
+
+## BUG-027 — `GET /vehicles/available` returns only unclaimed vehicles, so the rep take-over list is always empty while the simulator runs
+
+- **Status:** **Fixed** 2026-06-24 — `GetAvailableVehiclesQueryHandler` now returns vehicles that are unclaimed **or** claimed by an idle rep; added `RepStateRecord.IsOnActiveJob()` (domain) and reused it in `TakeOverVehicleCommandHandler` (DRY). Domain + handler + full backend suite green.
+- **Severity:** High (the ServiceRep take-over screen — FE-007 — can never list a vehicle while the simulator is running, so a human can never take over; the entire mobile ServiceRep flow is unreachable end-to-end)
+- **Repo / Area:** Backend — `src/ServiceDelivery.Application/Features/Vehicles/Queries/GetAvailableVehiclesQueryHandler.cs`
+- **Related stories:** `FE-007` (take over an idle vehicle — supersedes the simulator), `BE-004` (`GET /vehicles/available`), ADR-0009 (human takeover)
+- **Found:** Running `test-appium.sh` against the live system. `GET /vehicles/available` returned `[]` because the simulator claims all 8 vehicles at startup (fleet state showed `{Claimed: 8}`).
+
+**Summary**
+The handler called `GetUnclaimedByDealerIdAsync`, returning only vehicles with no `ClaimedByRepId`. But per ADR-0009 / FE-007 the human take-over **supersedes the simulator** on idle vehicles, and the simulator claims every vehicle at startup. So the "available" list was permanently empty and the take-over screen always showed "No idle vehicles available."
+
+**Root cause**
+Query semantics (`unclaimed only`) contradicted the command semantics: `TakeOverVehicleCommandHandler` already allows taking over a claimed vehicle as long as its rep is not on an active job. The read model never matched the write model.
+
+**Fix**
+- Added `RepStateRecord.IsOnActiveJob()` (true for `EnRoute`/`Within15Miles`/`OnSite`) in the domain.
+- `GetAvailableVehiclesQueryHandler` now loads all dealer vehicles and includes each one that is unclaimed, or claimed by a rep with no state record, or claimed by a rep not on an active job.
+- Refactored `TakeOverVehicleCommandHandler` to reuse `IsOnActiveJob()` instead of its private duplicate predicate.
+
+**Acceptance criteria (bug resolved when):**
+- With the simulator running and all vehicles claimed by idle reps, `GET /vehicles/available` returns the idle vehicles (verified: 8 returned).
+- A vehicle whose rep is EnRoute/Within15Miles/OnSite is excluded.
+- The take-over Appium test (`TakeOverTests`) reaches the idle view.
+
+---
+
+## BUG-028 — Frontend authenticated REST calls send no `Authorization` header (only `HttpAuthService` attached the JWT)
+
+- **Status:** **Fixed** 2026-06-24 — added `AuthTokenHttpHandler` (a `DelegatingHandler`) that attaches the stored JWT as a Bearer header to every outbound request; registered in the Web/Desktop/Mobile pipelines ahead of the network handler. Unit tests added; full frontend suite green.
+- **Severity:** High (every authenticated data call — `GET /vehicles/available`, take-over, job-offers, active-job — went out with no token → 401 → `GetFromJsonAsync` threw → a persistent "An unhandled error has occurred" after login; the app was unusable past the login screen)
+- **Repo / Area:** Frontend — `src/ServiceDelivery.Client.UI/Features/Authentication/Services/AuthTokenHttpHandler.cs` (new) + host `HttpClient` registrations
+- **Related stories:** `FE-007`, `FE-008`–`FE-011`, `FE-020` (all ServiceRep data screens), BUG-024 (same handler pipeline)
+- **Found:** Running `test-appium.sh`; the post-login take-over screen showed a persistent error. Confirmed via curl: `GET /vehicles/available` returns 401 with no header, 200 with a Bearer token.
+
+**Summary**
+Only `HttpAuthService.GetCurrentUserAsync` attached a token (manually). No `DelegatingHandler` added the JWT to other requests, so every `Http*Service` (`HttpVehicleService`, `HttpJobOfferService`, `HttpDeclineOfferService`, `HttpActiveJobService`) called the API anonymously and got a 401.
+
+**Root cause**
+Missing cross-cutting auth handler. Each service used the shared `HttpClient`, but nothing in that client's pipeline injected the bearer token.
+
+**Fix**
+- New `AuthTokenHttpHandler` reads `ITokenStore.GetTokenAsync()` and sets `Authorization: Bearer <token>` when no header is already present (leaves explicit headers and the unauthenticated `/auth/login` call untouched).
+- Wired into all three hosts: `SessionExpiryHttpHandler` → `AuthTokenHttpHandler` → `HttpClientHandler`.
+
+**Acceptance criteria (bug resolved when):**
+- Every authenticated REST call carries the Bearer token automatically (no per-call code).
+- The post-login take-over / idle screens load their data without an error banner (verified: 4 Appium auth/navigation tests pass).
+
+---
+
+## BUG-029 — Frontend shows a brief "unhandled error" flash at startup before the login screen
+
+- **Status:** **Fixed** 2026-06-24 — `MainLayout` shell-load is now resilient (try/catch), `SecureStorageTokenStore.GetTokenAsync` swallows the iOS first-launch Keychain race, and `AppStartViewModel` routes to login if the token store throws. Unit tests added; frontend suite green.
+- **Severity:** Low/Medium (self-clears once the login screen renders, but it is a real unhandled exception and looks broken on every cold start)
+- **Repo / Area:** Frontend — `MainLayout.razor`, `Services/SecureStorageTokenStore.cs` (Mobile), `Core/ViewModels/AppStartViewModel.cs`
+- **Related stories:** `FE-001` (login), `FE-002` (JWT expiry), BUG-026 (same layout lifecycle)
+- **Found:** Running the Mobile app under `test-appium.sh` and observed live on the simulator.
+
+**Summary**
+At the landing route `/`, `MainLayout` treats any non-`/login` route as authenticated and calls `GetCurrentUserAsync()`, which throws on the 401 (no token yet). Separately, `SecureStorage` can throw on first launch before the iOS Keychain is ready. Both surfaced as Blazor's "An unhandled error has occurred" until `Home.razor`'s redirect to `/login` cleared it.
+
+**Root cause**
+Unguarded `await` of an auth call during the pre-login layout/startup window.
+
+**Fix**
+- `MainLayout.OnParametersSetAsync` wraps the profile load in try/catch (let the redirect-to-login flow route the user).
+- `SecureStorageTokenStore.GetTokenAsync` returns `null` on any SecureStorage exception.
+- `AppStartViewModel.ResolveStartRouteAsync` returns the login route if the token store throws.
+
+**Acceptance criteria (bug resolved when):**
+- A cold launch with no session shows the login screen with no error banner.
+- Unit tests cover the token-store-throws path in `AppStartViewModel` and the unauthenticated-startup path in `MainLayout`.
+
+---
+
+## BUG-030 — Frontend RepHub SignalR connection sends no access token, so the rep never receives pushed offers/redirects
+
+- **Status:** **Fixed** 2026-06-24 — `SignalRRepHubService` now sets `HttpConnectionOptions.AccessTokenProvider` from `ITokenStore`, so SignalR appends `?access_token=…` when negotiating the `[Authorize]` RepHub. Unit tests added; frontend suite green.
+- **Severity:** High (the RepHub is `[Authorize]`; an unauthenticated connection never joins its `rep:{userId}` group, so `JobOfferReceived` and `RedirectReceived` never arrive — the rep can never get a job offer in the UI)
+- **Repo / Area:** Frontend — `src/ServiceDelivery.Client.UI/Features/ServiceRep/Services/SignalRRepHubService.cs`
+- **Related stories:** `FE-008` (job offer), `FE-011` (active job redirect), `BE-025` (RepHub), BUG-028 (REST equivalent)
+- **Found:** Auditing all outbound calls for the Authorization header (BUG-028 follow-up); the hub connection was built with `.WithUrl(hubUrl)` and no token.
+
+**Summary**
+The backend reads the SignalR token from `?access_token=` (websockets can't send an Authorization header) and the RepHub is `[Authorize(Roles="ServiceRep,Simulator")]`. The frontend never provided it, so the connection was rejected/anonymous and never joined the per-rep group.
+
+**Fix**
+`new HubConnectionBuilder().WithUrl(hubUrl, options => options.AccessTokenProvider = ProvideAccessTokenAsync)`, where `ProvideAccessTokenAsync` returns `ITokenStore.GetTokenAsync()`. `ITokenStore` is injected (already DI-registered in every host).
+
+**Acceptance criteria (bug resolved when):**
+- The RepHub connection carries the JWT as `?access_token=`.
+- A unit test verifies the provider yields the stored token.
+
+---
+
+## BUG-031 — Appium E2E suite never ran against the app: multiple harness defects
+
+- **Status:** **Fixed** 2026-06-24 — corrected all harness defects; the suite now drives the live app and **4/9 tests pass** (login, take-over, idle view, app-shell nav). The remaining 5 are tracked in BUG-032.
+- **Severity:** High (the entire Appium suite — QUAL-004 — failed at the first step and had never actually exercised the app)
+- **Repo / Area:** Central — `scripts/local/test-appium.sh`; Frontend — `tests/ServiceDelivery.Client.Appium/*`
+- **Related stories:** `QUAL-004` (Appium suite), BUG-023 (same wrong-password class), ADR-0009
+- **Found:** First real run of `test-appium.sh`.
+
+**Summary & fixes (each a distinct defect):**
+1. `test-appium.sh` `find -maxdepth 2` missed the `.app` (3 levels deep) → `-maxdepth 3`.
+2. Default rep password was `Password1!`; seed is `Password123!` → corrected (same class as BUG-023).
+3. Tests used `MobileBy.AccessibilityId`, but MAUI Blazor renders inside a `WKWebView` whose HTML is invisible to the native accessibility tree → switch to the `WEBVIEW` context in `SetUp` and use `By.CssSelector("[data-testid=…]")`.
+4. Login used the username `rep1`; the API expects the email `rep1@dealer.com` → corrected.
+5. `SendKeys` did not commit MudTextField's `@bind-Value` (it binds on the `change` event, which `SendKeys` doesn't raise) → `FillInput` dispatches `input`+`change` via JS (mirrors Playwright `FillAsync`), so login no longer submits empty/partial credentials ("Invalid email or password").
+6. No test isolation: the JWT persists in the iOS Keychain across Appium's `noReset` sessions, auto-authenticating later tests → `SetUp` now terminates+relaunches the app and runs `EnsureLoggedOut` (drives the app's own logout) so each test starts logged out.
+7. The drawer logout item is a MudNavLink whose click handler sits on the inner `.mud-nav-link`, not the `data-testid` wrapper → click the inner element.
+8. Added an optional `--filter` passthrough to `test-appium.sh` for single-class runs.
+
+**Acceptance criteria (bug resolved when):**
+- `test-appium.sh` builds, installs, and drives the app, locating elements by `data-testid` in the WEBVIEW context.
+- The auth/navigation tests (login → take over → idle → app-shell nav) pass (4/9).
+
+---
+
+## BUG-032 — Appium job-offer tests have no service-request precondition; JwtExpiry test is a documented platform limitation
+
+- **Status:** **Open** — tracked follow-up. 4 job-offer tests + 1 JWT-expiry test fail for reasons unrelated to the auth fixes (BUG-027–031).
+- **Severity:** Medium (5 of the 9 Appium tests cannot pass as written; the underlying app flows work, but the tests lack the data setup to exercise them)
+- **Repo / Area:** Frontend — `tests/ServiceDelivery.Client.Appium/{JobOfferTests,ActiveJobTests,JwtExpiryTests}.cs`
+- **Related stories:** `QUAL-004`, `BE-014` (matching → job offer), `FE-008`/`FE-011`
+- **Found:** Full Appium run after BUG-027–031 fixes (4/9 passing).
+
+**Summary**
+The 4 job-offer/active-job tests take over a vehicle and then wait for a `JobOfferReceived` push, but **nothing creates a service request** (the simulator does not submit requests, and there are 0 open requests), so no offer is ever generated and the tests time out after 15s. The `JwtExpiryTests` case relies on `ExpireStoredToken()`, which is a documented no-op because the iOS Keychain token is not reachable from the WebView DOM.
+
+**Proposed fix (follow-up)**
+- Job-offer tests: add an Arrange step that submits a matching service request (Requester token) positioned to route to the taken-over rep — or introduce a deterministic test-support seed/endpoint so matching reliably targets that rep. Requires care given the simulator continuously moves vehicles.
+- JwtExpiry test: wire a real expiry trigger (debug deep link to clear the Keychain token, or a backend signing-key rotation), or mark `[Ignore]` with the documented reason until such a hook exists.
+
+**Acceptance criteria (bug resolved when):**
+- A job offer is reliably pushed to the taken-over rep in the test, and the accept/decline/active-job assertions pass.
+- The JWT-expiry scenario is either driven by a real expiry trigger or explicitly skipped with a recorded reason.
