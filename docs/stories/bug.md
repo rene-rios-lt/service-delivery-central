@@ -717,3 +717,37 @@ The 4 job-offer/active-job tests take over a vehicle and then wait for a `JobOff
 **Acceptance criteria (bug resolved when):**
 - A job offer is reliably pushed to the taken-over rep in the test, and the accept/decline/active-job assertions pass.
 - The JWT-expiry scenario is either driven by a real expiry trigger or explicitly skipped with a recorded reason.
+
+---
+
+## BUG-033 — Rep take-over page renders unstyled (missing scoped CSS); minor idle-page app-bar fidelity gaps
+
+- **Status:** **Open** — fix via `/master` (pixel-match the mockups, like BUG-021).
+- **Severity:** Medium (the take-over screen — the first authenticated ServiceRep screen — looks broken: cramped, unstyled rows with run-together equipment text; the idle screen is close but the app bar differs from the mockup)
+- **Repo / Area:** Frontend — `src/ServiceDelivery.Client.UI/Features/ServiceRep/Components/IdleVehicleList.razor` (+ a new scoped `.razor.css`), `Features/ServiceRep/Pages/TakeOver.razor`; shared `Shared/Components/PersonaShell.razor` for the app-bar fidelity
+- **Related stories:** `FE-007` (take-over screen), `FE-020` (idle view), `BUG-021` (login mockup fidelity — same class of fix)
+- **Found:** Comparing the live Mobile app against `docs/ui-mockups/images/rep-takeover__mobile-390x844.png` and `rep-idle__mobile-390x844.png` (captured via the now-working Appium harness).
+
+**Summary**
+The app styles each page with **scoped CSS** (`Login.razor.css`, `RepIdle.razor.css`, `JobOffer.razor.css`, `ActiveJob.razor.css`). `IdleVehicleList.razor` (the take-over list) and `TakeOver.razor` have **no** `.razor.css`, so the `sd-card` / `sd-listitem` / `sd-equip` classes they use are undefined for those components (the matching rules in `RepIdle.razor.css` are Blazor-scoped to RepIdle and do not apply elsewhere). The take-over list therefore renders as raw HTML.
+
+**Take-over page gaps (vs mockup):**
+1. List is unstyled — no bordered card container, no row layout/spacing; rows are cramped. (Root cause: no scoped CSS for `IdleVehicleList`.)
+2. Equipment renders as run-together raw text ("HydraulicToolElectricalDiagnosticKit+4") instead of spaced chips ("Hydraulics", "Coolant", "+4").
+3. Equipment uses raw enum names (`HydraulicTool`) instead of friendly labels (`Hydraulics`). Needs a label map (frontend) since the DTO returns enum names.
+4. Each row lacks the vehicle model and a "loop · idle" subtitle (mockup: "IA-4471 · Transit 350" / "Des Moines loop · idle"). `IdleVehicle`/`AvailableVehicleDto` carry only registration + equipment — surfacing model/loop needs a backend DTO addition (separate, optional).
+5. App bar shows "Service Delivery / Service Rep" + hamburger only; mockup shows "Take Over a Vehicle / Signed in as Rep 3" + an "R3" avatar.
+
+**Idle page gaps (vs mockup):** the body conforms well (green check, "You're available", Available pill, vehicle card). Remaining:
+1. App-bar subtitle should read "Vehicle IA-4471 · On shift" (currently "Service Rep").
+2. App bar is missing the persona avatar (mockup shows "RA" alongside the hamburger).
+
+**Proposed fix (via `/master`)**
+- Add scoped CSS for the take-over list (new `IdleVehicleList.razor.css` and/or `TakeOver.razor.css`) matching the card/row/chip styling already proven in `RepIdle.razor.css`; render equipment as chips with a friendly-label map.
+- Align the PersonaShell app bar (title/subtitle + avatar) with the rep mockups.
+- (Optional, separate) extend `AvailableVehicleDto`/`IdleVehicle` with model + home-loop so rows can show "IA-4471 · Transit 350" / "Des Moines loop · idle".
+
+**Acceptance criteria (bug resolved when):**
+- The take-over list renders as a bordered card with styled rows and equipment chips, matching `rep-takeover__mobile-390x844.png` (human-verified on the simulator).
+- The idle app bar shows the vehicle/"On shift" subtitle and the persona avatar, matching `rep-idle__mobile-390x844.png`.
+- bUnit tests cover `IdleVehicleList` rendering equipment as chips with the friendly labels and overflow count.
