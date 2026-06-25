@@ -229,6 +229,22 @@
 
 ---
 
+## Phase 13 — Real Google Maps
+**Goal:** Replace the CSS/SVG placeholder maps with the real Google Maps integration the map stories always specified (`FE-003`/`FE-011`/`FE-015`/`FE-017`). Build one shared map component + per-host SDK/key loading, then swap it into the built ServiceRep screens; the unbuilt dispatcher/requester map screens consume it when they are implemented. See [ADR-0010](../adr/0010-google-maps-for-map-visualization.md).
+
+| Story | Repo | Description |
+|-------|------|-------------|
+| [FE-025](frontend.md) | Frontend | Load the Google Maps JS SDK + supply the API key per host (Web/Mobile/Desktop); no committed key; graceful fallback |
+| [FE-024](frontend.md) | Frontend | Reusable `GoogleMap` Blazor component (JS interop) — markers, polylines, recenter/zoom/fitBounds; state-coloured markers |
+| [FE-026](frontend.md) | Frontend | ServiceRep Active Job — replace the placeholder with the real map (live rep marker, requester pin, route, recenter on state) |
+| [FE-027](frontend.md) | Frontend | ServiceRep Job Offer — replace the placeholder with the real map (requester location) |
+| [FE-028](frontend.md) | Frontend | _(optional / stretch)_ Road-accurate route + Directions-API ETA on the active-job and tracking maps |
+
+**Depends on:** Phase 9 (ServiceRep screens exist), BE-030 (Phase 12, live-position feed — done). The unbuilt map screens — FE-003 (Phase 11), FE-015 / FE-017 (Phase 10) — consume FE-024 when they are built rather than ever shipping another placeholder.
+**Exit criteria:** `ActiveJob` and `JobOffer` render a real, interactive Google Map (verified live on the iOS host and by the AI-review render-and-screenshot check); FE-024/FE-025 are in place for the dispatcher and requester map screens to adopt.
+
+---
+
 ## Cross-Cutting — Engineering Quality
 **Goal:** Harden the AI pipeline against defect classes that have slipped through. Not tied to a feature phase; runs whenever picked up.
 
@@ -260,6 +276,8 @@ Phase 1
             └── Phase 11 (Frontend Dispatcher)  ← needs Phases 2, 5, 6
 Phase 5
     └── Phase 12 (BE-030 active-job-state)      ← unblocks FE-011 AC-1/AC-2/AC-4 end-to-end
+Phase 9
+    └── Phase 13 (Real Google Maps)             ← FE-024/025 component+key, then FE-026/027 swap-in
 ```
 
 Frontend phases (8–11) can begin in parallel with Phase 2+ on the backend — the frontend can be built against mock data / a stub API while backend phases progress. Full integration testing starts once the corresponding backend phase is complete.
@@ -272,8 +290,8 @@ Frontend phases (8–11) can begin in parallel with Phase 2+ on the backend — 
 |------|---------|--------|
 | Backend | BE-001 – BE-030 (30 stories) | 1–6, 12 |
 | Simulator | SIM-001 – SIM-012 (12 stories) | 2, 4, 7 |
-| Frontend | FE-001 – FE-023 (23 stories) | 8–11 |
-| **Total** | **65 stories** | **12 phases** |
+| Frontend | FE-001 – FE-028 (28 stories) | 8–11, 13 |
+| **Total** | **70 stories** | **13 phases** |
 
 Plus **35 bugs** ([`bug.md`](bug.md)) — `BUG-001` – `BUG-035`; all resolved. `BUG-003`–`BUG-015` were central-repo doc/pipeline fixes (shipped via `/ship-it`). `BUG-024`–`BUG-026` were frontend E2E failures found via `test-e2e.sh`. `BUG-027`–`BUG-031` were found via `test-appium.sh` (backend idle-vehicle semantics, frontend REST + SignalR auth headers, startup error, and Appium harness defects); `BUG-032` then made the suite's 4 job-offer tests pass (backend-only run + a fleet-positioning/request precondition) and `[Ignore]`d the JWT-expiry test, taking the Appium suite to **8/9 passing, 1 skipped**. `BUG-033` (rep take-over/idle mockup fidelity, PR #36), `BUG-034` (idle view showed a hardcoded vehicle, PR #37), and `BUG-035` (surface the vehicle model in the DTO and render "<reg> · <model>", backend PR #47 + frontend PR #38) were fixed via `/master`.
 

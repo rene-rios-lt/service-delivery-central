@@ -453,6 +453,102 @@ _No dedicated screen — redirects to the login screen (see FE-001)._
 
 ---
 
+## Epic: Real Google Maps integration (ADR-0010)
+
+> `FE-003`, `FE-011`/`FE-012`, `FE-015`, and `FE-017` all specify a live **Google Map**, but every map screen currently renders a CSS/SVG placeholder (a gradient `div.sd-map`, an SVG road grid, and markers at hardcoded percentages — `data-lat`/`data-lng` carried but unused). These stories build the real integration: one shared map component, per-host SDK/key loading, and the swap-in for each **already-built** screen (`ActiveJob`, `JobOffer`). The **unbuilt** map screens (`FE-003` dispatcher fleet, `FE-015` requester submit, `FE-017` requester tracking) consume the same `FE-024` component when they are implemented, rather than ever building another placeholder. See [ADR-0010](../adr/0010-google-maps-for-map-visualization.md).
+
+### FE-024 — Reusable Google Map component
+**As a** frontend developer,
+**I want** a single reusable Blazor map component that wraps the Google Maps JavaScript API via JS interop,
+**so that** every map screen renders a real, interactive map through one tested component instead of re-implementing map logic (or a CSS placeholder) per screen.
+
+**Acceptance Criteria:**
+- A `GoogleMap` component in `ServiceDelivery.Client.UI` renders an interactive Google map into a sized container, centred on a supplied lat/lng at a supplied zoom
+- An imperative interop API (a JS module under `wwwroot`, invoked via `IJSRuntime`) supports: initialise/dispose a map; add/update/remove a **marker** (id, lat/lng, state colour); add/update/remove a **polyline** (ordered points); `panTo` / `setZoom`; and `fitBounds` to frame a set of points
+- Markers are colour-coded by rep/vehicle state using the design-system tokens (Available green, EnRoute blue, Within15 yellow, OnSite red, Offline grey)
+- The component disposes its JS map and event handlers on `Dispose` — no leaked handlers across navigation
+- Each marker/polyline exposes a `data-testid`/overlay hook (e.g. `rep-marker`, `requester-pin`, `route-line`) so Playwright/Appium can assert presence without touching the tile layer (QUAL-003/004)
+- Degrades gracefully when the SDK is unavailable (see FE-025): renders a labelled "map unavailable" placeholder, never a blank box or an unhandled JS error
+- Unit-tested by asserting the interop calls the component issues (markers/polylines/centre/zoom for given inputs); the live render is covered by E2E
+
+**Depends on:** FE-025, [ADR-0010](../adr/0010-google-maps-for-map-visualization.md). _No standalone screen — consumed by the map stories below._
+
+---
+
+### FE-025 — Google Maps SDK loading & API key configuration
+**As a** frontend developer,
+**I want** the Google Maps JS SDK loaded and its API key supplied per host without committing the key,
+**so that** the map component works on Web, Mobile, and Desktop and the key is managed safely per environment.
+
+**Acceptance Criteria:**
+- The Maps JS SDK is loaded in each host (`Web`, `Mobile`, `Desktop`) — via `wwwroot/index.html` or a loader the component triggers — with the required libraries (`maps`, `marker`)
+- The API key is read from **host configuration**, never hardcoded or committed: Web from `appsettings`/env; the MAUI hosts from a `Core` config abstraction implemented per host (mirrors the existing `ApiBaseAddress` pattern in `MauiProgram.cs`)
+- A missing/blank key does not crash the app — the map component shows its "map unavailable" placeholder (FE-024) and logs a clear diagnostic
+- The MAUI `BlazorWebView` origin caveat from ADR-0010 is validated: confirm the map renders inside the iOS Mobile host with an appropriately-restricted key, and document the restriction used
+- `appsettings.Local.json` / the key file stays gitignored; a committed file (or README) documents the key name and where to obtain it, with a placeholder value only
+
+**Depends on:** [ADR-0010](../adr/0010-google-maps-for-map-visualization.md). _No standalone screen — enabling infrastructure._
+
+---
+
+### FE-026 — Active job on a real Google Map (replace placeholder)
+**As a** ServiceRep,
+**I want to** see my active job on a real Google Map with my live position, the requester's pin, and the route between us,
+**so that** I can actually navigate to the requester instead of reading a stylised placeholder.
+
+**Acceptance Criteria:**
+- `ActiveJob.razor` renders the FE-024 `GoogleMap` component in place of the CSS/SVG placeholder; the `sd-map`/`sd-roadgrid`/`sd-routeline`/`sd-marker`/`sd-pin-dest` placeholder markup and styles are removed
+- The rep marker sits at the rep's **live** position (`repLatitude`/`repLng` from `GET /rep/active-job-state`, BE-030) and moves as the ~3-second poll updates it
+- The requester pin sits at the requester's location; a polyline connects rep → requester while EnRoute/Within15Miles and is removed once OnSite (mirrors FE-012's "route line removed on arrival")
+- The map tracks rep state (FE-011/FE-012): recenters/zooms appropriately across EnRoute → Within15Miles → OnSite, and the rep marker colour reflects state
+- The ETA card and state chip continue to show real values from `active-job-state`
+- Covered by an Appium scenario asserting the map container + overlay test-ids (`rep-marker`, `requester-pin`, `route-line`) per QUAL-004; the AI-review render-and-screenshot check confirms the real map renders (not a collapsed/placeholder box)
+
+**Mockup —** _Mobile (En Route, then On Site)_
+
+| En route | On site |
+|:---:|:---:|
+| <img src="../ui-mockups/images/rep-active-job__mobile-390x844.png" alt="Rep — active job map" width="230"> | <img src="../ui-mockups/images/rep-on-site__mobile-390x844.png" alt="Rep — on site" width="230"> |
+
+**Depends on:** FE-024, FE-025, [BE-030](backend.md) (live-position feed — done).
+
+---
+
+### FE-027 — Job-offer location on a real Google Map (replace placeholder)
+**As a** ServiceRep,
+**I want to** see the incoming job's location on a real Google Map while I decide,
+**so that** I can judge the job's distance and area before accepting.
+
+**Acceptance Criteria:**
+- `JobOffer.razor` renders the FE-024 `GoogleMap` component in place of the placeholder pin; the placeholder `sd-map`/`sd-pin-dest` markup is removed
+- A requester pin sits at the offer's location (`Lat`/`Lng` from the job-offer payload); the map is read-only and centred/zoomed to show the pin clearly
+- Renders within the countdown timeframe without blocking the accept/decline actions (FE-009/FE-010)
+- Covered by an Appium scenario asserting the map container + `requester-pin` test-id (QUAL-004) and the AI-review render check
+
+**Mockup —** _Mobile_
+
+<img src="../ui-mockups/images/rep-job-offer__mobile-390x844.png" alt="Rep — job offer with location map" width="240">
+
+**Depends on:** FE-024, FE-025.
+
+---
+
+### FE-028 — Road-accurate route & ETA via Google Directions *(optional / stretch)*
+**As a** ServiceRep (and requester),
+**I want** the on-map route to follow real roads and the ETA to reflect real driving time,
+**so that** navigation and arrival estimates are realistic rather than straight-line.
+
+**Acceptance Criteria:**
+- The rep → requester route is drawn as a road-following polyline from the Google **Directions API** instead of a straight line, on the active-job map (FE-026) and the requester tracking map (FE-017)
+- The ETA shown on those maps reflects the Directions driving estimate; the **matching** algorithm and `ADR-0004` Haversine remain unchanged — this affects display only
+- Directions calls go through a single guarded path (client call or a thin backend proxy) with caching/debounce so the ~3-second poll does not issue a Directions request every tick (cost control)
+- Falls back to the straight-line polyline + Haversine ETA (FE-026) when Directions is unavailable or the key lacks Directions access
+- **Optional:** this adds Google Directions API cost and is not required for the epic to ship — FE-026/FE-017 are fully functional with the straight-line polyline
+
+**Depends on:** FE-026, [FE-017](#fe-017--live-rep-tracking), [ADR-0010](../adr/0010-google-maps-for-map-visualization.md). _No new screen — enhances existing map screens._
+
+---
+
 ## Story ↔ Screen Traceability
 
 | Story | Screen(s) | Platforms rendered |
@@ -480,5 +576,10 @@ _No dedicated screen — redirects to the login screen (see FE-001)._
 | FE-020 Idle / waiting view | `rep-idle` | Mobile |
 | FE-023 Heartbeat / go off duty | _(background — no screen)_ | — |
 | FE-021 App shell & logout | `rep-nav-drawer`, `dispatcher-nav` | Mobile, Desktop |
+| FE-024 Google Map component | _(shared component — no standalone screen)_ | — |
+| FE-025 Maps SDK + key config | _(infrastructure — no screen)_ | — |
+| FE-026 Active job real map | `rep-active-job`, `rep-on-site` | Mobile |
+| FE-027 Job-offer location map | `rep-job-offer` | Mobile |
+| FE-028 Directions route/ETA (optional) | `rep-active-job`, `requester-tracking` | Mobile, Web |
 
 > Screens are rendered to PNG by [`docs/ui-mockups/render.mjs`](../ui-mockups/render.mjs) and indexed in the [mockups README](../ui-mockups/README.md). The reusable component library is [`design-system.css`](../ui-mockups/design-system.css).
