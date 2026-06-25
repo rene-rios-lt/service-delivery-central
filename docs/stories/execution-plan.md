@@ -171,6 +171,12 @@
 | [FE-013](frontend.md) | Frontend | "Mark Complete" → return to idle |
 | [FE-014](frontend.md) | Frontend | Release vehicle from menu (goes off-duty; vehicle parks) |
 | [FE-023](frontend.md) | Frontend | Heartbeat while on duty + clean go-off-duty |
+| ~~[**BUG-027**](bug.md)~~ | ~~Backend~~ | ~~**Bug** — `GET /vehicles/available` returned only *unclaimed* vehicles, but the simulator claims all 8, so the rep take-over list was always empty. Found via `test-appium.sh`. Fix: return idle vehicles (unclaimed or claimed-by-idle-rep); add `RepStateRecord.IsOnActiveJob()`.~~ |
+| ~~[**BUG-028**](bug.md)~~ | ~~Frontend~~ | ~~**Bug** — Authenticated REST calls sent no `Authorization` header (only `HttpAuthService` attached the JWT), so every data call 401'd after login. Found via `test-appium.sh`. Fix: `AuthTokenHttpHandler` DelegatingHandler in all 3 hosts.~~ |
+| ~~[**BUG-029**](bug.md)~~ | ~~Frontend~~ | ~~**Bug** — Brief "unhandled error" flash at startup (root route loads the profile before redirect-to-login; SecureStorage first-launch race). Found via `test-appium.sh`. Fix: resilient shell-load + token-store guards.~~ |
+| ~~[**BUG-030**](bug.md)~~ | ~~Frontend~~ | ~~**Bug** — RepHub SignalR connection sent no access token, so the `[Authorize]` hub never joined the rep group and offers/redirects never arrived. Found auditing all calls for auth. Fix: `AccessTokenProvider` from `ITokenStore`.~~ |
+| ~~[**BUG-031**](bug.md)~~ | ~~Central/Frontend~~ | ~~**Bug** — Appium E2E suite never ran against the app (7 harness defects: `.app` find depth, wrong password/email, no WEBVIEW context switch, AccessibilityId vs CSS, no binding-commit, no test isolation, MudNavLink inner-click). Fixed; suite now drives the app, 4/9 pass.~~ |
+| [**BUG-032**](bug.md) | Frontend | **Bug** — Appium job-offer tests (4) have no service-request precondition so no offer is ever generated; JwtExpiry test (1) is a documented Keychain limitation. 5/9 Appium tests fail for these reasons (unrelated to the auth fixes). Follow-up: add request orchestration / a real expiry trigger. |
 
 **Depends on:** Phase 8, Phases 2–5 (vehicle + job offer + state transition + takeover/heartbeat endpoints)
 **Exit criteria:** A ServiceRep user can take over an idle vehicle and complete a full job end-to-end in the UI with the simulator driving position; going off-duty parks the vehicle without the simulator re-assuming it.
@@ -266,6 +272,6 @@ Frontend phases (8–11) can begin in parallel with Phase 2+ on the backend — 
 | Frontend | FE-001 – FE-023 (23 stories) | 8–11 |
 | **Total** | **65 stories** | **12 phases** |
 
-Plus **26 bugs** ([`bug.md`](bug.md)) — `BUG-001` – `BUG-026` — all filed and resolved. `BUG-003`–`BUG-015` were central-repo doc/pipeline fixes (shipped via `/ship-it`). `BUG-024`–`BUG-026` were frontend E2E failures found via `test-e2e.sh`.
+Plus **32 bugs** ([`bug.md`](bug.md)) — `BUG-001` – `BUG-032`; all resolved except `BUG-032` (Appium job-offer test precondition — follow-up). `BUG-003`–`BUG-015` were central-repo doc/pipeline fixes (shipped via `/ship-it`). `BUG-024`–`BUG-026` were frontend E2E failures found via `test-e2e.sh`. `BUG-027`–`BUG-031` were found via `test-appium.sh` (backend idle-vehicle semantics, frontend REST + SignalR auth headers, startup error, and Appium harness defects); the Appium suite now passes 4/9, with the remaining 5 tracked in `BUG-032`.
 
 Plus **4 engineering-quality stories** ([`quality.md`](quality.md)) — `QUAL-001` – `QUAL-004` (all complete).
