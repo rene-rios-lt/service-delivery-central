@@ -86,16 +86,25 @@ If the required test level is missing, flag it as a blocking finding.
 
 **Frontend E2E test check** *(applies to `FE-` stories and `BUG-` frontend stories that change a UI component — skip for all other repos and for behaviour-only frontend stories with no screen):*
 
-Determine the story's platform(s) from the story text:
+An E2E test (Playwright or Appium) is **not** required for every UI change. It is required only for behaviour that **cannot be fully covered by a unit or integration test**. Apply the lowest-sufficient-level rule: cover each AC at the lowest test level that can fully exercise it, and require an E2E test only when no lower level can.
 
-- **Web or Desktop platform:** check whether `tests/ServiceDelivery.Client.E2E/` exists in the repo (`Glob("tests/ServiceDelivery.Client.E2E/**/*.csproj")`).
-  - Project exists + E2E test file absent from the diff → **blocking** finding: `[Missing E2E test — Playwright]`
+For each in-scope AC, first ask: **can a unit or integration test fully cover this behaviour?**
+
+- **Yes → E2E is not required for this AC.** Covered at the lower level and must not be blocked for lacking an E2E scenario. This includes most UI work: component rendering, string/label formatting, conditional display, list rendering (bUnit component tests); ViewModel logic and state (ViewModel unit tests); and service↔backend wire/serialization contracts (integration tests or the headless smoke). BUG-035's `"<reg> · <model>"` render is the canonical example — fully covered by a bUnit component test, so it needs **no** E2E test.
+- **No → E2E is the only sufficient level.** A behaviour is E2E-only when it depends on real runtime integration that unit/component/integration tests mock out or cannot instantiate, e.g.: the native MAUI host actually launching; real platform navigation, lifecycle, deep links, or permissions; real browser DOM/routing; a live SignalR transport delivering an event to a rendered client on the device/browser; or auth headers travelling over a real HTTP round-trip into the rendered UI. If, and only if, an in-scope AC is E2E-only, an E2E scenario is required for it.
+
+When an AC is E2E-only, determine the platform from the story text and apply:
+
+- **Web or Desktop platform:** check whether `tests/ServiceDelivery.Client.E2E/` exists (`Glob("tests/ServiceDelivery.Client.E2E/**/*.csproj")`).
+  - Project exists + no E2E scenario for that AC in the diff → **blocking** finding: `[Missing E2E test — Playwright]`
   - Project absent → **advisory** only: `[E2E project not set up — run QUAL-003 first]`
 - **Mobile platform:** check whether `tests/ServiceDelivery.Client.Appium/` exists (`Glob("tests/ServiceDelivery.Client.Appium/**/*.csproj")`).
-  - Project exists + Appium test file absent from the diff → **blocking** finding: `[Missing E2E test — Appium]`
+  - Project exists + no Appium scenario for that AC in the diff → **blocking** finding: `[Missing E2E test — Appium]`
   - Project absent → **advisory** only: `[E2E project not set up — run QUAL-004 first]`
 
-Do **not** execute E2E tests as part of Check 0 — they require a live system. Check only that the test file exists and that each AC bullet has a named scenario in it.
+If **no** in-scope AC is E2E-only, this check produces no finding — not even an advisory. Do not block a story for lacking an E2E test when unit/integration coverage is sufficient.
+
+Do **not** execute E2E tests as part of Check 0 — they require a live system. Check only that, for any E2E-only AC, the scenario exists and is named.
 
 ### Check 3 — Test Value & Masking
 

@@ -35,6 +35,19 @@ Any story that touches the Application or Infrastructure layers requires tests a
 
 ---
 
+## Lowest Sufficient Test Level
+
+Cover every behaviour at the **lowest test level that can fully exercise it**. A higher, slower level is required only when no lower level can give correct coverage — never as a default "to be safe."
+
+E2E tests (Playwright for Web/Desktop, Appium for Mobile) sit at the top of this hierarchy: slowest, most brittle, and most expensive to run (a live system + a real browser or booted simulator). They are **not** required for every UI change. Decide per behaviour:
+
+- **If a unit or integration test can fully cover it → that level is the requirement; an E2E test is not.** Most UI work lives here: component rendering, string/label formatting, conditional display, and list rendering are covered by bUnit component tests; ViewModel logic and state by ViewModel unit tests; service↔backend wire/serialization contracts by integration tests or the headless smoke. Do not demand an E2E test for behaviour a component or integration test already proves.
+- **If neither a unit nor an integration test can cover it → an E2E test is the only sufficient level, and is therefore required.** A behaviour is E2E-only when it depends on real runtime integration the lower levels mock out or cannot instantiate: the native host actually launching, real platform navigation / lifecycle / deep links / permissions, real browser DOM and routing, a live SignalR transport delivering to a rendered client, or auth headers travelling over a real HTTP round-trip into the UI.
+
+The test pyramid is the goal: many fast unit tests, fewer integration tests, and only the handful of E2E tests that cover what nothing below them can. Pushing coverage that a unit test could carry up into the E2E suite makes the suite slow and flaky for no added protection. (This is the rule the AI Review's Frontend E2E test check applies — see `story-ai-reviewer`.)
+
+---
+
 ## Value-Add Check
 
 Each test must assert something that would **catch a real regression**. Evaluate every test against this criterion:
