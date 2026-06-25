@@ -124,13 +124,31 @@ Runs `dotnet test` against the simulator repo.
 
 Runs `dotnet test` against the frontend repo.
 
-### Run the full test suite
+### Run the unit + integration suite (offline)
+
+```bash
+./scripts/local/test-unit-and-integration.sh
+```
+
+Runs the backend, frontend, and simulator unit + integration suites with a live results table. No live system required.
+
+### Run the end-to-end suite (live system)
+
+```bash
+./scripts/local/test-e2e.sh        # Playwright (web) then Appium (iOS) — runs both
+./scripts/local/test-playwright.sh  # Playwright suite alone
+./scripts/local/test-appium.sh      # Appium suite alone (needs Appium installed)
+```
+
+Each script boots and tears down its own live system (backend, web host, simulator, iOS sim as needed).
+
+### Run the complete test suite
 
 ```bash
 ./scripts/local/test-all.sh
 ```
 
-Runs the backend, frontend, and simulator test suites with a live results table.
+Runs the offline unit + integration suite, then the end-to-end suite (Playwright + Appium). Boots a live system for the E2E phase.
 
 ### Bring up the full system locally
 

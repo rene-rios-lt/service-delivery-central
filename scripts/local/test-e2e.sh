@@ -1,112 +1,49 @@
 #!/usr/bin/env bash
-# Runs the Playwright end-to-end suite (tests/ServiceDelivery.Client.E2E) against a live system.
+# Runs the full end-to-end suite against a live system: the Playwright (web/desktop) suite via
+# test-playwright.sh, then the Appium (iOS mobile) suite via test-appium.sh.
 #
-# These tests drive the running Web host (default http://localhost:5023) and the backend (:5180)
-# as a black box — they are NOT part of the /master pipeline or test-all.sh (which never starts a
-# live system). This script brings the system up if it is not already running, installs the
-# Playwright browser binaries on first run, executes the suite, and tears down anything it started.
+# Each child script manages its own setup and teardown (backend, web host, simulator, iOS sim,
+# Appium server), so this orchestrator just runs them in sequence and renders a consolidated table.
+# Both suites run even if the first fails, so you get the full picture; the exit code is non-zero
+# if either suite fails.
 #
-# Idempotent: if the backend is already up on :5180 and the web host on :5023, it reuses them and
-# does NOT tear them down on exit (only what this script starts is stopped).
-#
-# Env overrides:
-#   E2E_BASE_URL                  web host base URL          (default http://localhost:5023)
-#   E2E_DISPATCHER_PASSWORD       seeded dispatcher password (default Password1!)
-#   E2E_FORCE_BROWSER_INSTALL=1   reinstall Playwright browsers even if already cached
-#   PLAYWRIGHT_BROWSERS_PATH      browser cache dir (default ~/Library/Caches/ms-playwright)
+# NOT part of the /master pipeline or the offline test-unit-and-integration.sh runner — these need
+# a live system. See test-playwright.sh / test-appium.sh headers for prerequisites (Playwright
+# browsers, Appium + xcuitest driver, a booted iOS simulator).
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT_DIR="$SCRIPT_DIR"
-while [ ! -d "$ROOT_DIR/service-delivery-frontend" ] && [ "$ROOT_DIR" != "/" ]; do
-  ROOT_DIR="$(dirname "$ROOT_DIR")"
-done
-if [ ! -d "$ROOT_DIR/service-delivery-frontend" ]; then
-  echo "Error: could not find service-delivery-frontend repo from $SCRIPT_DIR" >&2
-  exit 1
+# shellcheck source=../utils/test-report.sh
+source "$SCRIPT_DIR/../utils/test-report.sh"
+
+# Collect each suite's TRX so we can render one consolidated table. If a parent orchestrator
+# (test-all.sh) already set SD_TRX_DIR, write into it and let the parent render; otherwise make our
+# own scratch dir and render the E2E table here.
+STANDALONE=0
+if [ -z "${SD_TRX_DIR:-}" ]; then
+  SD_TRX_DIR="$(mktemp -d)"
+  export SD_TRX_DIR
+  STANDALONE=1
+  trap 'rm -rf "$SD_TRX_DIR"' EXIT
 fi
 
-FRONTEND_DIR="$ROOT_DIR/service-delivery-frontend"
-E2E_PROJECT="$FRONTEND_DIR/tests/ServiceDelivery.Client.E2E"
-BACKEND_URL="http://localhost:5180"
-WEB_URL="${E2E_BASE_URL:-http://localhost:5023}"
+echo "==> [1/2] Playwright E2E (test-playwright.sh) ..."
+"$SCRIPT_DIR/test-playwright.sh"
+PW_RC=$?
 
-STARTED_BACKEND=0
-STARTED_WEB=0
-WEB_PID=""
+echo
+echo "==> [2/2] Appium E2E (test-appium.sh) ..."
+"$SCRIPT_DIR/test-appium.sh"
+APPIUM_RC=$?
 
-cleanup() {
-  if [ "$STARTED_WEB" -eq 1 ] && [ -n "$WEB_PID" ]; then
-    echo "==> Stopping web host (PID $WEB_PID) ..."
-    kill "$WEB_PID" 2>/dev/null || true
-  fi
-  if [ "$STARTED_BACKEND" -eq 1 ]; then
-    echo "==> Stopping backend + simulator (stop.sh) ..."
-    "$SCRIPT_DIR/stop.sh" || true
-  fi
-}
-trap cleanup EXIT
-
-# 1. Backend — start only if it is not already serving on :5180.
-if curl -s "$BACKEND_URL/health" > /dev/null 2>&1 || curl -s "$BACKEND_URL" > /dev/null 2>&1; then
-  echo "==> Backend already up on $BACKEND_URL — reusing."
-else
-  echo "==> Starting backend + simulator (start.sh) ..."
-  "$SCRIPT_DIR/start.sh" || { echo "!! start.sh failed" >&2; exit 1; }
-  STARTED_BACKEND=1
+if [ "$STANDALONE" -eq 1 ]; then
+  echo
+  echo "==> End-to-end results"
+  {
+    sd_trx_row 'Frontend' 'E2E (PW)'     "$SD_TRX_DIR/playwright.trx"
+    sd_trx_row 'Frontend' 'E2E (Appium)' "$SD_TRX_DIR/appium.trx"
+  } | sd_render_results_table
 fi
 
-# 2. Web host — start only if it is not already serving on :5023.
-if curl -s "$WEB_URL" > /dev/null 2>&1; then
-  echo "==> Web host already up on $WEB_URL — reusing."
-else
-  echo "==> Starting web host ($WEB_URL) ..."
-  ( cd "$FRONTEND_DIR" && dotnet run --project src/ServiceDelivery.Client.Web ) &
-  WEB_PID=$!
-  STARTED_WEB=1
-  echo "==> Waiting for web host to respond at $WEB_URL ..."
-  for _ in $(seq 1 60); do
-    curl -s "$WEB_URL" > /dev/null 2>&1 && break
-    sleep 1
-  done
-  if ! curl -s "$WEB_URL" > /dev/null 2>&1; then
-    echo "!! Web host did not respond at $WEB_URL in time." >&2
-    exit 1
-  fi
-fi
-
-# 3. Playwright browser binaries — install once. Skipped when a browser cache
-#    already exists (the common case): pwsh is only needed for the first install
-#    or a Playwright version bump. Force a (re)install with E2E_FORCE_BROWSER_INSTALL=1.
-PW_CACHE="${PLAYWRIGHT_BROWSERS_PATH:-$HOME/Library/Caches/ms-playwright}"
-if [ "${E2E_FORCE_BROWSER_INSTALL:-0}" != "1" ] && ls -d "$PW_CACHE"/chromium-* > /dev/null 2>&1; then
-  echo "==> Playwright browsers already cached in $PW_CACHE — skipping install."
-else
-  echo "==> Ensuring Playwright browsers are installed ..."
-  ( cd "$E2E_PROJECT" && dotnet build > /dev/null )
-  PW_SCRIPT="$E2E_PROJECT/bin/Debug/net10.0/playwright.ps1"
-  if [ ! -f "$PW_SCRIPT" ]; then
-    echo "!! playwright.ps1 not found at $PW_SCRIPT — build the E2E project first." >&2
-    exit 1
-  fi
-  if ! command -v pwsh > /dev/null 2>&1; then
-    echo "!! pwsh (PowerShell) not found — needed to install Playwright browsers." >&2
-    echo "   Install it with: brew install powershell" >&2
-    echo "   Then re-run, or install browsers manually: pwsh $PW_SCRIPT install" >&2
-    exit 1
-  fi
-  pwsh "$PW_SCRIPT" install chromium || {
-    echo "!! Could not install Playwright browsers." >&2
-    echo "   Install manually: pwsh $PW_SCRIPT install" >&2
-    exit 1
-  }
-fi
-
-# 4. Run the suite.
-echo "==> Running Playwright E2E suite ..."
-export E2E_BASE_URL="$WEB_URL"
-export E2E_DISPATCHER_PASSWORD="${E2E_DISPATCHER_PASSWORD:-Password123!}"
-dotnet test "$E2E_PROJECT" --nologo
-RESULT=$?
-
-exit $RESULT
+[ "$PW_RC" -eq 0 ] && [ "$APPIUM_RC" -eq 0 ] && exit 0
+exit 1

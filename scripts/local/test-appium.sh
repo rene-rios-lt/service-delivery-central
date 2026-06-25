@@ -4,8 +4,9 @@
 #
 # These tests drive the MAUI Blazor Hybrid Mobile host installed on the iOS simulator as a black box
 # — they talk to the backend (:5180) and react to simulator-driven SignalR job offers. They are NOT
-# part of the /master pipeline or test-all.sh (which never starts a live system). This script brings
-# the backend + simulator up if not already running, boots the iOS simulator, builds + installs the
+# part of the /master pipeline or the offline test-unit-and-integration.sh runner. They run live via
+# test-e2e.sh (Playwright + Appium) or the top-level test-all.sh; this script runs the Appium suite
+# alone. It brings the backend + simulator up if not already running, boots the iOS simulator, builds + installs the
 # Mobile app, starts an Appium server, runs the suite, and tears down anything it started.
 #
 # Idempotent: if the backend is already up on :5180 it reuses it and does NOT tear it down on exit
@@ -142,10 +143,21 @@ export APPIUM_BASE_URL="$BACKEND_URL"
 export APPIUM_REP_PASSWORD="${APPIUM_REP_PASSWORD:-Password123!}"
 # Optional first argument is an NUnit/xUnit --filter expression (e.g. "FullyQualifiedName~LoginTests")
 # so a single test class can be run for fast iteration; with no argument the whole suite runs.
-if [ -n "${1:-}" ]; then
-  dotnet test "$APPIUM_PROJECT" --nologo --filter "$1"
+# When an orchestrator (test-e2e.sh / test-all.sh) sets SD_TRX_DIR, emit a TRX it can fold into its
+# consolidated results table.
+if [ -n "${SD_TRX_DIR:-}" ]; then
+  LOGGER=(--logger "trx;LogFileName=appium.trx" --results-directory "$SD_TRX_DIR")
+  if [ -n "${1:-}" ]; then
+    dotnet test "$APPIUM_PROJECT" --nologo --filter "$1" "${LOGGER[@]}"
+  else
+    dotnet test "$APPIUM_PROJECT" --nologo "${LOGGER[@]}"
+  fi
 else
-  dotnet test "$APPIUM_PROJECT" --nologo
+  if [ -n "${1:-}" ]; then
+    dotnet test "$APPIUM_PROJECT" --nologo --filter "$1"
+  else
+    dotnet test "$APPIUM_PROJECT" --nologo
+  fi
 fi
 RESULT=$?
 
