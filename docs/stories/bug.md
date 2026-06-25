@@ -722,7 +722,7 @@ The 4 job-offer/active-job tests take over a vehicle and then wait for a `JobOff
 
 ## BUG-033 — Rep take-over page renders unstyled (missing scoped CSS); minor idle-page app-bar fidelity gaps
 
-- **Status:** **Open** — fix via `/master` (pixel-match the mockups, like BUG-021).
+- **Status:** **Fixed** 2026-06-24 (PR #36, via `/master`) — added scoped CSS for the take-over list (bordered card, styled rows, equipment chips + friendly labels) plus a bounded scrollable list region keeping the CTA visible; idle vehicle card is now a white card with a horizontal icon-left row; app bar shows the "Vehicle … · On shift" subtitle and equal-size translucent-circle hamburger + persona avatar. All visually verified on the simulator; 207 frontend unit tests green. (The take-over rows still show registration only, not model/loop — Gap 4 was out of scope; folded into BUG-034.)
 - **Severity:** Medium (the take-over screen — the first authenticated ServiceRep screen — looks broken: cramped, unstyled rows with run-together equipment text; the idle screen is close but the app bar differs from the mockup)
 - **Repo / Area:** Frontend — `src/ServiceDelivery.Client.UI/Features/ServiceRep/Components/IdleVehicleList.razor` (+ a new scoped `.razor.css`), `Features/ServiceRep/Pages/TakeOver.razor`; shared `Shared/Components/PersonaShell.razor` for the app-bar fidelity
 - **Related stories:** `FE-007` (take-over screen), `FE-020` (idle view), `BUG-021` (login mockup fidelity — same class of fix)
@@ -751,3 +751,31 @@ The app styles each page with **scoped CSS** (`Login.razor.css`, `RepIdle.razor.
 - The take-over list renders as a bordered card with styled rows and equipment chips, matching `rep-takeover__mobile-390x844.png` (human-verified on the simulator).
 - The idle app bar shows the vehicle/"On shift" subtitle and the persona avatar, matching `rep-idle__mobile-390x844.png`.
 - bUnit tests cover `IdleVehicleList` rendering equipment as chips with the friendly labels and overflow count.
+
+---
+
+## BUG-034 — Idle view (card + app-bar subtitle) shows a hardcoded vehicle, not the one the rep took over
+
+- **Status:** **Open** — fix via `/master`.
+- **Severity:** High (after taking over vehicle **V-001**, the idle screen and the app-bar subtitle both show **"IA-4471 · Transit 350"** — a hardcoded demo vehicle. The rep sees the wrong vehicle for their entire shift; misleading in the core ServiceRep flow.)
+- **Repo / Area:** Frontend — `src/ServiceDelivery.Client.Mobile/MauiProgram.cs` (hardcoded `ClaimedVehicle` registration), `Core/ViewModels/TakeOverViewModel.cs` + `RepIdleViewModel.cs`, `Features/Authentication/Services/BlazorPersonaNavigator.cs`, `Features/ServiceRep/Pages/RepIdle.razor`. Likely also Backend — `AvailableVehicleDto` / a claimed-vehicle read endpoint (for the model field).
+- **Related stories:** `FE-007` (take-over), `FE-020` (idle view), `BUG-033` (idle/take-over fidelity — folds in its Gap 4: model/loop subtitle)
+- **Found:** Running the Appium take-over flow — selected V-001 but the idle page rendered IA-4471.
+
+**Summary**
+`RepIdleViewModel.Vehicle` is injected from a hardcoded `ClaimedVehicle(Guid.Empty, "IA-4471", "Transit 350", …)` registered in `MauiProgram.cs`. The take-over flow never carries the selected vehicle forward — `BlazorPersonaNavigator.NavigateToRepIdleView()` takes no arguments and `TakeOverResult` is success/conflict only. So the idle screen always shows the demo truck regardless of what was taken over. This was a documented POC shortcut in FE-020 ("wiring the real take-over hand-off … is a follow-on"). Because `RepIdle.razor` builds the app-bar subtitle from the same `ViewModel.Vehicle` (`Shell.SetVehicleContext($"Vehicle {reg} · On shift")`), the **subtitle under "Service Delivery" is wrong too** — it must show the selected vehicle.
+
+**Root cause**
+No hand-off of the claimed vehicle from take-over to the idle view; the idle VM depends on a static stub. Additionally, the available-vehicle data the take-over screen has (`IdleVehicle`: registration + equipment) lacks the **model** ("Transit 350"), so showing the full "reg · model" needs the model surfaced too.
+
+**Proposed fix (via `/master`)**
+- Carry the selected vehicle from `TakeOverViewModel` to the idle view — either a shared scoped store (mirroring the existing `IJobOfferStore` hand-off pattern) populated on successful take-over, or have the idle view fetch the rep's claimed vehicle from the backend.
+- Drive both the idle vehicle **card** and the **app-bar subtitle** ("Vehicle <reg> · On shift") from the real claimed vehicle.
+- Surface the vehicle **model** so the card/subtitle can show "<reg> · <model>": add `model` to `AvailableVehicleDto`/`IdleVehicle` (backend) or to a claimed-vehicle read endpoint. (Subsumes BUG-033 Gap 4.)
+- Remove the hardcoded `ClaimedVehicle` DI registration once the real hand-off exists.
+
+**Acceptance criteria (bug resolved when):**
+- After taking over a specific vehicle, the idle view's vehicle card shows that vehicle's registration (and model, once surfaced) — not a hardcoded one.
+- The app-bar subtitle reads "Vehicle <selected-reg> · On shift" for the vehicle actually taken over.
+- The hardcoded `ClaimedVehicle` stub is gone.
+- Unit tests cover the take-over→idle hand-off (the idle VM reflects the selected vehicle) and the subtitle derivation.
