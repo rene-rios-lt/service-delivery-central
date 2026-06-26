@@ -879,3 +879,36 @@ Incomplete RepHub event coverage on the frontend: the hub-service contract (`IRe
 - When a `JobOfferExpired` event arrives for the offer on screen, the countdown is stopped and the rep is returned to the idle/take-over view — verified by a `JobOfferViewModel` unit test (offer dismissed, navigation invoked) without relying on the 60 s timer.
 - An expiry event whose `OfferId` does not match the current offer is ignored (covered by a test).
 - The existing local-countdown fallback still returns the rep to idle if no event arrives (existing tests stay green).
+
+## BUG-038 — Idle screen raises an unhandled-error banner when the RepHub SignalR connection can't be established
+
+- **Status:** **Open**
+- **Severity:** Medium (the rep sees Blazor's red *"An unhandled error has occurred. Reload"* banner and the screen stops working until a manual reload — no live job offers arrive — whenever RepHub is unreachable at the moment the idle screen mounts. It is not data loss, but it is a visible app failure with no recovery short of reloading.)
+- **Repo / Area:** Frontend — `src/ServiceDelivery.Client.UI/Features/ServiceRep/Pages/RepIdle.razor` (`OnInitializedAsync`), `Core/ViewModels/RepIdleViewModel.cs` (`StartAsync`), `src/ServiceDelivery.Client.UI/Features/ServiceRep/Services/SignalRRepHubService.cs` (`StartAsync`), `Core/Interfaces/IRepHubService.cs`
+- **Related stories:** `FE-020` (idle / waiting-for-offers view), `FE-008` (job-offer screen — the expiry path that re-mounts idle), `BE-025` (RepHub event catalogue), `BUG-030` (RepHub auth — same hub wiring), `BUG-037` (offer-expiry event handling — adjacent RepHub gap)
+- **Found:** Live debugging on an iOS simulator — after the Appium suite finished and `stop.sh` tore down the backend, a leftover offer's client-side countdown hit zero, `JobOfferViewModel.TickAsync` navigated to the idle view, and the idle screen rendered with the *"An unhandled error has occurred."* banner. The error lives in the Blazor/WebView layer (not the native app process), so a unified-log scan of the app process alone does not surface it.
+
+**Summary**
+When the rep idle view mounts, `RepIdle.OnInitializedAsync` (`RepIdle.razor:68`) awaits `RepIdleViewModel.StartAsync()` (`RepIdleViewModel.cs:43`), which calls `_repHub.StartAsync()`. `SignalRRepHubService.StartAsync()` is a bare `_connection.StartAsync()` with **no error handling** (`SignalRRepHubService.cs:49`). The connection is built `.WithAutomaticReconnect()` (`SignalRRepHubService.cs:31`), but automatic reconnect **does not cover the *initial* connect** — it only retries after an already-established connection drops. So if the backend / RepHub is unreachable on the first connect, `StartAsync()` throws (e.g. connection refused), and because `OnInitializedAsync` has no `try/catch`, the exception propagates uncaught and Blazor renders the `#blazor-error-ui` banner.
+
+**Reproduction (deterministic):** be on the job-offer screen and let the 60 s countdown reach zero (`JobOfferViewModel.TickAsync` → `NavigateToRepIdleView()`, `JobOfferViewModel.cs:95`) while RepHub is unreachable. The idle screen re-mounts, re-opens the hub connection, the connect fails, and the banner appears. Killing the backend right before expiry (as the Appium teardown does) is the cleanest way to trigger it, but any RepHub-unreachable moment does it — backend restart, a network blip, or macOS idle-sleep dropping the websocket (cf. the local-SignalR-host-sleep failure mode).
+
+**Expected**
+A momentarily unreachable RepHub should degrade gracefully: the idle screen still renders the Available state and the claimed-vehicle card, surfaces an unobtrusive "connecting…/offline" indicator if anything, and keeps trying to connect — so that once the backend is reachable, job offers flow again. No unhandled-error banner.
+
+**Actual**
+The initial `StartAsync()` failure bubbles out of `OnInitializedAsync` as an unhandled exception; Blazor shows *"An unhandled error has occurred. Reload"* and the rep gets no live offers until they reload the app.
+
+**Root cause**
+The RepHub connection start is unguarded, and `WithAutomaticReconnect()` is relied on for resilience it does not provide (it excludes the initial connect). Neither `SignalRRepHubService.StartAsync`, `RepIdleViewModel.StartAsync`, nor `RepIdle.OnInitializedAsync` catches a connect failure, so a transient backend outage becomes a fatal UI error.
+
+**Proposed fix (via `/master`)**
+- Make the RepHub connect resilient: catch the initial-connect failure in `SignalRRepHubService.StartAsync` (or in `RepIdleViewModel.StartAsync`) and retry with backoff rather than letting it throw — `WithAutomaticReconnect()` only handles drops *after* a successful connect, so the initial attempt needs its own retry loop.
+- Surface connection state to the UI (e.g. an `IRepHubService` connection-state callback / property) so the idle screen can show a non-fatal "reconnecting…" indicator instead of throwing; the screen must still render the Available state + claimed-vehicle card while disconnected.
+- Ensure `RepIdle.OnInitializedAsync` never lets a hub-connection exception escape (defensive `try/catch` around `StartAsync` with logging) so component init can't trip `#blazor-error-ui`.
+
+**Acceptance criteria (bug resolved when):**
+- Mounting `/rep/idle` while RepHub is unreachable does **not** raise an unhandled exception and does **not** render the Blazor `#blazor-error-ui` banner — verified by a `RepIdleViewModel`/component test where `IRepHubService.StartAsync` throws and `StartAsync`/`OnInitializedAsync` swallow-and-log it.
+- The idle screen still renders the Available state and the claimed-vehicle card when the hub is down (existing idle-view tests stay green).
+- When RepHub becomes reachable again, the connection is (re)established and a subsequent `JobOfferReceived` is handled — the connect path retries rather than giving up after one failure (covered by a test).
+- The happy path (hub reachable on first connect) is unchanged and its existing tests stay green.
