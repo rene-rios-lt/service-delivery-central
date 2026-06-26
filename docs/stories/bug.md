@@ -804,3 +804,78 @@ The take-over list and idle card show "V-001" but the mockups show "IA-4471 · T
 - `GET /vehicles/available` returns each vehicle's model.
 - The take-over rows and the idle card show "<registration> · <model>" matching the mockups.
 - Backend + frontend unit tests cover the new field end to end.
+
+---
+
+## BUG-036 — Job-offer screen: tier badge is invisible, plus app-bar / card fidelity gaps vs the rep mockup
+
+- **Status:** Open
+- **Severity:** High (the Gold/Silver/Bronze tier badge — the visual anchor of the whole priority system — does not render visibly on the offer screen; supporting fidelity gaps are Medium/Low)
+- **Repo / Area:** Frontend — `src/ServiceDelivery.Client.UI/Features/ServiceRep/Pages/JobOffer.razor` (+ its scoped `JobOffer.razor.css`), the `JobOfferReceived` SignalR deserialization in `SignalRRepHubService` / the `JobOfferPayload.Tier` contract, and the `PersonaShell` app-bar context on this route.
+- **Related stories:** `FE-008` (job-offer screen), `FE-009`/`FE-010` (accept/decline), `BE-017`/`BE-019` (RepHub `JobOfferReceived` event), `BUG-033`/`BUG-034`/`BUG-035` (same class — rep-screen mockup fidelity)
+- **Found:** Comparing the live iOS-simulator offer screen against [`docs/ui-mockups/images/rep-job-offer__mobile-390x844.png`](../ui-mockups/images/rep-job-offer__mobile-390x844.png). Confirmed on a **clean rebuild** via the Appium `JobOfferTests` flow with `SD_SHOT_DIR` set (so it is not a stale deploy).
+
+**Summary**
+On the rendered offer screen the service tier badge does not appear at all. `JobOffer.razor:38–40` always emits `<span class="sd-badge @TierBadgeClass">★<TIER></span>`, but on the device the requester line reads only "Gold User 1" with no `★ GOLD` pill — even though the offer is genuinely Gold tier (the Appium scenario submits a Gold request from "Gold User 1"). Scoped CSS is otherwise loading (the countdown ring, metric tiles, and green Accept button are all styled), so this is not a missing-stylesheet bundle. Alongside the badge, the screen diverges from the mockup on the app bar and content grouping.
+
+**Likely root cause (badge)**
+`.sd-badge` (scoped) sets `color:#fff` with **no default background**; the coloured background comes only from the `--gold`/`--silver`/`--bronze` modifier, which `TierBadgeClass` applies only when `_viewModel.Tier` is a real tier. `ServiceTier` is `None, Bronze, Silver, Gold`. If `Tier` arrives as `None` (e.g. an enum string-vs-number mismatch between the backend `RepHub` event and the frontend `HubConnection` JSON protocol, or any deserialization fallback to default `0`), then `TierBadgeClass` is empty → no background → **white star + white text on a white page = invisible badge**. The TDD pipeline should confirm the actual `Tier` wire value first, then fix the deserialization and/or make the badge robust (a real tier must always produce a visible, coloured pill).
+
+**Findings (each is an AC below)**
+1. **Tier badge invisible (primary).** A Gold offer must render a visible Gold pill (`★ GOLD`); Silver/Bronze likewise. The badge must never be white-on-white for a real tier.
+2. **Stale "· On shift" subtitle.** `JobOffer.razor` never sets its own shell context, so `PersonaShell` shows whatever `RepIdle.razor` last set (`Vehicle V-001 · On shift`). The offer screen should not claim the rep is "On shift" — it should show vehicle context appropriate to an incoming offer (or no stale suffix).
+3. **No elevated content card.** The mockup groups requester / tier / fault / metrics inside a white elevated card; `JobOffer.razor` uses `.sd-card__title`/`.sd-card__body` but has **no `.sd-card` container**, so the content sits flat on the page.
+4. **App-bar title divergence (fidelity).** The mockup app bar reads "Incoming Job Offer" with a vehicle subtitle and **no** menu/close affordance; the live screen shows PersonaShell's generic "Service Delivery" title plus a hamburger and avatar. `persona-views.md` does not mandate a custom header, so this is a mockup-fidelity gap, not a spec violation — confirm intended chrome before changing PersonaShell behaviour for this route.
+
+**Explicitly NOT in scope / not defects**
+- **DTC code prefix.** The mockup shows "P0700 · Transmission Control Fault", but `persona-views.md` (Job Offer Screen, and §"DTC dropdown … no technical codes shown") specifies **human-readable titles with no technical codes**. The implementation ("Hydraulic system fault") is correct; the **mockup is the outlier** — fix the mockup, do not add a code to the UI.
+- **`0.0 MILES` / `0 MIN ETA` in the screenshot.** Distance/ETA were zero in the capture, but the Appium scenario's positioning makes this a test-data artifact, not a confirmed compute defect. Note only; verify distance/ETA populate for a positioned vehicle but do not assume a bug.
+
+**Proposed fix (via `/master`)**
+- Reproduce the `Tier` value arriving on `JobOfferReceived` (failing test), then correct the enum (de)serialization so a Gold offer yields `ServiceTier.Gold`; harden `.sd-badge` so a real tier always renders a visible coloured pill.
+- Have `JobOffer.razor` set an appropriate shell context (or clear the stale "· On shift" suffix) on init.
+- Wrap the requester/tier/fault/metrics block in an elevated `.sd-card` matching the mockup.
+- Reconcile the app-bar title/chrome with the intended design (confirm whether the offer route should override PersonaShell's title and suppress the menu).
+
+**Acceptance criteria (bug resolved when):**
+- A Gold (resp. Silver, Bronze) job offer renders a visible, correctly-coloured tier pill with the tier label — verified by a component/bUnit test asserting both the tier text and the applied modifier class, and by a fresh Appium screenshot showing the pill.
+- The offer screen no longer shows a stale "· On shift" subtitle.
+- The requester/tier/fault/metrics content is grouped in an elevated card consistent with the mockup.
+- The app-bar chrome on `/rep/offer` matches the agreed design.
+- The mockup `rep-job-offer__mobile-390x844.png` is corrected to drop the "P0700 ·" DTC code (or a note recorded that it is non-authoritative), so future fidelity checks don't re-flag a non-defect.
+
+---
+
+## BUG-037 — Frontend ignores the `JobOfferExpired` RepHub event; the offer screen only clears on its own local countdown
+
+- **Status:** **Open**
+- **Severity:** Medium (the offer screen self-clears when its local 60 s timer runs out, so the rep is never *permanently* stuck — but until then they sit on an offer the backend has already retired, and can accept it only to hit a 409. The push that should dismiss it immediately is dropped on the floor.)
+- **Repo / Area:** Frontend — `src/ServiceDelivery.Client.Core/Interfaces/IRepHubService.cs`, `src/ServiceDelivery.Client.UI/Features/ServiceRep/Services/SignalRRepHubService.cs`, `Core/ViewModels/JobOfferViewModel.cs`, `Features/ServiceRep/Pages/JobOffer.razor`
+- **Related stories:** `FE-008` (job-offer screen), `FE-009`/`FE-010` (accept/decline), `BE-018` (offer expiry / `ExpiredJobOfferSweeper`), `BE-025` (RepHub event catalogue), `BUG-030` (RepHub auth — same hub wiring)
+- **Found:** Tracing the RepHub event catalogue end-to-end — the backend publishes four client events but the frontend hub service registers handlers for only two.
+
+**Summary**
+The backend's `RepHubService.SendJobOfferExpiredAsync` (`service-delivery-backend/src/ServiceDelivery.Api/Services/RepHubService.cs:21`) sends a **`"JobOfferExpired"`** client event with payload `JobOfferExpiredPayload(Guid OfferId)` whenever the background `ExpiredJobOfferSweeper` transitions a pending offer to `Expired` (`.../Application/Common/Services/ExpiredJobOfferSweeper.cs:92`). The frontend never subscribes to it. `IRepHubService` declares only `OnJobOfferReceived` and `OnRedirectReceived`, and `SignalRRepHubService` registers `.On<>(…)` only for `"JobOfferReceived"` and `"RedirectReceived"` (`SignalRRepHubService.cs:44,47`). There is **no** `OnJobOfferExpired` registration, so the event is silently discarded by the SignalR client.
+
+The offer screen instead relies entirely on a **client-side 60 s countdown** in `JobOfferViewModel.TickAsync` (`JobOfferViewModel.cs:81–99`): when `SecondsRemaining` hits 0 it calls `NavigateToRepIdleView()`. The only other expiry path is a 409 on accept, which sets `ErrorMessage = "Offer expired"` and routes to idle. Server-driven expiry never reaches the UI.
+
+**Expected**
+When the backend pushes `JobOfferExpired` for the offer currently on screen, the rep's device dismisses the offer immediately — stop the countdown and return to the idle/take-over view — rather than waiting out its local timer.
+
+**Actual**
+The `JobOfferExpired` event has no registered handler, so it is dropped. The rep keeps staring at an offer the server has already retired until the local 60 s countdown elapses; if they tap **Accept** in that window they get a 409 instead of a clean dismissal. The backend even logs this as an expected fallback: *"countdown UI will fall back to its own timeout"* (`ExpiredJobOfferSweeper.cs:105`).
+
+**Root cause**
+Incomplete RepHub event coverage on the frontend: the hub-service contract (`IRepHubService`) and its SignalR implementation were wired for `JobOfferReceived` + `RedirectReceived` only, omitting the catalogued `JobOfferExpired` event. The offer screen was built around a local timer as the sole expiry mechanism, with no path for a server-pushed expiry.
+
+**Proposed fix (via `/master`)**
+- Add a frontend `JobOfferExpiredPayload` (carrying `OfferId`) mirroring the backend contract, and an `OnJobOfferExpired(Func<JobOfferExpiredPayload, Task>)` registration to `IRepHubService`.
+- Implement it in `SignalRRepHubService` as `_connection.On<JobOfferExpiredPayload>("JobOfferExpired", …)`.
+- Have the offer screen / `JobOfferViewModel` react: when an expiry arrives **for the offer currently displayed** (match on `OfferId`), stop the countdown timer and navigate back to the idle view (reuse the existing `NavigateToRepIdleView()` path). Ignore expiries whose `OfferId` does not match the on-screen offer so a stale push can't dismiss a newer offer.
+- Keep the local countdown as a fallback (network-loss safety), so behaviour degrades to today's timeout if the event is missed.
+
+**Acceptance criteria (bug resolved when):**
+- `IRepHubService` exposes an `OnJobOfferExpired` registration and `SignalRRepHubService` registers a `"JobOfferExpired"` handler (a unit test asserts the handler is wired and invokes the callback with the deserialized `OfferId`).
+- When a `JobOfferExpired` event arrives for the offer on screen, the countdown is stopped and the rep is returned to the idle/take-over view — verified by a `JobOfferViewModel` unit test (offer dismissed, navigation invoked) without relying on the 60 s timer.
+- An expiry event whose `OfferId` does not match the current offer is ignored (covered by a test).
+- The existing local-countdown fallback still returns the rep to idle if no event arrives (existing tests stay green).
