@@ -137,3 +137,102 @@ The ServiceRep persona is **mobile-only** (ADR-0008) — no web or desktop host.
 **Depends on:** QUAL-003 (`tests/ServiceDelivery.Client.E2E/` project establishes the `data-testid` overlay-element strategy reused here; pipeline agent updates for Playwright are a prerequisite for the Appium pipeline update).
 
 **Done when:** `tests/ServiceDelivery.Client.Appium/` exists with green Appium tests for all 9 stories in the per-story coverage table above; `test-appium.sh` runs the suite on an iOS simulator against a live system; `test-all.sh` includes Appium results; `story-implementor` and `story-ai-reviewer` are updated; and this story is struck in `execution-plan.md`.
+
+---
+
+## QUAL-005 — Run the frontend live-integration net early and continuously (not once at the end)
+
+**As a** maintainer of the TDD pipeline,
+**I want** every frontend story whose surface is reachable end-to-end to run its Playwright/Appium scenario against a live system *in the per-story loop* — the moment the screen exists, not deferred to a late catch-up — and a thin per-merge integration smoke to exist from the first frontend story,
+**so that** cross-boundary defects surface one at a time in the PR that introduces them, the way the simulator's `smoke.sh` caught them, instead of accumulating silently and erupting in a flood.
+
+**Motivation**
+The simulator carried exactly two real integration bugs (`BUG-016`, `BUG-017`) and both were caught on the *first and second* combined backend+sim runs because `scripts/local/smoke.sh` exercised the whole real path continuously from early on — tight loop, one bug at a time, same-day fixes. The frontend had **no equivalent live net until 2026-06-24**, when `test-e2e.sh`/`test-appium.sh` first ran against the app. That single day uncovered a flood: `BUG-023, 024, 025, 026, 027, 028, 029, 030, 031, 032` — ten latent defects, all green in the unit suites the whole time. They didn't cluster because the frontend was buggier; they clustered because that was the first moment anything exercised the real boundaries. QUAL-003/004 built the E2E suites but did not put them *in the loop* — this story closes that gap.
+
+**Acceptance Criteria:**
+- A thin **per-merge frontend integration smoke** exists and is documented in central `CLAUDE.md` Commands: boot the system (`start.sh`) and drive the shortest real browser path (open the web host, log in as `dispatcher1`, land on the dashboard) — the frontend analogue of `smoke.sh`. It fails loudly (non-zero exit) on any cross-boundary break (CORS, missing auth header, unstyled host, dead SignalR) and runs fast enough to invoke per change.
+- `story-ai-reviewer` Check 2 (Test Level) is strengthened: for a frontend story whose surface is reachable end-to-end on a running system, the story is **not "done"** until its Playwright (web) or Appium (mobile) scenario from QUAL-003/004's coverage tables has been **executed green against a live system** — not merely written. A scenario that was authored but never run is called out, mirroring QUAL-001's "mocked unit tests cannot verify a cross-process contract" rule.
+- `master/SKILL.md` surfaces, at the relevant checkpoint, a reminder to run the live E2E scenario for the story before declaring it complete (the pipeline does not boot a live system itself; this is an explicit developer step, like the headless smoke).
+- The guidance states plainly that a green unit/bUnit suite is **not** evidence the screen works end-to-end — the live net is, and it belongs at the front of the loop.
+- Demonstrated: applied to the BUG-023…032 cluster, this loop would have surfaced each defect in its originating story's run rather than weeks later.
+
+**Out of scope:** standing CI infrastructure (consistent with QUAL-003/004); the pipeline auto-booting a live system; new test scenarios beyond QUAL-003/004's tables (this story changes *when/whether they run*, not their content).
+
+**Depends on:** QUAL-003 and QUAL-004 (the suites this story puts into the loop).
+
+**Done when:** the per-merge frontend smoke exists and is documented; `story-ai-reviewer` + `master/SKILL.md` are updated and pass `./scripts/utils/validate-ai-system.sh`; shipped via `/ship-it`; this story is struck in `execution-plan.md`.
+
+---
+
+## QUAL-006 — Wire-contract integrity across repos: fail-loud deserialization + one source of truth
+
+**As a** developer integrating the frontend and simulator against the backend,
+**I want** cross-repo DTOs to derive from a single contract source and deserialization to **fail loudly** on any mismatch, with contract tests that feed a real captured backend payload through each consumer's deserializer,
+**so that** a shape or enum drift becomes a red test at the boundary instead of a silent wrong value shipped to production.
+
+**Motivation**
+Every wire-drift defect traces to each repo hand-mirroring the other's DTOs, plus System.Text.Json silently falling back to `null`/`0`/`None` on a mismatch instead of throwing:
+- `BUG-016` — sim deserialized `GET /vehicles/available` as `string[]`; backend returns objects. Threw only at runtime, invisible to unit tests (which fed the same wrong shape — see QUAL-001).
+- `BUG-036` — the RepHub `JobOfferReceived` `Tier` arrived as an enum-name string the frontend payload didn't match, **silently defaulted to `None`**, and produced a white-on-white invisible tier badge. No crash, no failing test — just wrong.
+- `BUG-028` / `BUG-030` — frontend REST + SignalR contracts assumed an auth mechanism that was never wired; the mismatch surfaced only as 401s under live E2E.
+
+**Acceptance Criteria:**
+- A **single source of truth** for the cross-repo wire contract is established and documented (e.g. the backend's OpenAPI/Swagger document generated and committed/exported, with frontend and simulator client models generated from or checked against it — or a shared contracts package). The chosen mechanism is recorded in an ADR (`docs/adr/`).
+- **Fail-loud deserialization** in the frontend and simulator: enum deserialization rejects an unmapped/missing value rather than defaulting to `0`/`None` (a custom converter or strict option), so a `Tier` like BUG-036's throws instead of rendering invisibly. Documented as a convention in the relevant repo CLAUDE.md.
+- **Captured-payload contract tests:** for each consumed endpoint/SignalR event, a test deserializes a **real captured backend payload** (not a hand-written fixture mirroring the consumer's assumption) and asserts the consumer obtains the expected typed values. Covers at minimum the BUG-016 (`/vehicles/available`) and BUG-036 (`JobOfferReceived`) shapes as regression cases.
+- `/test-quality` references the captured-payload rule so future cross-process contracts are tested this way by default (extends QUAL-001's anti-masking guidance with a positive pattern).
+- Demonstrated: the BUG-016 and BUG-036 drifts would each produce a red contract test under this scheme.
+
+**Out of scope:** runtime schema negotiation / versioning of the live contract; replacing System.Text.Json; backend response-shape changes beyond exposing the contract document.
+
+**Done when:** the contract source-of-truth + ADR exist; fail-loud deserialization and captured-payload contract tests are in the frontend and simulator (product-repo code → `/master`); `/test-quality` is updated and shipped via `/ship-it`; this story is struck in `execution-plan.md`.
+
+---
+
+## QUAL-007 — Frontend tests must exercise the real composition root, not components in a vacuum
+
+**As a** maintainer of the TDD pipeline,
+**I want** the frontend's critical-path tests to run through the real DI pipeline, HttpClient handler chain, and Blazor navigation lifecycle — not a component rendered in isolation on a convenient route —
+**so that** a green suite means the integrated app works, not that an isolated widget renders.
+
+**Motivation**
+`BUG-026` says it outright: *"The unit test passed in CI because bUnit renders MainLayout directly on a non-login route, bypassing the login→navigate lifecycle entirely."* The `OnInitializedAsync`-vs-`OnParametersSetAsync` defect (`BUG-025`/`BUG-026`) and the startup auth-flash (`BUG-029`) all passed unit tests because the tests never exercised the real lifecycle/composition — a frontend instance of the masking pattern QUAL-001 caught in the simulator. The handler-pipeline gaps (`BUG-024` session-expiry handler firing on the login 401; `BUG-028` missing bearer handler) are the same shape: the real `DelegatingHandler` chain was never under test.
+
+**Acceptance Criteria:**
+- `/test-quality` (`.claude/skills/test-quality/SKILL.md`) gains a **frontend composition-root rule**: for behaviour that depends on the DI pipeline, the HttpClient `DelegatingHandler` chain, or the Blazor render/navigation lifecycle (`OnInitialized` vs `OnParametersSet`, parameter-diffing, router re-use of a layout), the test must exercise that real composition — rendering a component on a non-representative route, or stubbing the handler chain away, is a **masking test** and is called out.
+- The rule names the concrete traps from the bug history: testing a layout on a non-`/login` route when the real flow starts at `/login` (BUG-026); asserting a handler in isolation when the defect is its *position/interaction* in the pipeline (BUG-024/028).
+- `story-ai-reviewer`'s test-value/test-level checks reference this rule for frontend stories so it is applied every run, not when remembered.
+- The **frontend test suite is audited** for existing masking instances of this class (lifecycle-bypassing component tests, handler tests that don't run the real chain); each finding is fixed or logged as a `BUG-`.
+- Demonstrated: the strengthened guidance would have flagged the BUG-025/026 and BUG-024/028 tests as masking.
+
+**Out of scope:** adding new test frameworks; the live-system E2E net (QUAL-005 covers that); changing pipeline stages.
+
+**Depends on:** QUAL-001 (the anti-masking rule this extends to the frontend).
+
+**Done when:** `/test-quality` + `story-ai-reviewer` are updated and pass `./scripts/utils/validate-ai-system.sh`; the frontend-suite audit is complete with findings fixed or logged; shipped via `/ship-it` (test-only audit fixes as their own PR); this story is struck in `execution-plan.md`.
+
+---
+
+## QUAL-008 — Treat each client runtime (browser / WebView / native) as its own integration target
+
+**As a** developer shipping the same UI across the Web, Desktop, and Mobile hosts,
+**I want** a thin per-runtime integration check for the boundaries that *only* break in one runtime, and a rule that host-bootstrapping changes are propagated to and verified on every host,
+**so that** "it works in MAUI native" is never mistaken for "it works in the browser," and a per-host config defect can't ship twice.
+
+**Motivation**
+The meta-lesson from the bug history is that browser-WASM, WKWebView, and MAUI-native each have integration semantics the others don't share:
+- `BUG-023` — CORS is enforced **only** by a browser; `curl`, `smoke.sh`, and MAUI native all bypass it, so the missing `AddCors()`/`UseCors()` was invisible until the first real-browser E2E run.
+- `BUG-031` — MAUI Blazor renders inside a `WKWebView` whose HTML is invisible to the native accessibility tree; the Appium harness had to switch to the WEBVIEW context and `data-testid` selectors.
+- `BUG-020` → `BUG-022` — the MudBlazor assets fix landed in the Web host's `index.html`, then the **same defect** shipped again on Desktop + Mobile because each host has its own `index.html`. One defect, three hosts, two PRs.
+
+**Acceptance Criteria:**
+- A documented **per-runtime smoke** for the things that break in exactly one runtime: at minimum (a) a browser-context check that the web host can complete a real cross-origin login (would have caught BUG-023's CORS), and (b) a WebView-context check that `data-testid` elements are reachable on the MAUI Mobile host (the BUG-031 strategy). These extend QUAL-005's smoke rather than duplicating it — one entry point, runtime-specific assertions.
+- A **host-parity rule** in the frontend CLAUDE.md (and referenced by `story-ai-reviewer`): any change to host-bootstrapping config (`wwwroot/index.html`, the per-host `HttpClient`/DI registration) must be applied to **all three hosts** in the same change, with an explicit per-host verification step — so a fix can't land on one host and silently miss the other two (BUG-020→022).
+- The backend CORS policy is covered by a regression check (browser-context or an explicit `Access-Control-Allow-Origin` assertion) so BUG-023 can't recur silently.
+- Demonstrated: the CORS (BUG-023), WebView-visibility (BUG-031), and per-host-asset (BUG-020/022) defects each have a check that would have caught them in the originating runtime.
+
+**Out of scope:** Android / physical-device testing; standing CI; screenshot diffing (consistent with QUAL-003/004).
+
+**Depends on:** QUAL-005 (the smoke entry point these runtime-specific checks hang off).
+
+**Done when:** the per-runtime smokes exist and are documented; the host-parity rule is in the frontend CLAUDE.md and referenced by `story-ai-reviewer`; the CORS regression check exists; central edits ship via `/ship-it` and product-repo code via `/master`; this story is struck in `execution-plan.md`.
