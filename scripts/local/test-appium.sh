@@ -78,6 +78,14 @@ if curl -s "$BACKEND_URL/health" > /dev/null 2>&1 || curl -s "$BACKEND_URL" > /d
   fi
 else
   echo "==> Starting backend only (start.sh, no simulator) ..."
+  # BUG-040: shorten the job-offer expiry for the E2E run so the backend's JobOfferExpired sweep
+  # fires (~15-18 s) while the offer screen's local countdown (a fixed 60 s) is still well above
+  # zero — letting the JobOfferExpired Appium test prove server-event dismissal rather than the
+  # local timer. ASP.NET maps "__" to config nesting; these override appsettings at runtime and are
+  # scoped to this test run only (production/demo defaults stay 60 s). The backend reads
+  # OfferExpirySeconds via MatchingOptions (bound from JobOfferExpiry:OfferExpirySeconds).
+  export JobOfferExpiry__OfferExpirySeconds=15
+  export JobOfferExpiry__PollIntervalSeconds=3
   SD_SKIP_SIMULATOR=1 "$SCRIPT_DIR/start.sh" || { echo "!! start.sh failed" >&2; exit 1; }
   STARTED_BACKEND=1
 fi
