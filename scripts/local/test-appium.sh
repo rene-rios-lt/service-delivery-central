@@ -43,6 +43,9 @@ SERVER_PORT="${SERVER_URL##*:}"
 
 STARTED_BACKEND=0
 APPIUM_PID=""
+# UDID of the iOS simulator THIS run booted (empty when it was already booted before the run, so a
+# pre-existing simulator session the developer opened is left untouched on cleanup).
+BOOTED_UDID=""
 
 cleanup() {
   if [ -n "$APPIUM_PID" ]; then
@@ -52,6 +55,17 @@ cleanup() {
   if [ "$STARTED_BACKEND" -eq 1 ]; then
     echo "==> Stopping backend + simulator (stop.sh) ..."
     "$SCRIPT_DIR/stop.sh" || true
+  fi
+  # Tear down the iOS simulator this run booted — once the tests are done it is no longer needed, so
+  # leaving it (and Simulator.app) running just wastes resources. Only shut down a device THIS run
+  # booted; quit Simulator.app only when no devices remain booted, so a separate session is spared.
+  if [ -n "$BOOTED_UDID" ]; then
+    echo "==> Shutting down iOS simulator this run booted ($BOOTED_UDID) ..."
+    xcrun simctl shutdown "$BOOTED_UDID" 2>/dev/null || true
+    if ! xcrun simctl list devices booted 2>/dev/null | grep -q '(Booted)'; then
+      echo "==> Quitting Simulator.app (no booted devices remain) ..."
+      osascript -e 'tell application "Simulator" to quit' 2>/dev/null || true
+    fi
   fi
 }
 trap cleanup EXIT
@@ -104,7 +118,10 @@ if [ -z "$MATCHES" ]; then
 fi
 UDID="$(printf '%s\n' "$MATCHES" | grep '(Booted)' | grep -oE "$UDID_RE" | head -1 || true)"
 if [ -z "$UDID" ]; then
+  # No device of this type is booted yet — pick the first available and record that THIS run is
+  # booting it, so cleanup shuts it back down when the tests finish.
   UDID="$(printf '%s\n' "$MATCHES" | grep -oE "$UDID_RE" | head -1)"
+  BOOTED_UDID="$UDID"
 fi
 echo "==> Target simulator: $DEVICE_NAME ($UDID)"
 xcrun simctl boot "$UDID" >/dev/null 2>&1 || true
