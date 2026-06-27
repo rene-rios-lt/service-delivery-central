@@ -67,7 +67,9 @@ Azure infrastructure provisioned via Terraform (not active for POC local dev)
 # Run the Playwright end-to-end suite alone against the web host (boots/tears down a live system)
 ./scripts/local/test-playwright.sh
 
-# Run the Appium end-to-end suite alone on an iOS simulator (boots/tears down a live system; needs Appium installed)
+# Run the Appium end-to-end suite alone on an iOS simulator (boots/tears down a live system; needs Appium installed).
+# On teardown it shuts down the iOS simulator it booted (and quits Simulator.app if no devices remain booted);
+# a simulator you already had open before the run is left untouched.
 ./scripts/local/test-appium.sh
 
 # Run the full end-to-end suite — Playwright then Appium (each boots/tears down its own live system)
