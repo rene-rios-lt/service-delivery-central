@@ -912,3 +912,40 @@ The RepHub connection start is unguarded, and `WithAutomaticReconnect()` is reli
 - The idle screen still renders the Available state and the claimed-vehicle card when the hub is down (existing idle-view tests stay green).
 - When RepHub becomes reachable again, the connection is (re)established and a subsequent `JobOfferReceived` is handled — the connect path retries rather than giving up after one failure (covered by a test).
 - The happy path (hub reachable on first connect) is unchanged and its existing tests stay green.
+
+## BUG-039 — Active-job screen doesn't match the rep mockup (app-bar title, ETA card distance + placement, En Route chip style)
+
+- **Status:** **Open**
+- **Severity:** Low/Medium (the screen is functional — the map, route line, ETA, state chip, and the "I've Arrived"/"Mark Complete" actions all work — but its presentation diverges from the `rep-active-job` mockup on several points, the most user-visible being a missing distance on the ETA card and a generic app-bar title.)
+- **Repo / Area:** Frontend — `src/ServiceDelivery.Client.UI/Features/ServiceRep/Pages/ActiveJob.razor`, `ActiveJob.razor.css`, `Core/ViewModels/ActiveJobViewModel.cs`, `Core/Models/ActiveJobContext.cs` (distance), and the shared `PersonaShell` title/subtitle wiring
+- **Related stories:** `FE-011` (active-job navigation view), `FE-012` (mark-arrived / on-site), `FE-021` (PersonaShell chrome), `BUG-033`/`BUG-036` (same class — rep-screen mockup fidelity), `BUG-035` (precedent for surfacing a value through the active-job DTO)
+- **Found:** Comparing the live active-job screen to `docs/ui-mockups/images/rep-active-job__mobile-390x844.png`. Gaps confirmed by reading `ActiveJob.razor` / `ActiveJob.razor.css` and `ActiveJobViewModel`/`ActiveJobContext` (no live render captured — the local stack was down).
+
+**Summary**
+The active-job screen (`/rep/job`) renders the right elements but diverges from the mockup on four points:
+
+1. **App-bar title/subtitle is generic.** The mockup app bar reads **"Active Job"** with the subtitle **"Navigating to requester"**. `ActiveJob.razor` never sets a shell title/subtitle (unlike `RepIdle.razor`, which calls `Shell.SetVehicleContext`), so PersonaShell shows its default chrome. (Same class as the BUG-036 "PersonaShell's generic title vs the mockup" gap.)
+2. **ETA card omits the distance.** The mockup card reads **"9 min / ETA · 8.1 MI"**; the current card (`.sd-eta`, `data-testid="eta-card"`) renders only `@ViewModel.EtaMinutes min` over the label **"ETA"** — no distance. `ActiveJobContext` and `ActiveJobViewModel` expose **no distance value** at all (only `EtaMinutes`), so the figure cannot be shown without adding one.
+3. **ETA card is mis-positioned.** The mockup centers the card horizontally near the top of the map; `ActiveJob.razor.css` pins `.sd-eta` to the top-left (`top:12px; left:12px`).
+4. **"En Route" state chip uses the wrong style.** The mockup shows a soft, tinted **light-blue pill** (blue dot + blue text on a pale-blue background); `.sd-chip--enroute` is a **solid blue fill with white text**. (The on-site chip is already a soft tint, so the En Route / Within-15-mi chips are inconsistent with the design.)
+
+**Expected**
+The active-job screen matches `rep-active-job__mobile-390x844.png`: app bar titled "Active Job" / "Navigating to requester"; a centered ETA card reading "{n} min / ETA · {distance} MI"; and a soft tinted En Route chip.
+
+**Actual**
+Generic app-bar chrome; ETA card shows minutes only and sits top-left; the En Route chip is a solid blue fill.
+
+**Not a gap (explicitly):** the mockup's "P0700 ·" DTC code prefix is **non-authoritative** — the spec mandates no DTC codes (recorded under BUG-036), so the current title-only DTC line is correct.
+
+**Proposed fix (via `/master`)**
+- Set the PersonaShell title to "Active Job" and subtitle to "Navigating to requester" from `ActiveJob` (state-appropriate wording is fine — e.g. once on-site).
+- Surface a **distance** for the ETA card: either compute it client-side from the rep→requester coordinates (Haversine, mirroring the backend) or add a distance field to the active-job read model (`ActiveJobContext` ← `MyActiveServiceRequestDto`, the BUG-035 precedent). Render "ETA · {distance:0.0} MI" in `.sd-eta`.
+- Center the ETA card near the top of the map (CSS).
+- Restyle `.sd-chip--enroute` (and align `.sd-chip--within15`) to the soft tinted pill style used by `.sd-chip--onsite`.
+
+**Acceptance criteria (bug resolved when):**
+- The app bar on `/rep/job` shows "Active Job" / "Navigating to requester" (component test asserts the title/subtitle are set).
+- The ETA card shows the distance alongside the ETA ("{n} min / ETA · {distance} MI"); a unit test covers the distance value the card binds to (computed or DTO-sourced).
+- The ETA card is centered per the mockup and the En Route chip uses the soft tinted style (covered by a bUnit render/structure assertion).
+- A rendered AI-review screenshot of `/rep/job` is compared against `rep-active-job__mobile-390x844.png` and the four gaps are gone.
+- Existing active-job behaviour tests (poll, arrive, on-site transition) stay green.
