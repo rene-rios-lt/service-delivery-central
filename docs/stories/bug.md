@@ -949,3 +949,37 @@ Generic app-bar chrome; ETA card shows minutes only and sits top-left; the En Ro
 - The ETA card is centered per the mockup and the En Route chip uses the soft tinted style (covered by a bUnit render/structure assertion).
 - A rendered AI-review screenshot of `/rep/job` is compared against `rep-active-job__mobile-390x844.png` and the four gaps are gone.
 - Existing active-job behaviour tests (poll, arrive, on-site transition) stay green.
+
+## BUG-040 — JobOfferExpired Appium E2E test can never pass (15 s wait budget vs ~60 s offer expiry; throws on first lap)
+
+- **Status:** **Open**
+- **Severity:** Medium (test-suite defect — the Appium suite reports a persistent failure, eroding trust in the E2E gate. The shipped *product* behaviour appears correct; this is a broken test, not a user-facing regression. But a perpetually-red E2E test masks real future regressions.)
+- **Repo / Area:** **Cross-repo.** Primary: **Frontend** — `tests/ServiceDelivery.Client.Appium/JobOfferTests.cs` (the `GivenJobOfferExpired_…` test) and the `WaitForSignalR` helper in `tests/ServiceDelivery.Client.Appium/AppiumFixture.cs`. Likely enabler: **Backend** — make the offer-expiry window configurable (currently a hardcoded ~60 s in `MatchingService`) so the server `JobOfferExpired` event can fire before the offer-screen's local countdown elapses, in the Local/Appium environment.
+- **Related stories:** `BUG-037` (wired the `JobOfferExpired` RepHub event to dismiss the offer screen — the product fix this test was meant to guard), `BUG-032` (job-offer Appium precondition: backend-only run + fleet positioning), `BUG-036` (job-offer wire-contract). See also the project note that AI Review is build-only and has twice approved a broken Appium fix — live-verify E2E before shipping.
+- **Found:** Running `scripts/local/test-appium.sh` after BUG-039 merged. The suite reported **11 passed / 1 failed / 1 skipped**; the failure reproduced **2/2** (not a flake). The active-job (BUG-039) test passed — this failure is unrelated to BUG-039. Root-caused by reading the test + `WaitForSignalR` + the frontend/backend `JobOfferExpired` wiring.
+
+**Summary**
+`GivenJobOfferExpired_WhenServerPushesExpiredEvent_ThenOfferScreenDismissesWithoutWaitingForCountdown` (`JobOfferTests.cs:111`) takes over a vehicle, submits a request so an offer routes to the rep (the `countdown-ring` appears — this step passes), then loops up to an 80 s deadline calling `WaitForSignalR(… available-indicator … .FirstOrDefault())` to detect the offer screen dismissing back to idle.
+
+The helper `WaitForSignalR` (`AppiumFixture.cs:243`) uses `WebDriverWait.Until(…)` with `AppiumConfig.SignalRWait = 15 s`. `Until` **throws** `WebDriverTimeoutException` at 15 s (it never returns null). On the **first** loop pass the offer is still on screen (the backend's `ExpiredJobOfferSweeper` only expires the offer after ~60 s), so `available-indicator` is absent, the helper polls null for 15 s and **throws straight out of the test** — the 80 s retry loop is dead code. Net: the test aborts at 15 s (the observed failure at `JobOfferTests.cs:133`) and can never observe a ~60 s server expiry.
+
+The **product wiring is correct**: frontend subscribes to `"JobOfferExpired"` (`SignalRRepHubService`), `JobOfferViewModel.HandleJobOfferExpiredAsync` matches `OfferId` and navigates to idle; backend emits `"JobOfferExpired"` to group `rep:{repId}` (`RepHubService` / `ExpiredJobOfferSweeper`). Names and targeting match end-to-end. The test simply never gives the product the ~60 s it needs.
+
+**Design subtlety to resolve (not just a budget bump):** the offer-screen's local countdown is driven by the same expiry as the server sweep, so the server `JobOfferExpired` event fires *at or after* the local countdown reaches 0 — meaning the assertion `countdownAtDismissal > 0` ("dismissed by the server event, not the local timer") can never hold on the natural-expiry path. To make "dismiss without waiting for the countdown" observable, the **server offer-expiry must be shorter than the offer-screen's local countdown** in the test environment (or the test must trigger an early, non-timeout expiry).
+
+**Expected**
+The `JobOfferExpired` E2E test reliably passes against a live system, genuinely proving the frontend dismisses the offer screen on the server event before the local countdown elapses.
+
+**Actual**
+The test throws `WebDriverTimeoutException: Timed out after 15 seconds` on its first wait lap (reproduced 2/2), because a 15 s throwing wait cannot observe a ~60 s server expiry, and the design makes early dismissal unobservable on the natural-expiry path.
+
+**Proposed fix (via `/master`)**
+- **Backend:** make the offer-expiry window configurable (e.g. `JobOfferExpiry:OfferExpirySeconds`, default ~60) read by `MatchingService`; set it low for the Local/Appium environment (and lower the sweep poll interval) so the server `JobOfferExpired` fires well before the offer-screen's local countdown — without changing production defaults.
+- **Frontend test:** make the dismissal poll non-throwing (catch `WebDriverTimeoutException` and continue, or `FindElements().FirstOrDefault()` under a short implicit wait) so the outer 80 s loop governs; keep the `countdownAtDismissal > 0` assertion meaningful given the shorter server expiry.
+
+**Acceptance criteria (bug resolved when):**
+- `GivenJobOfferExpired_WhenServerPushesExpiredEvent_ThenOfferScreenDismissesWithoutWaitingForCountdown` passes against a live system (verified via `scripts/local/test-appium.sh`), and reproducibly (not a one-off).
+- The offer-screen dismissal is driven by the server `JobOfferExpired` event while the local countdown is still > 0 (the assertion is genuine, not vacuous).
+- Production offer-expiry default behaviour is unchanged (the shorter expiry applies only to the Local/test environment via configuration).
+- The `WaitForSignalR` helper (or the test's use of it) no longer aborts the outer retry loop on a single lap timeout.
+- The rest of the Appium suite stays green (no new failures); no frontend/backend product-behaviour change beyond the expiry configuration.
