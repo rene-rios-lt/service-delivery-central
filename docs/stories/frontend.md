@@ -453,6 +453,39 @@ _No dedicated screen — redirects to the login screen (see FE-001)._
 
 ---
 
+### FE-029 — App-bar & navigation chrome: left hamburger, iOS safe area & menu cleanup
+**As a** user of the app (primarily a ServiceRep on iOS),
+**I want** the app bar and navigation menu corrected — hamburger on the left, the menu redesigned, device safe area respected, and stray chrome removed,
+**so that** the app bar never collides with the Dynamic Island / status bar, nothing clips against the home indicator, and the navigation matches the rest of the app.
+
+> **Why:** The app shell built in FE-021 has several chrome defects this story sweeps up together. The ServiceRep app bar and drawer ignore the iOS safe area — the bar content sits under the Dynamic Island ("do not enter" zone) and the drawer's footer note clips against the home indicator — and the hamburger sits on the right, inconsistent with the left-anchored drawer it opens; the drawer also repeats identity already shown in the app bar; and the dispatcher app bar shows a notification bell that no story backs. This is a **shell-level** fix (it touches `PersonaShell` / `PersonaMenu` once and applies to every authenticated page) plus removal of the unbacked dispatcher bell. The mockups (`rep-*`, `requester-*`, `dispatcher-*` screens + shared `design-system.css`) have already been updated to the target design — build to them.
+>
+> **Scope by persona:** _ServiceRep (mobile)_ — left hamburger + redesigned, left-anchored, safe-area drawer with the header removed. _Requester (mobile)_ — shared app-bar safe-area handling only (no hamburger). _Dispatcher (Desktop/Web)_ — notification bell removed; no safe-area chrome.
+
+**Acceptance Criteria:**
+- The hamburger / drawer-toggle moves to the **leading (left) edge** of the app bar — ahead of the logo and title — on **every** authenticated ServiceRep screen that shows it (Idle/Waiting (FE-020), Active Job (FE-011), On Site (FE-012), Take Over (FE-007), Release (FE-014)). It renders as a translucent-white circular icon button matching the avatar's treatment; the avatar/account control stays trailing (right).
+- The slide-in navigation drawer is **anchored to the left** (`Anchor.Start`), consistent with the leading toggle (the live `MudDrawer` already uses `Anchor.Start` — the mockup is updated to match; do not regress it to the right).
+- The drawer's indigo **header is removed** (the current `MudDrawerHeader` with the rep name / role / vehicle chip) — it duplicates the app bar, which already shows the title, the vehicle/state context line, and the persona avatar. The drawer contains only the menu items (Waiting for offers, Job history, Help & support, Release vehicle, Log out) and the footer note ("Releasing returns … to the fleet").
+- The app bar honours the **top** safe area: its content row (toggle, title, avatar) sits fully **below** the status bar / Dynamic Island via `env(safe-area-inset-top)`, expressed in the shared shell styles. No app-bar element overlaps the Dynamic Island on the iPhone 17 Pro viewport.
+- The drawer honours the **bottom** safe area: the footer note ("Releasing returns … to the fleet") and the last menu item clear the **home indicator** via `env(safe-area-inset-bottom)` and are never clipped.
+- No drawer content is clipped at any edge — the header (name / role / vehicle chip), the item list, and the footer note all render fully within the visible area.
+- The redesigned menu uses only existing **design-system tokens** (indigo header, `--sd-primary-soft` active state, state/danger colours) — no new ad-hoc colours; it visually matches the app's look and feel.
+- Toggling swaps the leading icon between **menu** (`Icons.Material.Filled.Menu`) and **close** (`Icons.Material.Filled.Close`) in the same leading position; the open/close behaviour is unchanged.
+- The change is **shell-level** (`PersonaShell.razor` / `PersonaShell.razor.css`, `PersonaMenu.razor` / `PersonaMenu.razor.css`) so it applies to every page through the shared shell — no per-page app-bar edits.
+- The **app-bar safe-area treatment is shared**, so it also covers the **Requester on mobile** (Submit, Finding, Tracking, Redirect, Complete): the app bar there clears the top inset and any bottom-edge surface clears the home indicator. The Requester app bar keeps its avatar-on-the-right and gains **no** hamburger — only ServiceRep gets the leading toggle + drawer.
+- The **Dispatcher app bar carries no notification bell.** The unbacked 🔔 affordance is removed from the dispatcher mockups (Dashboard, Redirect, Force-release, Account menu) — no story specifies a dispatcher notification centre (real-time awareness comes from the live map/queue and the FE-006 offline-rep banner). The live `PersonaShell` never rendered a bell, so this is a no-op in code beyond confirming none is introduced; the app bar shows only the logo/title (left) and the account avatar (right). Dispatcher is Desktop/Web only, so it gets no safe-area chrome.
+- Covered by a bUnit test asserting the menu affordance renders in the **leading** position (it precedes the title/avatar in the app bar's DOM order); the safe-area / no-clipping behaviour is covered by the Appium ServiceRep flow (QUAL-004) and the AI-review render-and-screenshot check (the drawer renders within the safe area, no clipped footer).
+
+**Mockup —** _Mobile (leading hamburger, left-anchored safe-area-aware drawer)_
+
+| Idle — leading hamburger | Navigation drawer (left, safe-area aware) |
+|:---:|:---:|
+| <img src="../ui-mockups/images/rep-idle__mobile-390x844.png" alt="ServiceRep idle — leading hamburger, safe-area app bar" width="230"> | <img src="../ui-mockups/images/rep-nav-drawer__mobile-390x844.png" alt="ServiceRep left-anchored drawer respecting the iOS safe area" width="230"> |
+
+**Depends on:** [FE-021](#fe-021--app-shell-navigation-menu--logout) (app shell & menu exist). _Hamburger move + drawer redesign: ServiceRep mobile. App-bar iOS safe-area handling: all mobile personas (ServiceRep + Requester). Dispatcher (Desktop/Web) unaffected._
+
+---
+
 ## Epic: Real Google Maps integration (ADR-0010)
 
 > `FE-003`, `FE-011`/`FE-012`, `FE-015`, and `FE-017` all specify a live **Google Map**, but every map screen currently renders a CSS/SVG placeholder (a gradient `div.sd-map`, an SVG road grid, and markers at hardcoded percentages — `data-lat`/`data-lng` carried but unused). These stories build the real integration: one shared map component, per-host SDK/key loading, and the swap-in for each **already-built** screen (`ActiveJob`, `JobOffer`). The **unbuilt** map screens (`FE-003` dispatcher fleet, `FE-015` requester submit, `FE-017` requester tracking) consume the same `FE-024` component when they are implemented, rather than ever building another placeholder. See [ADR-0010](../adr/0010-google-maps-for-map-visualization.md).
@@ -576,6 +609,7 @@ _No dedicated screen — redirects to the login screen (see FE-001)._
 | FE-020 Idle / waiting view | `rep-idle` | Mobile |
 | FE-023 Heartbeat / go off duty | _(background — no screen)_ | — |
 | FE-021 App shell & logout | `rep-nav-drawer`, `dispatcher-nav` | Mobile, Desktop |
+| FE-029 App-bar & nav chrome (left hamburger, safe area, bell removal) | `rep-nav-drawer`, `rep-idle`, `requester-tracking`, `dispatcher-dashboard` | Mobile, Desktop, Web |
 | FE-024 Google Map component | _(shared component — no standalone screen)_ | — |
 | FE-025 Maps SDK + key config | _(infrastructure — no screen)_ | — |
 | FE-026 Active job real map | `rep-active-job`, `rep-on-site` | Mobile |

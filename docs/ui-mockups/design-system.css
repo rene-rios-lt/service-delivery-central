@@ -74,16 +74,33 @@ html, body {
    App bar
 ============================================================================= */
 .sd-appbar {
-  height: 60px;
+  /* The 60px is the bar's CONTENT height. On a notched device the indigo bar also
+     paints up into the top safe-area ("do not enter": status bar / Dynamic Island);
+     env(safe-area-inset-top) supplies that inset on a real device, and the mockup
+     mobile screens set --sd-safe-top to visualise it. box-sizing:border-box keeps
+     the content row a constant 60px regardless of the inset. */
+  --sd-safe-top: 0px;
+  height: calc(60px + max(env(safe-area-inset-top, 0px), var(--sd-safe-top)));
+  padding-top: max(env(safe-area-inset-top, 0px), var(--sd-safe-top));
   background: var(--sd-primary);
   color: var(--sd-on-primary);
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 0 20px;
+  padding-left: 14px;
+  padding-right: 16px;
   box-shadow: var(--sd-elev-2);
   position: relative;
   z-index: 5;
+}
+/* Hamburger / drawer toggle — LEADING (left) edge, ahead of the logo. Pairs with the
+   left-anchored navigation drawer. Translucent-white circle to match the avatar. */
+.sd-appbar__menu {
+  flex: none;
+  width: 40px; height: 40px; border-radius: 50%;
+  background: rgba(255,255,255,.15);
+  display: grid; place-items: center; font-size: 19px;
+  border: none; color: #fff; cursor: pointer;
 }
 .sd-appbar__logo {
   width: 30px; height: 30px;
@@ -96,9 +113,51 @@ html, body {
 .sd-appbar__sub   { font-size: 12.5px; opacity: .8; font-weight: 500; }
 .sd-appbar__spacer { flex: 1; }
 .sd-appbar__action {
+  flex: none;
   width: 38px; height: 38px; border-radius: 50%;
   background: rgba(255,255,255,.14);
   display: grid; place-items: center; font-size: 16px;
+}
+
+/* iOS status bar — visualises the top "do not enter" zone (Dynamic Island + clock)
+   painted over the app bar's safe-area inset. Mockup-only chrome; the real app gets
+   this region from the OS. Sits inside the inset so bar content never collides with it.
+   Hidden by default — only a phone-width viewport shows it (see the media query below),
+   so a screen shared between web and mobile renders the chrome on the mobile pass only. */
+.sd-statusbar {
+  position: absolute; top: 0; left: 0; right: 0;
+  height: var(--sd-safe-top, 0px);
+  display: none; align-items: center; justify-content: space-between;
+  padding: 0 30px 6px; color: #fff; font-size: 14px; font-weight: 600;
+  letter-spacing: .3px; pointer-events: none;
+}
+.sd-statusbar__island {
+  position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%);
+  width: 118px; height: 33px; border-radius: 18px; background: #000;
+}
+.sd-statusbar__right { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+
+/* iOS home indicator — the bottom "do not enter" zone. Overlays the very bottom of a
+   mobile screen; surfaces that reach the bottom edge (drawers, sheets, sticky bars)
+   pad themselves by --sd-safe-bottom (env(safe-area-inset-bottom) on a real device). */
+.sd-homebar {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  height: var(--sd-safe-bottom, 0px);
+  display: none; place-items: center; z-index: 40; pointer-events: none;
+}
+.sd-homebar::after {
+  content: ""; width: 134px; height: 5px; border-radius: 3px;
+  background: rgba(20,22,40,.45); margin-bottom: 9px;
+}
+
+/* Phone-width viewport only: turn on the iOS safe-area chrome and pad the app bar for
+   the top inset. On a real device env(safe-area-inset-*) supplies these regardless of
+   width; the mockups gate them to a narrow viewport so the same screen rendered at a
+   web/desktop width shows no status bar, no home indicator, and no top inset. */
+@media (max-width: 480px) {
+  .sd-appbar { --sd-safe-top: 54px; }
+  .sd-statusbar { display: flex; }
+  .sd-homebar { display: grid; --sd-safe-bottom: 34px; }
 }
 .sd-avatar {
   width: 38px; height: 38px; border-radius: 50%;
