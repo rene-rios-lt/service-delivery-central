@@ -983,3 +983,97 @@ The test throws `WebDriverTimeoutException: Timed out after 15 seconds` on its f
 - Production offer-expiry default behaviour is unchanged (the shorter expiry applies only to the Local/test environment via configuration).
 - The `WaitForSignalR` helper (or the test's use of it) no longer aborts the outer retry loop on a single lap timeout.
 - The rest of the Appium suite stays green (no new failures); no frontend/backend product-behaviour change beyond the expiry configuration.
+
+## BUG-041 — Release Vehicle never opens its confirmation dialog: the idle view clears the claimed-vehicle store before the release action reads it
+
+- **Status:** **Fixed** — via `/master` (frontend PR #53, squash `3feda91`). Removed the constructor `ClearVehicle()` from `RepIdleViewModel` so `IClaimedVehicleStore` is durable for the session; the idle view now reads without clearing, so `ReleaseVehicleAction` finds the claimed vehicle and opens the dialog. Backed by a RED-verified composition-root integration test (`ClaimedVehicleStoreIntegrationTests`), a flipped `RepIdleViewModelTests` assertion (`ClearVehicle` `Times.Never`), and a corrected `IClaimedVehicleStore` doc comment. **Live-verified:** full Appium suite **16 passed / 0 failed / 1 skipped** (the 2 `ReleaseVehicleTests` now pass; was 14/2/1). Follow-ups filed: **BUG-042** (idle stale-vehicle on second take-over) and **BUG-043** (clear store on logout — fold into FE-023).
+- **Severity:** **High** (a core FE-014 user-facing action is completely broken in the real app — a rep can never release their vehicle / go off duty from the device, which is a Phase 9 exit-criterion. Not a test defect: the product is broken for real users.)
+- **Repo / Area:** **Frontend.** Root cause: `src/ServiceDelivery.Client.Core/ViewModels/RepIdleViewModel.cs` (constructor calls `IClaimedVehicleStore.ClearVehicle()` as a consume-once hand-off) vs `src/ServiceDelivery.Client.UI/Features/ServiceRep/Services/ReleaseVehicleAction.cs` (reads `IClaimedVehicleStore.CurrentVehicle` later, expecting it to be durable). Store: `src/ServiceDelivery.Client.Core/Services/InMemoryClaimedVehicleStore.cs` / `Interfaces/IClaimedVehicleStore.cs`.
+- **Related stories:** `FE-014` (the release feature whose Appium tests fail), `FE-007`/`FE-020` (take-over → idle hand-off that populates the store), `BUG-034`/`BUG-035` (introduced the `IClaimedVehicleStore` hand-off for the idle card), and **`QUAL-007`** (test the real composition root — this defect was masked by unit tests that mocked the store).
+- **Found:** Running `scripts/local/test-appium.sh` after FE-013/FE-014 merged. Suite reported **14 passed / 2 failed / 1 skipped**; both failures in `ReleaseVehicleTests` reproduced (not a flake). **Live-verified** product-vs-test via a diagnostic that drove the real iOS app and dumped the WebView DOM + screenshots at each step.
+
+**Summary**
+The two failing tests — `GivenRepWithVehicle_WhenReleaseVehicleTapped_ThenConfirmationDialogAppears` and `GivenConfirmationDialogShown_WhenReleaseConfirmed_ThenTakeOverScreenIsDisplayed` (`ReleaseVehicleTests.cs:39,52`) — are **correct**; they catch a genuine product defect.
+
+Live diagnosis (four iOS-simulator boots, isolating the cause):
+1. Native tap on "Release vehicle" → item highlights, but **no dialog** renders (`release-dialog-*` absent from the DOM) and the drawer stays open. The 15 s implicit wait is in effect, so it is not a timing miss.
+2. A JS-dispatched real DOM `click()` on the same nav-link → **still no dialog** → rules out Appium tap-fidelity (the BUG-031 class).
+3. Tapping **"Log out"** (same `MudNavLink` → `OnItemClicked` path) → returns to login → proves the drawer click wiring fires Blazor's `OnClick`; the defect is specific to the *release* path.
+4. Instrumenting the null-vehicle branch to navigate to take-over → after the release tap we land on the **take-over screen** → confirms `CurrentVehicle` is **null** at release time.
+
+**Root cause.** `RepIdleViewModel`'s constructor consumes `IClaimedVehicleStore` as a one-shot hand-off and clears it:
+```csharp
+Vehicle = claimedVehicleStore.CurrentVehicle ?? EmptyVehicle;
+claimedVehicleStore.ClearVehicle();   // store is now null
+```
+Sequence: take-over `SetVehicle(V-001)` → navigate to idle → `RepIdleViewModel` caches V-001 then `ClearVehicle()` → store null → tap Release → `ReleaseVehicleAction.ReleaseAsync` reads `CurrentVehicle == null` → silently returns `NothingToRelease`, dialog never shown. The idle card still shows "V-001" only because the view-model cached it before clearing. It is a contract conflict: the idle view treats the store as an *ephemeral* hand-off (mirroring `IJobOfferStore`), while the release action treats it as *durable* "the vehicle I currently hold."
+
+**Why the unit tests passed (masking).** `ReleaseVehicleActionTests` / `PersonaMenuReleaseItemTests` mock `IClaimedVehicleStore` to always return a vehicle, so they never exercise the real `RepIdleViewModel` construction → `ReleaseAsync` sequence against the real store. The Appium E2E suite, running the real composition root, is what caught it (the `QUAL-007` gap).
+
+**Expected**
+Tapping "Release vehicle" on the idle screen (after a take-over) opens the confirmation MudDialog; confirming releases the vehicle and returns the rep to the take-over screen.
+
+**Actual**
+Tapping "Release vehicle" does nothing visible — no dialog, drawer stays open — because the claimed-vehicle store was cleared by the idle view, so the release action treats it as "nothing to release."
+
+**Proposed fix (via `/master`)**
+- Make `IClaimedVehicleStore` the **durable** source of truth for the currently-held vehicle: stop clearing it in `RepIdleViewModel`'s constructor; clear it instead on the real lifecycle exits (successful release — already done in `ReleaseVehicleAction`; logout / go-off-duty per FE-023). Resolve the original "stale claim on re-navigation" concern that motivated the clear without breaking the release/idle reads (e.g. clear on logout, or re-hydrate from the backend's active vehicle rather than consume-once).
+- Keep the failing Appium tests as the live gate — do **not** paper over them with waits or selector changes.
+- The red test that drives the fix **must exercise the real composition root**: construct the real `RepIdleViewModel` (which performs the hand-off) and then call `ReleaseAsync` against the real `InMemoryClaimedVehicleStore`, asserting the confirmation is invoked (store still non-null). A pure mocked-store unit test would re-mask this.
+
+**Acceptance criteria (bug resolved when):**
+- Both `ReleaseVehicleTests` (`…ThenConfirmationDialogAppears`, `…ThenTakeOverScreenIsDisplayed`) pass against a live system (verified via `scripts/local/test-appium.sh`), reproducibly.
+- After a take-over, the idle card still shows the correct vehicle **and** tapping Release opens the confirmation dialog (both consumers see the claimed vehicle).
+- A composition-root-level test reproduces the original failure (red without the fix): real `RepIdleViewModel` hand-off followed by `ReleaseAsync` must still find the claimed vehicle.
+- No regression to the take-over → idle hand-off (BUG-034/035) or to re-navigation behaviour (no stale claim resurrected).
+- The rest of the Appium suite stays green; no unrelated product changes.
+
+## BUG-042 — Idle screen shows a stale vehicle after a second take-over in the same session (`RepIdleViewModel` is scoped-singleton and caches the first vehicle)
+
+- **Status:** **Open.**
+- **Severity:** **Low** (display-only; the release action still targets the correct current vehicle via the store, and the POC's normal flow is one vehicle per session — so this is rarely hit. But the idle card and app-bar subtitle would show the wrong registration after a release-then-retake-a-different-vehicle in one session.)
+- **Repo / Area:** **Frontend.** `src/ServiceDelivery.Client.Core/ViewModels/RepIdleViewModel.cs` (the `Vehicle` property is read-only and set once in the constructor) combined with its registration `builder.Services.AddScoped<RepIdleViewModel>()` in all three hosts (`MauiProgram.cs` / `Program.cs`) — scoped is effectively singleton for a BlazorWebView's lifetime.
+- **Related stories:** `BUG-041` (surfaced this during blast-radius analysis), `BUG-034`/`BUG-035` (the idle-card vehicle hand-off), `FE-007`/`FE-020` (take-over → idle).
+- **Found:** Tracing the consumers of `IClaimedVehicleStore` while reviewing the BUG-041 fix. Not yet reproduced live (the single-vehicle-per-session happy path never re-constructs the view model), but follows directly from the lifetime + read-only-cache design.
+
+**Summary**
+`RepIdleViewModel` exposes `Vehicle` as a read-only property assigned once in its constructor from `IClaimedVehicleStore.CurrentVehicle`. The view model is registered `AddScoped`, which in MAUI Blazor Hybrid means a single instance for the whole BlazorWebView session. So the first navigation to `/rep/idle` (after the first take-over) caches the vehicle, and every later navigation re-uses the same instance with the same cached value. If a rep releases their vehicle and takes over a **different** one in the same session, the idle card (`RepIdle.razor` → `ViewModel.Vehicle.Registration`/`Model`/`EquipmentTypes`) and the app-bar subtitle (`Shell.SetVehicleContext(...)`) still show the **first** vehicle. The release action is unaffected — it reads the live store, which holds the current vehicle.
+
+**Expected**
+The idle card and app-bar subtitle reflect the vehicle the rep currently holds, after any take-over in the session.
+
+**Actual**
+They show the first vehicle taken over in the session; a second take-over of a different vehicle does not update the idle display.
+
+**Proposed fix (via `/master`)**
+Re-hydrate the claimed vehicle from `IClaimedVehicleStore` on each entry to the idle view rather than caching it once at construction — e.g. read it in the page's `OnInitializedAsync`/`OnParametersSetAsync` into a mutable `Vehicle`, or register `RepIdleViewModel` as transient, or expose a `Refresh()` the page calls on load. Add a test that drives two take-overs (different vehicles) through the real view-model lifecycle and asserts the idle display reflects the second.
+
+**Acceptance criteria (bug resolved when):**
+- After a release-then-take-over of a different vehicle in the same session, the idle card and app-bar subtitle show the second vehicle.
+- A test reproduces the stale-display failure across two take-overs (red before fix, green after) using the real view-model lifecycle, not a one-shot construction.
+- No regression to the single-take-over idle display (BUG-034/035) or to BUG-041's release behaviour.
+
+## BUG-043 — Claimed-vehicle store is not cleared on logout, so a stale claim can persist across sessions (surfaced once BUG-041 removes the idle-view clear)
+
+- **Status:** **Open.**
+- **Severity:** **Low** (no logout path clears `IClaimedVehicleStore`; a re-login routes through the take-over screen, which overwrites the store via `SetVehicle`, so the stale value is normally replaced before it is read. But the claimed vehicle lingering past logout is incorrect and could leak across reps on a shared device/session.)
+- **Repo / Area:** **Frontend.** Logout path — `ShellViewModel.LogoutAsync` / `ILogoutSideEffect` (`NoOpLogoutSideEffect` in the hosts) — does not call `IClaimedVehicleStore.ClearVehicle()`. Store: `src/ServiceDelivery.Client.Core/Services/InMemoryClaimedVehicleStore.cs`.
+- **Related stories:** `BUG-041` (removes the incidental idle-view `ClearVehicle()` that was masking this), **`FE-023`** (Stay-on-duty heartbeat + clean go-off-duty — the proper home for clearing claimed/session state on logout/timeout). **Best resolved as part of FE-023** rather than standalone.
+- **Found:** BUG-041 blast-radius analysis. Before BUG-041, `RepIdleViewModel`'s constructor incidentally nulled the store after the first idle render; removing that clear (the BUG-041 fix) means the claimed vehicle now persists until something explicitly clears it — and nothing does on logout.
+
+**Summary**
+The only in-session clears of `IClaimedVehicleStore` are `ReleaseVehicleAction.ReleaseAsync` (on a successful release) and — until BUG-041 — `RepIdleViewModel`'s constructor. No logout/go-off-duty path clears it. After BUG-041, logging out leaves the previously-claimed vehicle in the store. If another rep logs in on the same app instance (same DI scope, no app restart) the stale claim is present until they take over a vehicle (which overwrites it). The realistic blast radius is small because the rep's home screen is take-over, but the state is semantically wrong and should be cleared on logout and on go-off-duty/timeout.
+
+**Expected**
+Logging out (and going off duty / timing out per FE-023) clears `IClaimedVehicleStore` so no claimed vehicle persists into the next session.
+
+**Actual**
+The claimed vehicle persists in the store after logout (observable once BUG-041 removes the idle-view clear).
+
+**Proposed fix (via `/master`, ideally folded into FE-023)**
+Clear `IClaimedVehicleStore` on logout (in `ShellViewModel.LogoutAsync` or via the `ILogoutSideEffect` seam) and on clean go-off-duty/timeout. Prefer implementing this within **FE-023** so all session-lifecycle teardown (heartbeat stop, off-duty, claimed-vehicle clear) lives together.
+
+**Acceptance criteria (bug resolved when):**
+- After logout, `IClaimedVehicleStore.CurrentVehicle` is null (verified by a test on the real logout side-effect / `ShellViewModel.LogoutAsync`).
+- Go-off-duty / heartbeat-timeout (FE-023) also clears the store.
+- No regression to BUG-041 (release still finds the claimed vehicle during an active session) or to re-login → take-over.
