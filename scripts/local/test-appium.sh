@@ -100,6 +100,13 @@ else
   # OfferExpirySeconds via MatchingOptions (bound from JobOfferExpiry:OfferExpirySeconds).
   export JobOfferExpiry__OfferExpirySeconds=15
   export JobOfferExpiry__PollIntervalSeconds=3
+  # QUAL-009: shorten the human-controlled heartbeat timeout for the E2E run so the go-off-duty /
+  # heartbeat-timeout scenarios (HeartbeatGoOffDutyTests) resolve quickly. TimeoutSeconds MUST stay
+  # ABOVE the app's 15 s heartbeat interval so an actively-heartbeating rep is never falsely swept
+  # (25 s gives ~10 s margin); once the app stops beating (closed/backgrounded) the sweep then fires
+  # ~25-28 s later and parks the vehicle. Scoped to this run only; demo/prod defaults stay 45 s.
+  export HeartbeatTimeout__TimeoutSeconds=25
+  export HeartbeatTimeout__PollIntervalSeconds=3
   SD_SKIP_SIMULATOR=1 "$SCRIPT_DIR/start.sh" || { echo "!! start.sh failed" >&2; exit 1; }
   STARTED_BACKEND=1
 fi

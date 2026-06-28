@@ -241,6 +241,8 @@ The meta-lesson from the bug history is that browser-WASM, WKWebView, and MAUI-n
 
 ## QUAL-009 — Live end-to-end verification of the go-off-duty / heartbeat-timeout chain (FE-023 + BE-028 + SIM-009)
 
+> **Status: Done.** Verified two ways. (1) **Simulator-inclusive live run** (a short `HeartbeatTimeout` of 20 s): a human took over rep1, heartbeats kept it on duty past the timeout; stopping them swept rep1 Offline, parked the vehicle, and returned it to `GET /vehicles/available`; the simulator did **not** re-assume rep1 for 30 s after (the `YieldedRepRegistry` held) — 6/6 assertions. (2) **Appium suite** (`HeartbeatGoOffDutyTests`, backend-only): the app keeps the rep on duty while running, and closing the app stops heartbeats so the backend times out and the vehicle reappears — 2/2, and the full Appium suite stayed green at 18/0/1 with the test-scoped 25 s timeout. The "simulator does not re-assume" half (no simulator in the Appium harness) is covered by run (1) and SIM-009's own tests.
+
 **As a** maintainer relying on the human-takeover model for the demo,
 **I want** the full "rep goes off duty → backend times them out → vehicle parks → simulator does not re-assume → vehicle reappears in the take-over dropdown" loop verified live against a running system,
 **so that** the cross-repo chain that was only ever proven in per-repo unit/integration isolation is confirmed to behave end-to-end before the demo depends on it.
