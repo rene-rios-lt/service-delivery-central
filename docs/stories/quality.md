@@ -236,3 +236,26 @@ The meta-lesson from the bug history is that browser-WASM, WKWebView, and MAUI-n
 **Depends on:** QUAL-005 (the smoke entry point these runtime-specific checks hang off).
 
 **Done when:** the per-runtime smokes exist and are documented; the host-parity rule is in the frontend CLAUDE.md and referenced by `story-ai-reviewer`; the CORS regression check exists; central edits ship via `/ship-it` and product-repo code via `/master`; this story is struck in `execution-plan.md`.
+
+---
+
+## QUAL-009 — Live end-to-end verification of the go-off-duty / heartbeat-timeout chain (FE-023 + BE-028 + SIM-009)
+
+**As a** maintainer relying on the human-takeover model for the demo,
+**I want** the full "rep goes off duty → backend times them out → vehicle parks → simulator does not re-assume → vehicle reappears in the take-over dropdown" loop verified live against a running system,
+**so that** the cross-repo chain that was only ever proven in per-repo unit/integration isolation is confirmed to behave end-to-end before the demo depends on it.
+
+**Motivation**
+`FE-023` (frontend PR #55, which also fixed `BUG-043`) added the rep heartbeat and clean go-off-duty teardown: the heartbeat is `POST rep/heartbeat` on a 15 s interval while on duty, started in `RepIdleViewModel.StartAsync()` and deliberately spanning idle→offer→job; it stops on logout (`ServiceRepLogoutSideEffect`) and on release (store-cleared observe-the-store self-exit). The backend timeout/park/re-match (`BE-028` `StaleHeartbeatSweeper`) and the simulator "does not re-assume a human-controlled rep" behaviour (`SIM-009`) are all merged. But every layer was verified in isolation — frontend unit + composition-level integration, backend `HeartbeatTimeoutSweepTests`, simulator unit tests. **No test exercises the whole chain against a live system.** FE-023's AC-2 ("backgrounded/closed → backend times out, parks, re-queues") and AC-4 ("simulator does not re-assume; vehicle reappears in the dropdown") are E2E-observable only and currently rest on the assumption that the three independently-correct pieces compose correctly.
+
+**Acceptance Criteria:**
+- An Appium scenario (mobile ServiceRep, the `Client.Appium` suite run via `scripts/local/test-appium.sh`) covers **explicit go-off-duty**: a rep takes over a vehicle, then logs out (or releases) — assert the heartbeat stops, the backend marks the rep off-duty / parks the vehicle, the simulator does not re-assume that rep for the run, and the vehicle reappears in the take-over dropdown (FE-007) for an idle rep.
+- The **heartbeat-timeout path** (heartbeats simply stop, no explicit logout — the "app backgrounded/closed/lost connectivity" case) is verified at least once against the live backend sweep: with a test-scoped short `HeartbeatTimeout` (env-var override, mirroring the `JobOfferExpiry` test override already used in `test-appium.sh`), stopping heartbeats leads to timeout → park → vehicle reappears. If a true app-background gesture isn't drivable from Appium, simulate it by stopping the client / cutting heartbeats and document that as the stand-in.
+- The scenario asserts the **positive** invariant too: while the rep is on duty (including during an active job), heartbeats keep arriving so the backend does **not** time the rep out mid-job (guards the AC-1 lifecycle that the FE-023 regression-guard unit test protects, but live).
+- The verification is wired into the existing E2E entry points (`test-appium.sh` / `test-e2e.sh` / `test-all.sh`) so it runs with the rest of the suite, not as a one-off manual check.
+
+**Out of scope:** Android / physical-device testing; standing CI; screenshot diffing (consistent with QUAL-003/004). No production code change is expected unless the live run surfaces a defect — if it does, file a `BUG-` and fix via `/master`.
+
+**Depends on:** QUAL-004 (Appium suite + its overlay/WebView-context strategy), and the merged FE-023 / BE-028 / SIM-009.
+
+**Done when:** the go-off-duty and heartbeat-timeout scenarios exist in the Appium suite and run green against a live system; any defect the live run surfaces is filed and fixed; the frontend test-project code ships via `/master`; this story is struck in `execution-plan.md`.
