@@ -8,7 +8,8 @@ matrix in [ADR-0008](../adr/0008-persona-platform-support.md).
 
 Every screen is composed from **one shared component library** — [`design-system.css`](design-system.css) —
 not drawn per image. The stylesheet defines the design tokens and reusable components once
-(app bar, cards, chips, tier badges, buttons, map markers, dialogs, countdown, bottom sheet, …),
+(app bar with leading hamburger + iOS safe-area chrome — status bar / Dynamic Island and home
+indicator, cards, chips, tier badges, buttons, map markers, dialogs, countdown, bottom sheet, …),
 mirroring the MudBlazor theme-token strategy from [ADR-0007](../adr/0007-mudblazor-component-library.md).
 The domain colors are defined a single time and referenced everywhere:
 
@@ -81,7 +82,7 @@ force-release confirmation dialog (FE-022). **Not built for mobile** (ADR-0008).
 
 ## Service Rep — Mobile only
 
-Single-task, touch-first field experience. **Not built for desktop/web** (ADR-0008). The rep signs in as one of `rep1…rep8` and **takes over an idle vehicle** from the simulator (FE-007); from then on the human makes the decisions while the simulator drives the truck's position (see [ADR-0009](../adr/0009-simulator-operates-rep-identities-and-human-takeover.md)).
+Single-task, touch-first field experience. **Not built for desktop/web** (ADR-0008). The rep signs in as one of `rep1…rep8` and **takes over an idle vehicle** from the simulator (FE-007); from then on the human makes the decisions while the simulator drives the truck's position (see [ADR-0009](../adr/0009-simulator-operates-rep-identities-and-human-takeover.md)). The app bar carries the **hamburger on the left** (leading), and both the bar and the left-anchored navigation drawer respect the **iOS safe area** — content sits below the Dynamic Island and clears the home indicator, never clipped (FE-029).
 
 | Take over an idle vehicle (FE-007) | Idle / waiting (FE-020) | Job offer + countdown (FE-008) |
 |:---:|:---:|:---:|
@@ -99,7 +100,7 @@ Single-task, touch-first field experience. **Not built for desktop/web** (ADR-00
 
 ## Requester — Desktop + Web + Mobile
 
-Consumer-grade, responsive from phone to desktop. Submit → finding → tracking → complete.
+Consumer-grade, responsive from phone to desktop. Submit → finding → tracking → complete. On the **mobile** renders the app bar respects the iOS safe area (status bar / Dynamic Island and home indicator); the **web/desktop** renders of the same screens show no such chrome — the safe-area chrome is gated to a phone-width viewport (FE-029).
 
 ### Submit a request — FE-015
 
