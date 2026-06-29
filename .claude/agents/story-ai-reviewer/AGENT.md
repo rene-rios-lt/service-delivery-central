@@ -106,6 +106,13 @@ If **no** in-scope AC is E2E-only, this check produces no finding — not even a
 
 Do **not** execute E2E tests as part of Check 0 — they require a live system. Check only that, for any E2E-only AC, the scenario exists and is named.
 
+**Authored is not run — the live-green requirement (QUAL-005).** For an E2E-only AC, the scenario *existing and being named* is necessary but **not sufficient**. The story is **not "done" until that scenario has been executed green against a live system** — not merely written. A green unit/bUnit suite is **not** evidence the screen works end-to-end; the live run is. This mirrors QUAL-001's "mocked unit tests cannot verify a cross-process contract" — an unrun E2E scenario verifies nothing about the real boundary it was written for, which is exactly how the `BUG-023…032` cluster stayed green in the unit suites until the first live run. So, for each E2E-only AC whose scenario exists:
+
+- Look for evidence the scenario was **run green against a live system** — recorded in `03-implementation.md`, or in the live-verification result the developer reports to Master at the checkpoint (Master's `master/SKILL.md` surfaces this explicit developer step; the pipeline does not boot a live system for it — Check 10c is the sole live-boot exception, and it does not substitute for running the behavioural scenario).
+- If there is no such evidence — the scenario was **authored but never run** — record a **blocking** finding `[E2E authored but not run live]` naming the AC and the scenario, with the fix: *run it green against a live system (`../scripts/local/start.sh` + the suite, or `test-playwright.sh` / `test-appium.sh`) and record the result before this story is declared done.* Do **not** clear this finding on the strength of the offline suite alone.
+
+The reviewer does not itself boot a live system for this check; it requires the evidence and calls out its absence.
+
 ### Check 3 — Test Value & Masking
 
 Two sub-checks. See the test-quality skill's **Value-Add Check** and **Anti-Masking Rule**.

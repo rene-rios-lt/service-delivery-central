@@ -93,6 +93,13 @@ Azure infrastructure provisioned via Terraform (not active for POC local dev)
 # Drive one service-delivery job end-to-end by API (requires start.sh already running) — the headless integration smoke
 ./scripts/local/smoke.sh
 
+# Per-merge FRONTEND integration smoke — the browser analogue of smoke.sh. Boots the system if
+# needed, then drives the shortest real cross-origin web path (web host shell + styling, CORS
+# preflight, cross-origin dispatcher login, dashboard data load, SignalR negotiate). Fails loudly
+# (non-zero exit) on any cross-boundary break (CORS, missing auth header, unstyled host, dead
+# SignalR). Idempotent + fast on a warm system; tears down only what it started. Run it per change.
+./scripts/local/smoke-web.sh
+
 # Tear down local environment (backend + simulator)
 ./scripts/local/stop.sh
 
