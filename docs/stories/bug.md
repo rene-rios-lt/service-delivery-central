@@ -377,7 +377,7 @@ With MudBlazor now loading (BUG-020), the login page renders as default MudBlazo
 
 ## BUG-024 — `SessionExpiryHttpHandler` fires on login's 401, causing unhandled exception instead of inline error
 
-- **Status:** **Open**
+- **Status:** **Fixed** 2026-06-24 (PR #32, `fix/BUG-024-session-expiry-handler-login-401`) — `SessionExpiryHttpHandler` gained a `/auth/login` path guard so a wrong-credential 401 passes through to the inline error, while authenticated-endpoint 401s still trigger session expiry. Covered by a regression unit test (`GivenA401ResponseFromLoginEndpoint_WhenSentThroughHandler_ThenResponseIsPassedThroughWithoutSessionExpiry`) and, since QUAL-007, a composition-root test asserting the same behaviour through the real `SessionExpiry → AuthToken → network` handler chain. (Status field flipped 2026-06-29 — the fix merged 2026-06-24 but this per-bug entry was missed at the time; the bug rollup already listed it resolved.)
 - **Severity:** High (entering wrong credentials on the web login screen produces an unhandled exception and a Blazor error banner instead of the inline "Invalid email or password." message; the sign-in button stays permanently disabled until the page is reloaded; the login error E2E test also fails as a result)
 - **Repo / Area:** Frontend — `src/ServiceDelivery.Client.UI/Features/Authentication/Services/SessionExpiryHttpHandler.cs`
 - **Related stories:** `FE-002` (JWT expiry), `FE-001` (login), `QUAL-003` (Playwright E2E)
