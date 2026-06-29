@@ -360,4 +360,4 @@ Effort definitions:
 
 ## Repo Adaptations
 
-This skill applies in the **central repo only** (`service-delivery-central`). Agent files live in `.claude/agents/` at the central repo root. The working repos (backend, frontend, simulator) contain no AGENT.md files and are not in scope for this audit.
+This skill applies in the **central repo only** (`service-delivery-central`). Agent files live in `.claude/agents/` at the central repo root. The working repos (backend, frontend, simulator) contain no AGENT.md files and are not in scope for this audit. (The one exception: the Cross-File Alignment staleness red flag may require reading a working repo to confirm an API/type/version an agent cites against the real code or package — those repos still hold no AGENT.md, so this is a read-only spot-check, not an audit of their contents.)
