@@ -210,6 +210,12 @@ The AI Reviewer's verdict (`APPROVED` or `BLOCKED`) is the **input to Checkpoint
 
 > "AI Review complete. Approve to prepare the PR, or send back to the Implementor with the listed issues."
 
+**Live E2E reminder (frontend stories with an end-to-end-reachable surface).** If the AI Reviewer's Check 2 identified an E2E-only AC for this story — or flagged `[E2E authored but not run live]` / `[Missing E2E test …]` — surface this before the developer approves:
+
+> "This story has a surface that is only verifiable end-to-end. A green unit/bUnit suite is **not** evidence the screen works — the live net is. Before declaring this story complete, run its QUAL-003/004 scenario green against a live system (`./scripts/local/start.sh` + `./scripts/local/test-playwright.sh` or `./scripts/local/test-appium.sh`), and the per-merge `./scripts/local/smoke-web.sh` for the web path. This is an explicit developer step — the pipeline does not boot a live system itself, exactly like the headless `smoke.sh`. Confirm the live run is green as part of your approval."
+
+This belongs at the **front** of the loop, not a late catch-up: it is how the simulator caught `BUG-016/017` one at a time, and the gap that let the frontend `BUG-023…032` cluster accumulate (see QUAL-005). Surface it; do not run the live system on the developer's behalf.
+
 Do not proceed until the developer explicitly responds.
 
 - If approved: continue.
