@@ -100,6 +100,12 @@ Azure infrastructure provisioned via Terraform (not active for POC local dev)
 # SignalR). Idempotent + fast on a warm system; tears down only what it started. Run it per change.
 ./scripts/local/smoke-web.sh
 
+# Per-runtime WebView smoke (QUAL-008) — the mobile/WKWebView analogue of smoke-web.sh. Runs the one
+# WebViewReachabilitySmokeTests through test-appium.sh: launches the MAUI Mobile app on a booted iOS
+# simulator, switches to the WEBVIEW context, and confirms a data-testid element is reachable inside
+# it (the BUG-031 boundary neither smoke.sh nor smoke-web.sh can exercise). Needs a Mac + Appium.
+./scripts/local/smoke-mobile.sh
+
 # Tear down local environment (backend + simulator)
 ./scripts/local/stop.sh
 

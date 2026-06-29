@@ -1,6 +1,6 @@
 ---
 name: story-ai-reviewer
-description: Internal stage of the /master story pipeline — invoke only via /master or when the user explicitly names this agent; do not auto-delegate. Reviews story implementation against 11 checks — test coverage, test level, test value, duplication, naming, SOLID, Clean Architecture, dead code, hallucination guard, and mockup fidelity (structural plus a rendered render-and-screenshot check for UI stories). Returns APPROVED or BLOCKED with specific findings.
+description: Internal stage of the /master story pipeline — invoke only via /master or when the user explicitly names this agent; do not auto-delegate. Reviews story implementation against 12 checks — test coverage, test level, test value, duplication, naming, SOLID, Clean Architecture, dead code, hallucination guard, mockup fidelity (structural plus a rendered render-and-screenshot check for UI stories), and host parity for frontend bootstrapping changes. Returns APPROVED or BLOCKED with specific findings.
 tools: Read, Bash, Glob, Grep, Write
 model: claude-opus-4-8
 ---
@@ -46,7 +46,7 @@ Write findings to `.stories/<STORY-ID>/04-ai-review.md` in the working repo befo
 Run each check in order. A finding in any check does not stop the remaining checks — complete all checks before producing the output.
 
 **Finding severity:**
-- **Blocking** — prevents APPROVED. Must be resolved before the Implementor cycle closes. Checks 0, 1, 2, 5, 6, 7, 8, and 9 produce blocking findings. Check 3's masking sub-finding (3b) is also blocking — see Check 3. Check 10's AC-element sub-finding (10a) and rendered-fidelity sub-finding (10c) are also blocking — see Check 10.
+- **Blocking** — prevents APPROVED. Must be resolved before the Implementor cycle closes. Checks 0, 1, 2, 5, 6, 7, 8, and 9 produce blocking findings. Check 3's masking sub-finding (3b) is also blocking — see Check 3. Check 10's AC-element sub-finding (10a) and rendered-fidelity sub-finding (10c) are also blocking — see Check 10. Check 11 (host parity) is also blocking — see Check 11.
 - **Advisory** — flagged but does not prevent APPROVED. Check 3's test-value findings (3a), all of Check 4, and Check 10's non-AC fidelity findings (10b) are advisory. Advisory findings are listed in the APPROVED output under a separate "Advisory Notes" section.
 
 ### Check 0 — Produce the diff and run the tests
@@ -220,6 +220,18 @@ Do **not** flag pixel-level differences — the mockups are stylized (maps are p
 
 Do **not** flag pixel-level differences in 10c either — judge layout structure, chrome, and whether controls render as designed.
 
+### Check 11 — Host Parity *(frontend stories that change host-bootstrapping config only)*
+
+*Run this check only for `FE-` and frontend `BUG-` stories whose diff touches **host-bootstrapping config**: any `wwwroot/index.html`, or the per-host service / `HttpClient` / DI registration in `Program.cs` (Web) or `MauiProgram.cs` (Desktop/Mobile). Skip it for all other repos, and for frontend stories that touch no bootstrapping file.*
+
+The Web, Desktop, and Mobile hosts each ship their **own** bootstrapping, so a fix applied to one silently misses the other two — one MudBlazor-asset defect became BUG-020 (Web), then shipped again as BUG-022 (Desktop + Mobile): one defect, three hosts, two PRs. Apply the **host-parity rule** in the frontend `CLAUDE.md`.
+
+1. Identify which host-bootstrapping file(s) the diff changes — `Glob` the three host pages (`src/ServiceDelivery.Client.{Web,Desktop,Mobile}/wwwroot/index.html`) and the registrations (`Program.cs`, `MauiProgram.cs`).
+2. For each bootstrapping concern changed on one host, confirm the **equivalent** change is present on all three hosts in the same diff: the three `index.html` files for a static-asset / host-page change; `Program.cs` **and** `MauiProgram.cs` for an `HttpClient` / handler-pipeline / DI-registration change.
+3. A shared bootstrapping change applied to one or two hosts but not all three is a **blocking** finding — report as **[Host parity]** naming the concern and the host(s) missing it, with the fix: apply the same change to the remaining host(s), **or** state in `03-implementation.md` why a host is legitimately exempt (e.g. the concern is Web-only).
+
+Do **not** flag host-specific code that legitimately differs — a native Desktop/Mobile service implementation with no Web equivalent. Parity applies to a **shared** bootstrapping concern, not to platform-specific implementations.
+
 ---
 
 ## Output Format
@@ -238,6 +250,7 @@ SOLID: No violations ✓
 Clean Architecture: No boundary violations ✓
 Hallucination Guard: No invented calls, no unplanned interface extensions ✓
 Mockup Fidelity: rep-job-offer__mobile — all AC elements present & asserted ✓   ← frontend UI stories only; omit otherwise
+Host Parity: bootstrapping change present on Web + Desktop + Mobile ✓   ← frontend bootstrapping changes only; omit otherwise
 
 AC → Test Mapping:
 | # | AC | Test Method | Level | Status |

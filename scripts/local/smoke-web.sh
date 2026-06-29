@@ -23,8 +23,9 @@
 # both and just runs the five checks in a few seconds — cheap enough to invoke per change. On a
 # cold system it boots via start.sh + the web host, and tears down ONLY what it started.
 #
-# This is the WEB-runtime smoke. QUAL-008 extends the same entry point with the other client
-# runtimes (a real browser-context login, a WKWebView DOM-reachability check on MAUI Mobile).
+# This is the WEB-runtime smoke (a real browser-context cross-origin login — the CORS boundary,
+# BUG-023). QUAL-008 completes the per-runtime set with the WKWebView DOM-reachability check on MAUI
+# Mobile (BUG-031) in scripts/local/smoke-mobile.sh, and the headless API path in scripts/local/smoke.sh.
 #
 # Scope note: "dispatcher1" in the QUAL-005 story is the dispatcher persona; the seeded dispatcher
 # account is alex@dealer.com (same account smoke.sh uses). Override creds with the env vars below.
