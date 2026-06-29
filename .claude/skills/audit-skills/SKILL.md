@@ -152,6 +152,7 @@ One-line justification is required for every dimension score.
 - A status value or severity label that differs from the definition in another governing file
 - A missing cross-reference to a file this skill depends on or that depends on this skill
 - A rule that contradicts the equivalent rule in a related skill or agent
+- An API, type, or version name that no longer matches the current codebase or its package versions — e.g. an example using a renamed framework type or a tool version the repo has since moved past. A skill can be internally flawless yet teach a stale API; flag the drift against the real code/package, not just against other skills.
 
 ---
 

@@ -85,6 +85,8 @@ Define how each of the five SOLID principles applies in this specific codebase, 
 
 **In Api:** `Program.cs` is the composition root — the only place where concrete types are *registered* against interfaces. The DI container performs the actual instantiation. Do not manually call `new ConcreteType()` in application code — register the concrete in `Program.cs` and let the container inject it.
 
+> For **which layer** each abstraction and its concrete belong in (the interface in Domain/Application, the implementation in Infrastructure, the registration at the Api composition root), see `.claude/skills/clean-architecture/SKILL.md` — it governs layer placement; this skill governs the dependency direction between them.
+
 **How to spot a violation:**
 - `new` on any infrastructure type (EF `DbContext`, `HttpClient`, `SignalRHubContext`) inside a Domain or Application class.
 - A handler that directly instantiates a repository.

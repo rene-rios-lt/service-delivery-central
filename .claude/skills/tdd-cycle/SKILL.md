@@ -207,22 +207,24 @@ public async Task GivenARepAssignedPayload_WhenHandled_ThenViewModelStatusUpdate
 }
 ```
 
-**Component test** — bUnit renders the Razor component in an isolated `TestContext`:
+**Component test** — bUnit (v2) renders the Razor component in an isolated context. The test class **inherits `BunitContext`**, so `Render<T>()` and `Services` are called directly (bUnit v2 renamed v1's `TestContext` to `BunitContext`):
 
 ```csharp
-[Fact]
-public void GivenAViewModelWithStatusEnRoute_WhenRendered_ThenStatusChipShowsEnRoute()
+public class ServiceRequestCardTests : BunitContext
 {
-    // Arrange
-    using var ctx = new TestContext();
-    ctx.Services.AddSingleton(Mock.Of<IDispatchHubService>());
-    var vm = new ServiceRequestViewModel(...) { Status = "En Route" };
+    [Fact]
+    public void GivenAViewModelWithStatusEnRoute_WhenRendered_ThenStatusChipShowsEnRoute()
+    {
+        // Arrange
+        Services.AddSingleton(Mock.Of<IDispatchHubService>());
+        var vm = new ServiceRequestViewModel(...) { Status = "En Route" };
 
-    // Act
-    var cut = ctx.Render<ServiceRequestCard>(p => p.Add(c => c.ViewModel, vm));
+        // Act
+        var cut = Render<ServiceRequestCard>(p => p.Add(c => c.ViewModel, vm));
 
-    // Assert
-    cut.Find("[data-testid='status-chip']").TextContent.Should().Be("En Route");
+        // Assert
+        cut.Find("[data-testid='status-chip']").TextContent.Should().Be("En Route");
+    }
 }
 ```
 
