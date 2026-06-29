@@ -35,6 +35,9 @@ Invoked with a story ID:
 | `SIM-` | `service-delivery-simulator/` |
 | `FE-` | `service-delivery-frontend/` |
 | `BUG-` | not encoded by the prefix — read the bug's **Repo / Area** field in `bug.md` (backend / frontend / simulator) |
+| `QUAL-` (or any prefix not listed above) | **none — not a `/master` story.** `QUAL-` is cross-cutting governance work (skill / agent / doc edits, sometimes with a product-repo test audit), not a single-repo TDD feature, so `/master` has no working repo to target. |
+
+**If the story prefix is `QUAL-` — or anything not in the table above — do not run this pipeline.** Stop before Step 1 and redirect: a `QUAL-` story ships via `/ship-it` for its central edits per the story's own **Done when**, and any product-repo *code* it calls for is filed and run as its own `BE-`/`FE-`/`SIM-` work (or a test-only PR via `/ship-it`, as QUAL-007 did). Do **not** create a feature branch or invoke the Evaluator for an unmapped prefix. (`ship-it` already owns `QUAL-NNN` branch naming so the post-merge hook strikes the plan; see `quality.md` and the `ship-it` skill.)
 
 ---
 

@@ -170,6 +170,7 @@ This dimension unifies two concerns that fail together:
 - A status value or severity label that differs from the definition in the governing skill
 - A process step that contradicts the equivalent step in a related agent or skill
 - A cross-reference that names a skill or agent by the wrong path or folder name
+- An API, type, or version name that no longer matches the current codebase or its package versions — e.g. an example or instruction naming a renamed framework type or a tool version the repo has since moved past. An agent can be internally flawless yet drive a stale API; flag the drift against the real code/package, not just against other files.
 
 ---
 

@@ -167,6 +167,8 @@ nav.NavigateTo("/dispatcher");                                  // the real tran
 cut.WaitForElement("[data-testid='persona-avatar']");           // would FAIL on the BUG-026 lifecycle
 ```
 
+*Hosting precondition for the faithful test:* `NavigateTo` re-drives `OnParametersSetAsync` **only** if `MainLayout` is rendered under a context that propagates the location change — the bUnit `FakeNavigationManager` wired so the layout's parameters are re-set on navigation. Rendered standalone, `NavigateTo` won't re-invoke the lifecycle and the test silently reverts to a no-op. Confirm it: the post-navigation assertion must actually **fail** when the lifecycle is wrong (render at `/login`, navigate, assert) — if it passes with the layout's `OnParametersSetAsync` stubbed out, the test isn't exercising the transition it claims to.
+
 **Trap 2 — asserting a handler in isolation when the defect is its position/interaction in the pipeline (BUG-024/028).** A `DelegatingHandler` is correct in isolation but wrong *in the chain*. BUG-024: `SessionExpiryHttpHandler` throws on any 401 — fine alone, but it sits in the **login** `HttpClient`'s pipeline, so it fires on the login-failure 401 before `HttpAuthService` can read it. BUG-028: no handler attached the bearer token to the shared pipeline, so every authenticated call went out anonymous — a service tested with a hand-fed token never proves the *composed* client sends the header.
 
 ```csharp
@@ -187,9 +189,9 @@ await client.GetAsync("/vehicles/available");
 Assert.Equal("Bearer " + token, captureInner.Last.Headers.Authorization?.ToString());
 ```
 
-- **Test through the real route/lifecycle:** drive layout/shell behaviour from the route the real flow starts on (`/login`) and the navigation that follows — never by rendering already-authenticated on the destination route. Where the defect is a parameter-diffing skip, mutate the shared ViewModel's inner state **without** swapping the reference and assert the child re-rendered.
+- **Test through the real route/lifecycle** (the render-then-navigate pattern of Trap 1): never render already-authenticated on the destination route. Where the defect is a parameter-diffing skip, mutate the shared ViewModel's inner state **without** swapping the reference and assert the child re-rendered.
 - **Test through the real handler chain:** assemble the `DelegatingHandler`s in the host's registration order (or resolve the configured `HttpClient`/`IHttpClientFactory` client from DI) and assert the cross-handler interaction — never a single handler with a stubbed inner handler when the defect is its position.
-- **Litmus:** *does this test exercise the real DI wiring / handler chain / navigation lifecycle, or a convenient stand-in (direct route, isolated handler, hand-built client)?* If the integrated composition is stubbed away, it is masking — flag it. This rule is referenced by `story-ai-reviewer` (Checks 2 and 3) for every frontend story.
+- **Litmus:** *does this test exercise the real DI wiring / handler chain / navigation lifecycle, or a convenient stand-in (direct route, isolated handler, hand-built client)?* If the integrated composition is stubbed away, it is masking — flag it. This rule is referenced by `story-ai-reviewer` (Checks 2 and 3b) for every frontend story.
 
 ---
 
