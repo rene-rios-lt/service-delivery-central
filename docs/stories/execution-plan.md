@@ -242,9 +242,9 @@
 
 | Story | Repo | Description |
 |-------|------|-------------|
-| [FE-025](frontend.md) | Frontend | Load the Google Maps JS SDK + supply the API key per host (Web/Mobile/Desktop); no committed key; graceful fallback |
-| [FE-024](frontend.md) | Frontend | Reusable `GoogleMap` Blazor component (JS interop) — markers, polylines, recenter/zoom/fitBounds; state-coloured markers |
-| [FE-026](frontend.md) | Frontend | ServiceRep Active Job — replace the placeholder with the real map (live rep marker, requester pin, route, recenter on state) |
+| ~~[FE-025](frontend.md)~~ | ~~Frontend~~ | ~~Load the Google Maps JS SDK + supply the API key per host (Web/Mobile/Desktop); no committed key; graceful fallback~~ |
+| ~~[FE-024](frontend.md)~~ | ~~Frontend~~ | ~~Reusable `GoogleMap` Blazor component (JS interop) — markers, polylines, recenter/zoom/fitBounds; state-coloured markers~~ |
+| ~~[FE-026](frontend.md)~~ | ~~Frontend~~ | ~~ServiceRep Active Job — replace the placeholder with the real map (live rep marker, requester pin, route, recenter on state)~~ |
 | [FE-027](frontend.md) | Frontend | ServiceRep Job Offer — replace the placeholder with the real map (requester location) |
 | [FE-028](frontend.md) | Frontend | _(optional / stretch)_ Road-accurate route + Directions-API ETA on the active-job and tracking maps |
 
