@@ -131,6 +131,17 @@ A mocked unit test can never verify a cross-process **wire or identity contract*
 
 The **headless smoke is the integration net**: `scripts/local/start.sh` (full system up) followed by `scripts/local/smoke.sh` (drives one job end-to-end by API). Run it before declaring a repo "done" — a repo whose only evidence is a green mocked unit suite has **not** verified its wire contracts. `BUG-016` and `BUG-017` were both caught only by this smoke, never by unit tests.
 
+### Captured-payload contract tests — the positive pattern (QUAL-006)
+
+The anti-masking rule above is stated as prohibitions; this is its positive counterpart. **Every consumed cross-process contract — a REST endpoint or a SignalR event — should be backed by a captured-payload contract test.** The pattern:
+
+- **Real captured payload.** Feed a payload in the **real backend wire shape** (camelCase; enums as the backend serializes them — a *string* for SignalR `JobOfferReceived`, a *number* for REST `/users/me`), captured from the running backend or the committed OpenAPI contract — **never** hand-shaped to the consumer's assumption.
+- **Through the production path.** Deserialize via the **same path the consumer uses at runtime** — `ReadFromJsonAsync` / the `HubConnection`'s `JsonSerializerDefaults.Web` / the client's own `JsonSerializerOptions` — not a hand-built model object and not a re-declared options bag that can drift from production.
+- **Assert typed values with distinct per-field values**, so a field-name or ordinal drift cannot pass coincidentally (the same distinctness the anti-masking rule demands).
+- **Pair with fail-loud deserialization.** A wire enum that arrives unmapped/missing/integer must **throw**, never silently default (a `ServiceTier` to `None`, a `RepState` to `Offline`). That is the BUG-036 invisible-badge / BUG-016 wrong-shape failure mode turned into a red test.
+
+This is the unit-level proof that complements the integration smoke, and the default for any new cross-process contract. Central **ADR-0011** records the wire-contract source of truth (the committed backend OpenAPI doc); reference implementations live in the simulator (`BackendApiClientContractTests`) and frontend (`JobOfferReceivedDeserializationTests`). Litmus: *does a test deserialize a real backend payload through the consumer's own deserializer and assert distinct typed values, and does a drifted enum throw?* If a consumed contract has no such test, call it out.
+
 ---
 
 ## Duplication Check
@@ -171,6 +182,7 @@ This is a quick reference. Each item is governed by its own skill — consult th
 | Unit and integration tests present | this skill (Two Required Levels) |
 | Every test asserts on state or output | this skill (Value-Add Check) |
 | No masking tests (placeholder reuse / fixtures mirroring the wrong contract) | this skill (Anti-Masking Rule) |
+| Each consumed cross-process contract has a captured-payload contract test + fail-loud deserialization | this skill (Captured-payload contract tests) |
 | No duplicate tests | this skill (Duplication Check) |
 | Every AC maps to a test | ac-coverage skill |
 | `GivenA_When_Then` naming | tdd-cycle skill |
@@ -181,6 +193,7 @@ For each test file, verify:
 - [ ] Both unit and integration tests present (if Application or Infrastructure layer touched — see Repo Adaptations below for the equivalent check per repo)
 - [ ] Every test method asserts on state or output, not only on mock interactions
 - [ ] No masking tests — distinct identifiers for distinct concepts; fixtures match the real API shape; every assertion would fail against the wrong/old contract
+- [ ] Each consumed REST endpoint / SignalR event has a captured-payload contract test (real payload through the production deserializer) and fail-loud enum deserialization (drift throws, never defaults)
 - [ ] No two tests are duplicates
 - [ ] Every AC bullet maps to at least one test
 - [ ] All test methods follow `GivenA_When_Then` naming
