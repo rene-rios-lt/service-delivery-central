@@ -142,6 +142,55 @@ The anti-masking rule above is stated as prohibitions; this is its positive coun
 
 This is the unit-level proof that complements the integration smoke, and the default for any new cross-process contract. Central **ADR-0011** records the wire-contract source of truth (the committed backend OpenAPI doc); reference implementations live in the simulator (`BackendApiClientContractTests`) and frontend (`JobOfferReceivedDeserializationTests`). Litmus: *does a test deserialize a real backend payload through the consumer's own deserializer and assert distinct typed values, and does a drifted enum throw?* If a consumed contract has no such test, call it out.
 
+### Frontend composition-root rule — exercise the real DI / handler-chain / lifecycle (QUAL-007)
+
+The masking patterns above are about *data shape*; this is the **frontend** instance of the same disease about *integration*. A frontend test masks when it renders a component in a vacuum or stubs the handler chain away, so a defect in the real composition stays green. A green bUnit suite must mean "the integrated app works," not "an isolated widget renders on a convenient route." This is exactly how the `OnInitializedAsync`-vs-`OnParametersSetAsync` defect (BUG-025/026), the startup auth-flash (BUG-029), and the handler-pipeline gaps (BUG-024 session-expiry firing on the login 401; BUG-028 missing bearer handler) all passed unit tests while the real screen was broken.
+
+**The rule:** for behaviour that depends on **(a)** the DI pipeline / composition root, **(b)** the `HttpClient` `DelegatingHandler` chain, or **(c)** the Blazor render/navigation lifecycle (`OnInitialized` vs `OnParametersSet`, parameter-diffing, the Router reusing a layout instance across navigations), the test **must exercise that real composition**. Rendering a component on a non-representative route, or stubbing the handler chain away, is a **masking test** and must be called out — even if it asserts on rendered state.
+
+**Trap 1 — testing a layout/lifecycle on a non-representative route (BUG-025/026/029).** The real flow starts at `/login` and then navigates to an authenticated route; the Router **reuses** the layout instance, so on that transition `OnInitializedAsync` does **not** fire again — only `OnParametersSetAsync` does. A test that renders the layout *directly* on the authenticated route exercises the once-only init path production never takes, and a fresh render always re-renders its children so it can't see the parameter-diffing skip either.
+
+```csharp
+// MASKING — renders MainLayout straight onto an authenticated route with auth primed.
+// Shell loads, avatar appears, test is green — but it ran OnInitializedAsync (fires once),
+// the path the real login→navigate flow never re-runs. The OnParametersSetAsync /
+// router-reuse defect (BUG-026) is invisible here.
+ctx.Services.AddSingleton<NavigationManager>(new FakeNavigationManager("/dispatcher"));
+var cut = ctx.Render<MainLayout>();
+cut.WaitForElement("[data-testid='persona-avatar']");          // proves nothing about navigation
+
+// FAITHFUL — start at /login, render, THEN navigate, asserting the shell loaded *after*
+// the navigation. This exercises OnParametersSetAsync and the Router reusing the layout.
+var nav = ctx.Services.GetRequiredService<FakeNavigationManager>();   // starts at /login
+var cut = ctx.Render<MainLayout>();
+nav.NavigateTo("/dispatcher");                                  // the real transition
+cut.WaitForElement("[data-testid='persona-avatar']");           // would FAIL on the BUG-026 lifecycle
+```
+
+**Trap 2 — asserting a handler in isolation when the defect is its position/interaction in the pipeline (BUG-024/028).** A `DelegatingHandler` is correct in isolation but wrong *in the chain*. BUG-024: `SessionExpiryHttpHandler` throws on any 401 — fine alone, but it sits in the **login** `HttpClient`'s pipeline, so it fires on the login-failure 401 before `HttpAuthService` can read it. BUG-028: no handler attached the bearer token to the shared pipeline, so every authenticated call went out anonymous — a service tested with a hand-fed token never proves the *composed* client sends the header.
+
+```csharp
+// MASKING — SessionExpiryHttpHandler in a vacuum with a stub inner handler returning 401.
+// Asserts it throws SessionExpiredException. Green — but it is never placed in the login
+// pipeline, so it cannot see that it wrongly fires on the /auth/login 401 (BUG-024).
+var handler = new SessionExpiryHttpHandler(expiry) { InnerHandler = new Stub401() };
+await Assert.ThrowsAsync<SessionExpiredException>(() => Send(handler, "/anything"));
+
+// FAITHFUL — build the chain in the order the host registers it
+// (SessionExpiryHttpHandler → AuthTokenHttpHandler → HttpClientHandler), or resolve the
+// configured HttpClient from the host's DI, then assert the *interaction*:
+//   • a 401 from /auth/login does NOT throw (BUG-024), and
+//   • an authenticated request carries Authorization: Bearer <token> with no per-call code (BUG-028).
+var client = BuildHostHttpClient(captureInner);                 // real registered chain
+await client.PostAsync("/auth/login", badCreds);                // does not throw — login owns its 401
+await client.GetAsync("/vehicles/available");
+Assert.Equal("Bearer " + token, captureInner.Last.Headers.Authorization?.ToString());
+```
+
+- **Test through the real route/lifecycle:** drive layout/shell behaviour from the route the real flow starts on (`/login`) and the navigation that follows — never by rendering already-authenticated on the destination route. Where the defect is a parameter-diffing skip, mutate the shared ViewModel's inner state **without** swapping the reference and assert the child re-rendered.
+- **Test through the real handler chain:** assemble the `DelegatingHandler`s in the host's registration order (or resolve the configured `HttpClient`/`IHttpClientFactory` client from DI) and assert the cross-handler interaction — never a single handler with a stubbed inner handler when the defect is its position.
+- **Litmus:** *does this test exercise the real DI wiring / handler chain / navigation lifecycle, or a convenient stand-in (direct route, isolated handler, hand-built client)?* If the integrated composition is stubbed away, it is masking — flag it. This rule is referenced by `story-ai-reviewer` (Checks 2 and 3) for every frontend story.
+
 ---
 
 ## Duplication Check
@@ -183,6 +232,7 @@ This is a quick reference. Each item is governed by its own skill — consult th
 | Every test asserts on state or output | this skill (Value-Add Check) |
 | No masking tests (placeholder reuse / fixtures mirroring the wrong contract) | this skill (Anti-Masking Rule) |
 | Each consumed cross-process contract has a captured-payload contract test + fail-loud deserialization | this skill (Captured-payload contract tests) |
+| Frontend lifecycle/handler/DI-dependent behaviour tested through the real composition, not a widget in a vacuum | this skill (Frontend composition-root rule) |
 | No duplicate tests | this skill (Duplication Check) |
 | Every AC maps to a test | ac-coverage skill |
 | `GivenA_When_Then` naming | tdd-cycle skill |
@@ -194,6 +244,7 @@ For each test file, verify:
 - [ ] Every test method asserts on state or output, not only on mock interactions
 - [ ] No masking tests — distinct identifiers for distinct concepts; fixtures match the real API shape; every assertion would fail against the wrong/old contract
 - [ ] Each consumed REST endpoint / SignalR event has a captured-payload contract test (real payload through the production deserializer) and fail-loud enum deserialization (drift throws, never defaults)
+- [ ] Frontend lifecycle/handler/DI-dependent behaviour is tested through the real composition — rendered from `/login` then navigated (not directly on the destination route); the real `DelegatingHandler` chain assembled in host order (not a handler in isolation)
 - [ ] No two tests are duplicates
 - [ ] Every AC bullet maps to at least one test
 - [ ] All test methods follow `GivenA_When_Then` naming
@@ -236,6 +287,8 @@ Both ViewModel unit tests and component tests are required for any story that ad
 - Asserts markup structure (e.g. the component renders a `div`) with no behavioural content.
 
 **SignalR client-side ACs:** stories that require the UI to update on a received SignalR event are covered by ViewModel unit tests that simulate the event callback directly (calling the handler method that the hub `On<T>` registration would invoke), plus component tests that assert the re-render. A test that only verifies the `On<T>` registration was wired up — not that the rendered output changed — is flagged as low-value. For the canonical test pattern, see the Frontend section of `.claude/skills/tdd-cycle/SKILL.md`.
+
+**Composition-root behaviour:** when a frontend behaviour depends on the DI pipeline, the `HttpClient` `DelegatingHandler` chain, or the Blazor render/navigation lifecycle, the bUnit/ViewModel test alone is not enough — it must exercise the **real composition** per the **Frontend composition-root rule** (Anti-Masking Rule, above). A layout test rendered on a non-`/login` route, or a handler tested in isolation, is a masking test of this class.
 
 ### Simulator (`service-delivery-simulator`)
 
