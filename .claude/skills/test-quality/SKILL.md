@@ -148,6 +148,8 @@ The masking patterns above are about *data shape*; this is the **frontend** inst
 
 **The rule:** for behaviour that depends on **(a)** the DI pipeline / composition root, **(b)** the `HttpClient` `DelegatingHandler` chain, or **(c)** the Blazor render/navigation lifecycle (`OnInitialized` vs `OnParametersSet`, parameter-diffing, the Router reusing a layout instance across navigations), the test **must exercise that real composition**. Rendering a component on a non-representative route, or stubbing the handler chain away, is a **masking test** and must be called out — even if it asserts on rendered state.
 
+*(In the bUnit examples below, `ctx` is a v2 `BunitContext` instance — `ctx.Render` / `ctx.Services`. A test class may equivalently inherit `BunitContext` and call `Render` / `Services` directly, the style shown in `.claude/skills/tdd-cycle/SKILL.md`.)*
+
 **Trap 1 — testing a layout/lifecycle on a non-representative route (BUG-025/026/029).** The real flow starts at `/login` and then navigates to an authenticated route; the Router **reuses** the layout instance, so on that transition `OnInitializedAsync` does **not** fire again — only `OnParametersSetAsync` does. A test that renders the layout *directly* on the authenticated route exercises the once-only init path production never takes, and a fresh render always re-renders its children so it can't see the parameter-diffing skip either.
 
 ```csharp
