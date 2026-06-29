@@ -261,3 +261,30 @@ The meta-lesson from the bug history is that browser-WASM, WKWebView, and MAUI-n
 **Depends on:** QUAL-004 (Appium suite + its overlay/WebView-context strategy), and the merged FE-023 / BE-028 / SIM-009.
 
 **Done when:** the go-off-duty and heartbeat-timeout scenarios exist in the Appium suite and run green against a live system; any defect the live run surfaces is filed and fixed; the frontend test-project code ships via `/master`; this story is struck in `execution-plan.md`.
+
+---
+
+## QUAL-010 — Resolve the QUAL-007 skills-audit backlog (pipeline-skill drift + the missing `/master` QUAL redirect)
+
+**As a** maintainer of the AI pipeline,
+**I want** the drift and gaps surfaced by the `/audit-skills` run on the QUAL-007 changes resolved — chiefly the missing `QUAL-`→`/ship-it` routing rule in `/master`, plus stale test-API references and a staleness blind spot in the audit skills themselves —
+**so that** the skill set stays self-consistent and an operator never has to bridge from memory a routing decision the skills should encode.
+
+**Motivation**
+Running `/audit-skills` against the QUAL-007 changes scored the set 9.0/10 with no contradictions, but produced a 7-item backlog. The highest-value item isn't in the changed file: `/master`'s Working Repo Resolution table maps `BE-`/`SIM-`/`FE-`/`BUG-` but says nothing about a `QUAL-` (or otherwise unmapped) prefix, so an operator who runs `/master QUAL-NNN` has to know from memory to redirect to `/ship-it`. `ship-it` already documents that it owns `QUAL-NNN`; `/master` is the half that stays silent. The rest are low-effort hygiene: a stale bUnit v1 API reference in `tdd-cycle`, two consistency nits in the new QUAL-007 rule, a missing back-reference, and the audit skills having no first-class signal for a stale API/version reference (exactly the class that let `tdd-cycle`'s `TestContext` drift unnoticed).
+
+**Acceptance Criteria:**
+- **`/master` documents the unmapped-prefix redirect** (`.claude/skills/master/SKILL.md`): a `QUAL-` prefix — or any story prefix with no working-repo mapping — is out-of-pipeline governance work; `/master` redirects it to `/ship-it` and does **not** attempt a TDD pipeline run. Stated in the Working Repo Resolution section so the routing is encoded, not remembered.
+- **`tdd-cycle` uses the current bUnit API** (`.claude/skills/tdd-cycle/SKILL.md`): the frontend component-test example uses bUnit v2 (`BunitContext` / `Render<T>()`), not the stale v1 `new TestContext()`, matching the frontend `CLAUDE.md` and the actual `Client.Tests` project.
+- **`test-quality` composition-root rule notes the hosting precondition** (`.claude/skills/test-quality/SKILL.md`): the faithful "render at `/login` then navigate" pattern only exercises the transition if the layout is hosted so navigation drives `OnParametersSetAsync` — call this out so a faithful-looking test does not silently skip the lifecycle it targets.
+- **`test-quality` references the precise reviewer check**: the enforcement pointer reads "Checks 2 and 3b" (the masking sub-check in `story-ai-reviewer`), not "Checks 2 and 3".
+- **`test-quality` trims the redundant restatement**: the "render from `/login` then navigate" guidance is stated once in the rule body plus the quick-ref checklist + table — drop the duplicate bullet.
+- **`audit-skills` and `audit-agents` gain a staleness signal** (`.claude/skills/audit-skills/SKILL.md`, `.claude/skills/audit-agents/SKILL.md`): a Cross-File Alignment red flag for an API/type/version name that no longer matches the current codebase or package versions.
+- **`solid-principles` cross-references `clean-architecture`** (`.claude/skills/solid-principles/SKILL.md`) for layer placement (the reverse link already exists in `clean-architecture`).
+- The full set still passes `./scripts/utils/validate-ai-system.sh`.
+
+**Out of scope:** re-auditing the full skill set; changing pipeline stages; any product-repo code.
+
+**Depends on:** QUAL-007 (the change these findings were raised against).
+
+**Done when:** the listed `master` / `tdd-cycle` / `test-quality` / `audit-skills` / `audit-agents` / `solid-principles` edits land and pass `validate-ai-system.sh`; shipped via `/ship-it`; this story is struck in `execution-plan.md`.
