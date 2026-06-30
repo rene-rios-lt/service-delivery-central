@@ -52,7 +52,20 @@ trap cleanup EXIT
 if curl -s "$BACKEND_URL/health" > /dev/null 2>&1 || curl -s "$BACKEND_URL" > /dev/null 2>&1; then
   echo "==> Backend already up on $BACKEND_URL — reusing."
 else
-  echo "==> Starting backend + simulator (start.sh) ..."
+  # FE-016/AC-3 determinism (the BUG-032/040 lesson, requester side). The Playwright suite runs the
+  # FULL system with the simulator operating rep1..rep8 — unlike the Appium suite, which runs
+  # backend-only (SD_SKIP_SIMULATOR=1). The requester pending→tracking auto-transition fires only after
+  # a matched rep ACCEPTS, but the simulator's default ~15% random decline can leave a Gold DTC-001
+  # request with no remaining Available, equipment-matching candidate (the other HydraulicTool reps are
+  # busy on ambient jobs), so the request stays Pending and RepAssigned never fires (two confirmed
+  # timeouts). Forcing the auto-decline rate to 0 for the E2E run makes every offer an accept, so the
+  # first match to any Available HydraulicTool rep assigns deterministically. start.sh launches the
+  # simulator via `dotnet run` in a subshell that inherits this env, and .NET config maps the
+  # double-underscore key onto SimulatorOptions.AutoDeclineRatePercent (overrides appsettings.json) —
+  # the same mechanism test-appium.sh uses for JobOfferExpiry__OfferExpirySeconds. Overridable by the
+  # caller (export it before invoking) for a run that wants the default decline behaviour.
+  export Simulator__AutoDeclineRatePercent="${Simulator__AutoDeclineRatePercent:-0}"
+  echo "==> Starting backend + simulator (start.sh; Simulator__AutoDeclineRatePercent=$Simulator__AutoDeclineRatePercent) ..."
   "$SCRIPT_DIR/start.sh" || { echo "!! start.sh failed" >&2; exit 1; }
   STARTED_BACKEND=1
 fi
