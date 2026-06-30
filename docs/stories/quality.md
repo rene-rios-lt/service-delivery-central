@@ -288,3 +288,28 @@ Running `/audit-skills` against the QUAL-007 changes scored the set 9.0/10 with 
 **Depends on:** QUAL-007 (the change these findings were raised against).
 
 **Done when:** the listed `master` / `tdd-cycle` / `test-quality` / `audit-skills` / `audit-agents` / `solid-principles` edits land and pass `validate-ai-system.sh`; shipped via `/ship-it`; this story is struck in `execution-plan.md`.
+
+---
+
+## QUAL-011 — Consolidate shared design-system tokens into a global stylesheet (kill the recurring scoped-CSS gap)
+
+**As a** frontend developer building new persona screens,
+**I want** the shared design-system tokens (`sd-card`, `sd-badge` + tier modifiers, `sd-btn` + variants, `sd-banner`, `sd-field`, `sd-select`, `sd-muted`) defined once in a global stylesheet loaded by every host, instead of duplicated inside each page's Blazor scoped CSS,
+**so that** a new page that reuses a token gets it styled automatically, rather than rendering structurally-present-but-visually-broken until someone notices.
+
+**Motivation**
+These tokens are currently defined only as Blazor *scoped* CSS on specific pages (`JobOffer.razor.css`, `ActiveJob.razor.css`, `RepIdle.razor.css`), so a `b-<hash>` attribute scope-locks them to those components. Every new page that reuses a token re-discovers that it doesn't apply: it shipped as the FE-011/FE-012 unstyled-map regression, then recurred as **FE-015 finding #1** (unstyled button/select/banner) and **FE-016 finding #1** (unstyled tier badge/card) — three times, each caught only by the `story-ai-reviewer` Check 10c rendered-fidelity analysis, never by the green bUnit suite (which asserts class-string presence, not applied style). Each was patched per-page (a new `.razor.css` redefining the tokens + a `*StyleTests` guard). That works but perpetuates duplication and guarantees the next requester/dispatcher page hits the same wall. Promote the genuinely-shared tokens into one global sheet and delete the per-page copies.
+
+**Acceptance Criteria:**
+- A single global stylesheet (e.g. `design-system.css` under `Client.UI/wwwroot`) defines the shared tokens: `sd-card` (+ `sd-card__body`), `sd-badge` + `sd-badge__icon` + `sd-badge--gold` / `--silver` / `--bronze`, `sd-btn` + `--primary` / `--outline` / `--block` / `--lg` + `:disabled`, `sd-banner` + `sd-banner__icon`, `sd-field` + `sd-field__label`, `sd-select`, `sd-muted`.
+- The stylesheet is loaded by **all three** host pages (`Web`, `Desktop`, `Mobile` `wwwroot/index.html`) — host parity, with a per-host verification step (the same rule that governs the MudBlazor assets per BUG-020→022).
+- The duplicated per-page scoped definitions of those shared tokens (`JobOffer` / `ActiveJob` / `RepIdle` / `SubmitRequest` / `RequesterPending`) are removed in favour of the global sheet; genuinely page-specific rules stay scoped.
+- The shared design tokens (`--sd-primary`, `--sd-tier-*`, `--sd-elev-*`, etc.) resolve consistently — no visual change to any already-shipped page.
+- **No regression on the already-merged, live-verified pages** (`JobOffer`, `ActiveJob`, `RepIdle`, `SubmitRequest`, `RequesterPending`): re-verify each live (the per-runtime smokes + the relevant Playwright/Appium scenarios) — this is a refactor whose whole risk is silent visual regression.
+- The per-page `*StyleTests` guards (`SubmitRequestStyleTests`, the FE-016 equivalent) are retargeted to assert the tokens resolve from the global sheet, or replaced by a single global-coverage guard — kept as a genuine net, not deleted.
+
+**Out of scope:** changing any token *value* or visual design (pure consolidation, not a restyle); non-shared page-specific rules; introducing a second component/CSS framework.
+
+**Depends on:** the pages that consume the tokens (FE-008/011/012/015/016 — all merged). Best taken before the remaining requester/dispatcher screens (FE-003/004/005/006/017/018/019) are built, so they consume the global sheet rather than each re-hitting the gap.
+
+**Done when:** the global stylesheet exists, is loaded by all three hosts, the per-page duplicates are removed, every affected page is re-verified live with no visual regression, and the story is struck in `execution-plan.md`. **Ships via `/master`** (frontend production CSS + host-bootstrapping code with tests + live re-verification — the product-code QUAL case, like QUAL-003/004), **not** `/ship-it`.
