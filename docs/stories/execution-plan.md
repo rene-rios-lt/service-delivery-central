@@ -201,7 +201,7 @@
 |-------|------|-------------|
 | ~~[FE-015](frontend.md)~~ | ~~Frontend~~ | ~~Request submission form (map + DTC picker)~~ |
 | ~~[FE-016](frontend.md)~~ | ~~Frontend~~ | ~~Pending spinner — waiting for rep assignment~~ |
-| [FE-017](frontend.md) | Frontend | Live rep tracking map with ETA |
+| ~~[FE-017](frontend.md)~~ | ~~Frontend~~ | ~~Live rep tracking map with ETA~~ |
 | [FE-018](frontend.md) | Frontend | Redirect notification |
 | [FE-019](frontend.md) | Frontend | Service complete screen |
 
@@ -231,7 +231,7 @@
 | Story | Repo | Description |
 |-------|------|-------------|
 | ~~[BE-030](backend.md)~~ | ~~Backend~~ | ~~`GET /rep/active-job-state` — rep position, requester location, ETA, rep state for the FE-011 map poll~~ |
-| [BE-031](backend.md) | Backend | Add `VehicleRegistration` to the `RepAssigned` broadcast (both emit sites) so FE-017 can show the arriving vehicle |
+| ~~[BE-031](backend.md)~~ | ~~Backend~~ | ~~Add `VehicleRegistration` to the `RepAssigned` broadcast (both emit sites) so FE-017 can show the arriving vehicle~~ |
 
 **Depends on:** Phase 5 (rep state machine), BE-012 (active request read), BE-008 (position storage).
 **Exit criteria:** The FE-011 active job navigation view renders a moving rep marker, live ETA, and enables "I've Arrived" at the correct distance — all driven by the running backend with no stubs.
