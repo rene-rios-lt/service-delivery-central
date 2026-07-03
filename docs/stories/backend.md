@@ -472,3 +472,22 @@
 - Requires ServiceRep role
 - Read-only; no side effects
 - The frontend `IActiveJobService` (FE-011) polls this endpoint every ~3 seconds; the response shape must match `ActiveJobContext` in `ServiceDelivery.Client.Core/Models/ActiveJobContext.cs`
+
+---
+
+### BE-031 — Include vehicle registration in the `RepAssigned` broadcast
+**As a** Requester,
+**I want to** see which service vehicle my assigned rep is driving on the live tracking screen,
+**so that** I can identify the vehicle arriving at my location.
+
+**Context:** The `RequesterHub` `RepAssigned` event currently carries `RepAssignedPayload { RepId, RepName, EtaMinutes, Latitude, Longitude }`. The FE-017 requester tracking screen displays the arriving vehicle as **"Vehicle {registration} · Service Rep"** per its mockup, but the vehicle registration is not on the wire, so the frontend cannot source it. This story adds the registration to the existing broadcast contract — it does **not** add a new endpoint or change `RepPositionUpdated`. Both sites that emit `RepAssigned` already have the rep's `Vehicle` in scope (`AcceptJobOfferCommandHandler` loads it in `ComputeEtaAndPositionAsync` via `IVehicleRepository.GetByClaimedRepIdAsync`; `RedirectRepCommandHandler.BroadcastAsync` receives `Vehicle? vehicle` as a parameter), so sourcing `vehicle.Registration` is a minimal, localised change.
+
+**Acceptance Criteria:**
+- `RepAssignedPayload` gains a `VehicleRegistration` (`string`) field, serialised as `vehicleRegistration` on the wire (System.Text.Json Web defaults / camelCase), consistent with the other fields.
+- The **Job Offer accept** emit site (`AcceptJobOfferCommandHandler`) populates `VehicleRegistration` from the accepting rep's claimed vehicle's `Registration`.
+- The **dispatcher redirect** emit site (`RedirectRepCommandHandler`) populates `VehicleRegistration` from the redirected rep's vehicle's `Registration`.
+- When the rep has no claimed vehicle (or the registration is unknown), `VehicleRegistration` is the **empty string**, never `null` — mirroring the existing `rep?.Name ?? string.Empty` convention so the frontend renders gracefully.
+- Covered by handler tests at **both** emit sites asserting the emitted `RepAssignedPayload.VehicleRegistration` equals the rep's claimed vehicle's registration, plus a captured-payload/contract test guarding the `vehicleRegistration` wire field name and casing (ADR-0011).
+- No change to `RepPositionUpdated`; no new endpoint; read-only enrichment of an existing broadcast.
+
+**Consumed by:** [FE-017](../stories/frontend.md#fe-017--live-rep-tracking) — the frontend `RepAssignedPayload` model mirrors the new field and renders the vehicle registration on the tracking screen. Frontend field name/casing (`VehicleRegistration` → `vehicleRegistration`) is locked to this contract.
