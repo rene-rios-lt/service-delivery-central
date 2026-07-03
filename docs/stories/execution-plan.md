@@ -231,6 +231,7 @@
 | Story | Repo | Description |
 |-------|------|-------------|
 | ~~[BE-030](backend.md)~~ | ~~Backend~~ | ~~`GET /rep/active-job-state` — rep position, requester location, ETA, rep state for the FE-011 map poll~~ |
+| [BE-031](backend.md) | Backend | Add `VehicleRegistration` to the `RepAssigned` broadcast (both emit sites) so FE-017 can show the arriving vehicle |
 
 **Depends on:** Phase 5 (rep state machine), BE-012 (active request read), BE-008 (position storage).
 **Exit criteria:** The FE-011 active job navigation view renders a moving rep marker, live ETA, and enables "I've Arrived" at the correct distance — all driven by the running backend with no stubs.
