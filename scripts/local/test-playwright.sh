@@ -40,6 +40,12 @@ cleanup() {
   if [ "$STARTED_WEB" -eq 1 ] && [ -n "$WEB_PID" ]; then
     echo "==> Stopping web host (PID $WEB_PID) ..."
     kill "$WEB_PID" 2>/dev/null || true
+    # `dotnet run` spawns the blazor devserver as a grandchild that outlives the killed wrapper subshell,
+    # leaving the web port bound and breaking the next run. Since STARTED_WEB=1 means this script started
+    # the host, reap whatever is still listening on the web port.
+    WEB_PORT="${WEB_URL##*:}"
+    LEFTOVER="$(lsof -tnP -iTCP:"$WEB_PORT" -sTCP:LISTEN 2>/dev/null)"
+    [ -n "$LEFTOVER" ] && kill $LEFTOVER 2>/dev/null || true
   fi
   if [ "$STARTED_BACKEND" -eq 1 ]; then
     echo "==> Stopping backend + simulator (stop.sh) ..."
