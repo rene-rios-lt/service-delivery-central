@@ -1077,3 +1077,60 @@ Clear `IClaimedVehicleStore` on logout (in `ShellViewModel.LogoutAsync` or via t
 - After logout, `IClaimedVehicleStore.CurrentVehicle` is null (verified by a test on the real logout side-effect / `ShellViewModel.LogoutAsync`).
 - Go-off-duty / heartbeat-timeout (FE-023) also clears the store.
 - No regression to BUG-041 (release still finds the claimed vehicle during an active session) or to re-login → take-over.
+
+---
+
+## BUG-044 — Requester tracking app-bar shows the default title/subtitle (not the page-set title) and a faint duplicate avatar on live render
+
+- **Status:** **Open**
+- **Severity:** Low (cosmetic — the requester tracking screen's `PersonaShell` app bar shows the generic "Service Delivery / Requester" instead of the page-set title, e.g. "Your technician is on the way" and, after a redirect, "A new technician is on the way"; a faint duplicate-avatar artifact also renders. The feature itself works — banner, map, ETA, and the FE-018 redirect flow are all correct.)
+- **Repo / Area:** **Frontend** — `PersonaShell` app-bar title wiring vs. the requester tracking page's `Shell.SetTitle(...)` call (`src/ServiceDelivery.Client.UI/Shared/Components/PersonaShell.razor` and `Features/Requester/Pages/RequesterTracking.razor`). Likely the same `PersonaShell` render-timing family as BUG-025 / BUG-026 (parameter-diff / lifecycle), applied to the page-set title path.
+- **Related stories:** `FE-017` (live rep tracking — the baseline screen), `FE-018` (redirect notification — its AC-1 title swap is the case that surfaced this), BUG-025 / BUG-026 (`PersonaShell` re-render lifecycle).
+- **Found:** FE-018 live E2E (`test-playwright.sh`) rendered-fidelity review (Check 10c). The redirected tracking screenshot showed the default app-bar title/subtitle rather than the redirect title, plus a faint duplicate avatar. The **identical** artifact appears on the FE-017 baseline tracking screenshot from the same run — so it is a pre-existing tracking-shell rendering matter, **not** an FE-018 regression. FE-018's title-swap logic is correct and asserted at bUnit level; the gap is that the page-set title is not reflected in the live-rendered shell.
+
+**Summary**
+On the requester tracking view, the `PersonaShell` app bar renders its default title/subtitle instead of the value the page sets via `Shell.SetTitle(...)`, and a faint second avatar renders over the first. Because the tracking screen sets its title after initial render (and again on redirect), the shell appears not to pick up the page-set title live.
+
+**Expected**
+The tracking app bar shows the page-set title — "Your technician is on the way" normally, "A new technician is on the way" after a redirect (FE-018 AC-1) — with a single avatar.
+
+**Actual**
+The app bar shows the generic "Service Delivery / Requester" title/subtitle and a faint duplicate avatar, both on the FE-017 baseline and the FE-018 redirected screen.
+
+**Proposed fix (via `/master`, as a small FE fix or folded into a PersonaShell chrome pass)**
+Investigate why the requester tracking page's `Shell.SetTitle(...)` is not reflected in the live-rendered `PersonaShell` (parameter-diff / lifecycle, cf. BUG-025/026), and resolve the duplicate-avatar artifact on this route. Add a live/rendered assertion (or Playwright check) that the tracking app-bar title matches the page-set value.
+
+**Acceptance criteria (bug resolved when):**
+- On the live requester tracking screen, the app-bar title reflects `Shell.SetTitle(...)` — "Your technician is on the way", and "A new technician is on the way" after a redirect.
+- Only one avatar renders in the tracking app bar.
+- Verified against the FE-017 tracking and FE-018 redirect mockups on a running app (not bUnit alone).
+
+---
+
+## BUG-045 — Concurrent take-overs collide on the first-listed available vehicle, so a second assignable rep can't be acquired cleanly on a clean live start
+
+- **Status:** **Open**
+- **Severity:** Low–Medium (blocks acquiring multiple distinct idle reps concurrently via the take-over path; surfaced as E2E-setup friction but also affects two humans taking over vehicles at the same time. Single take-over / single assignment is unaffected — this is why single-rep flows like FE-017 tracking pass.)
+- **Repo / Area:** **Backend / Simulator** — `GET /vehicles/available` (`src/ServiceDelivery.Application/Features/Vehicles/Queries/GetAvailableVehiclesQueryHandler.cs`) + the take-over/claim path (`TakeOverVehicleCommandHandler`). **Follow-on to BUG-027** (do not contradict it — BUG-027's fix to return unclaimed-or-idle-claimed vehicles is correct; this is a distinct concurrency/ergonomics facet exposed by it).
+- **Related stories:** BUG-027 (`/vehicles/available` idle-claimed semantics — Fixed), `FE-007` (take over an idle vehicle), ADR-0009 (human takeover). Surfaced by `FE-018` redirect E2E.
+- **Found:** FE-018 redirect E2E setup. A redirect needs a *second* rep to accept the displaced job. When the test tried to acquire spare reps via the take-over path, `GET /vehicles/available` returned the simulator's idle-claimed vehicles with a stable ordering (V-001 first), so concurrent take-over attempts all targeted the same vehicle and all but one returned 409 — effectively only one assignable rep on a clean start. The E2E worked around it by claiming distinct vehicles (V-002 / V-003) directly for the spare reps.
+
+**Summary**
+`GET /vehicles/available` correctly (per BUG-027) reports vehicles that are unclaimed or claimed by an idle rep, but gives no signal to distinguish or spread concurrent take-overs. Because the list ordering is stable, multiple simultaneous take-over attempts converge on the first-listed vehicle (V-001) and collide (409), so acquiring several distinct idle reps at once is not reliably possible.
+
+**Root cause (hypothesis — needs backend confirmation)**
+The read model (`/vehicles/available`) and the claim command have no reservation/spread mechanism; the 409 on a taken vehicle is correct optimistic-concurrency behaviour, but the deterministic first-listed vehicle makes collisions systematic rather than rare. It is unclear whether the intended fix is server-side (e.g. surface which vehicles are simulator-driven vs. truly free, or a claim-next-available endpoint) or client-side (retry on 409 against the next candidate).
+
+**Expected**
+Multiple clients (or an automated harness) can acquire distinct idle vehicles concurrently without systematically colliding on the same first-listed vehicle.
+
+**Actual**
+Concurrent take-overs collide on V-001; all but one 409, leaving effectively one assignable rep on a clean live start.
+
+**Proposed fix (via `/master` once triaged)**
+Triage whether this is a backend endpoint concern (spread/reserve, or a claim-next-available affordance) or a documented client retry-on-409 pattern; implement and cover with a test that acquires ≥2 distinct idle reps concurrently. Until fixed, tests should claim distinct vehicles explicitly (as the FE-018 E2E now does).
+
+**Acceptance criteria (bug resolved when):**
+- Two concurrent take-over requests acquire two *distinct* idle vehicles without a spurious 409, or a documented retry pattern reliably yields distinct vehicles.
+- The FE-018 redirect E2E no longer needs to hand-pick V-002 / V-003 to set up a second rep (or the retry pattern is what makes it deterministic).
+- No regression to BUG-027 (the take-over list still includes idle-claimed vehicles) or to single take-over.
