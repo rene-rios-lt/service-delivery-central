@@ -202,7 +202,7 @@
 | ~~[FE-015](frontend.md)~~ | ~~Frontend~~ | ~~Request submission form (map + DTC picker)~~ |
 | ~~[FE-016](frontend.md)~~ | ~~Frontend~~ | ~~Pending spinner — waiting for rep assignment~~ |
 | ~~[FE-017](frontend.md)~~ | ~~Frontend~~ | ~~Live rep tracking map with ETA~~ |
-| [FE-018](frontend.md) | Frontend | Redirect notification |
+| ~~[FE-018](frontend.md)~~ | ~~Frontend~~ | ~~Redirect notification~~ |
 | [FE-019](frontend.md) | Frontend | Service complete screen |
 
 **Depends on:** Phase 8, Phases 3–5 (service request + job offer + state transition endpoints)
