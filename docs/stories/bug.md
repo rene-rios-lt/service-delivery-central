@@ -1134,3 +1134,57 @@ Triage whether this is a backend endpoint concern (spread/reserve, or a claim-ne
 - Two concurrent take-over requests acquire two *distinct* idle vehicles without a spurious 409, or a documented retry pattern reliably yields distinct vehicles.
 - The FE-018 redirect E2E no longer needs to hand-pick V-002 / V-003 to set up a second rep (or the retry pattern is what makes it deterministic).
 - No regression to BUG-027 (the take-over list still includes idle-claimed vehicles) or to single take-over.
+
+---
+
+## BUG-046 — Appium `ActiveJobTests.…GoogleMapContainerIsPresentWithOverlayTestIds` fails with `StaleElementReferenceException` (map element read after Maps-SDK DOM churn)
+
+- **Status:** Open
+- **Severity:** Low (test-only fragility — the feature is fine: the ActiveJob Google map and its rep-marker / requester-pin / route-line overlays all render. But it leaves the QUAL-004 Appium suite permanently 1-red, which erodes the "green suite = healthy" signal and can mask a future real regression on this screen.)
+- **Repo / Area:** **Frontend** — Appium E2E test `tests/ServiceDelivery.Client.Appium/ActiveJobTests.cs:97` (`GivenRep1AcceptedJob_WhenActiveJobScreenLoads_ThenGoogleMapContainerIsPresentWithOverlayTestIds`). Part of the QUAL-004 Appium suite. Same live-Appium timing-race family flagged in the App-Nap / WebView notes, but here it reproduces deterministically, not just under load.
+- **Related stories:** `FE-026` (real Google map on the active-job screen), `FE-013` (active job / mark complete), `QUAL-004` (Appium end-to-end suite).
+- **Found:** QUAL-011 live re-verification (`test-appium.sh`). Confirmed **pre-existing, not a QUAL-011 regression**: the isolated test fails **identically on `main`** with QUAL-011's changes stashed out (same `StaleElementReferenceException`, ~25–26 s, both branches), and QUAL-011 changed only `ActiveJob.razor.css` — no markup, no `data-testid`, no render logic — so it is structurally incapable of causing a DOM-detachment race. Also confirmed it is **not** load-dependent (reproduces in a single-test run, unlike the `TakeOverFirstIdleVehicle`-under-load flake).
+
+**Summary**
+The test captures the `[data-testid='google-map']` element (line 91), then polls for three map overlays (`rep-marker`, `requester-pin`, `route-line`, lines 92–94) that the Google Maps SDK stamps into the DOM as it initialises. That SDK-driven DOM churn detaches the originally-captured container node, so reading `map.Displayed` at line 97 throws `StaleElementReferenceException`.
+
+**Expected**
+The test reliably asserts the map container is present and displayed alongside its three overlays.
+
+**Actual**
+`Assert.That(map.Displayed, Is.True)` throws `OpenQA.Selenium.StaleElementReferenceException: Element is no longer attached to the DOM` because the `map` reference captured before the overlay polling is stale by the time `.Displayed` is read.
+
+**Proposed fix (via `/master`)**
+Re-find the element immediately before asserting rather than reading a property on a reference captured several SDK-mutations earlier — e.g. assert presence via `Assert.That(Driver.FindElements(By.CssSelector("[data-testid='google-map']")), Is.Not.Empty)` at the assertion point, or re-query `google-map` and read `.Displayed` on the fresh reference. Keep the overlay assertions (they already re-query). Do not weaken the assertion to a no-op — it must still fail if the map container genuinely disappears.
+
+**Acceptance criteria (bug resolved when):**
+- `GivenRep1AcceptedJob_WhenActiveJobScreenLoads_ThenGoogleMapContainerIsPresentWithOverlayTestIds` passes green, both in isolation and in the full Appium suite, across repeated runs.
+- The assertion still fails if the `google-map` container (or any of the three overlays) is genuinely absent — verified by a deliberate temporary break.
+- No new `StaleElementReferenceException` introduced elsewhere in `ActiveJobTests`.
+
+---
+
+## BUG-047 — ActiveJob ETA/distance card overlaps the Google Map's Map/Satellite controls; relocate it from center-top to center-bottom
+
+- **Status:** Open
+- **Severity:** Low–Medium (usability — the ETA/distance card sits at the top-center of the active-job map and overlaps Google's map-type (Map / Satellite) control, so the rep cannot toggle the map type. The ETA/distance info itself renders correctly; this is a placement collision, not missing data.)
+- **Repo / Area:** **Frontend** — `src/ServiceDelivery.Client.UI/Features/ServiceRep/Pages/ActiveJob.razor.css` (the `.sd-eta` rule, currently `position: absolute; top: 12px; left: 50%; transform: translateX(-50%)`) and its markup in `Features/ServiceRep/Pages/ActiveJob.razor` (`<div class="sd-eta" data-testid="eta-card">`, with `data-testid='eta-minutes'` / `eta-distance`).
+- **Related stories:** `FE-013` (active job screen), `FE-026` (real Google map replacing the CSS/SVG placeholder — introduced the map-type control that the card now collides with). Independent of `QUAL-011` (QUAL-011 keeps `.sd-eta` as a page-specific scoped rule and does not move it — this is a pre-existing placement issue, not a consolidation regression).
+- **Found:** QUAL-011 live re-verification of the ActiveJob mobile screen — the center-top ETA/distance card overlays the Google Maps Map/Satellite buttons.
+
+**Summary**
+`.sd-eta` is absolutely positioned at `top: 12px; left: 50%` (top-center of the map). Google Maps renders its map-type (Map/Satellite) control near the top of the map canvas, so the ETA/distance card covers those buttons and blocks interaction.
+
+**Expected**
+The ETA/distance card is visible without obscuring the Google Maps map-type controls (or any other native map control).
+
+**Actual**
+The center-top ETA/distance card overlaps the Map/Satellite buttons, making them unreachable.
+
+**Proposed fix (via `/master`)**
+Move the ETA/distance card from center-top to **center-bottom** of the map: change `.sd-eta` from `top: 12px` to `bottom: 12px` (keep `left: 50%` + `translateX(-50%)` for horizontal centering). Verify the new position clears Google's bottom controls too — the zoom control (bottom-right), the Google logo (bottom-left), and the Terms/ToS link (bottom-right) — center-bottom should sit between them, but confirm live. Update/keep any bUnit assertion for `data-testid='eta-card'` and add a note that final placement is confirmed live (applied position is only verifiable on a running map).
+
+**Acceptance criteria (bug resolved when):**
+- On the live ActiveJob screen, the ETA/distance card renders at center-bottom of the map and does **not** overlap the Map/Satellite control (nor the zoom, Google logo, or ToS controls).
+- The ETA minutes and distance values still render correctly (`data-testid='eta-minutes'`, `eta-distance`).
+- Verified live on the mobile ServiceRep active-job screen (Appium / manual), not bUnit alone.
