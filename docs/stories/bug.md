@@ -1166,7 +1166,7 @@ Re-find the element immediately before asserting rather than reading a property 
 
 ## BUG-047 — ActiveJob ETA/distance card overlaps the Google Map's Map/Satellite controls; relocate it from center-top to center-bottom
 
-- **Status:** Open
+- **Status:** Fixed
 - **Severity:** Low–Medium (usability — the ETA/distance card sits at the top-center of the active-job map and overlaps Google's map-type (Map / Satellite) control, so the rep cannot toggle the map type. The ETA/distance info itself renders correctly; this is a placement collision, not missing data.)
 - **Repo / Area:** **Frontend** — `src/ServiceDelivery.Client.UI/Features/ServiceRep/Pages/ActiveJob.razor.css` (the `.sd-eta` rule, currently `position: absolute; top: 12px; left: 50%; transform: translateX(-50%)`) and its markup in `Features/ServiceRep/Pages/ActiveJob.razor` (`<div class="sd-eta" data-testid="eta-card">`, with `data-testid='eta-minutes'` / `eta-distance`).
 - **Related stories:** `FE-013` (active job screen), `FE-026` (real Google map replacing the CSS/SVG placeholder — introduced the map-type control that the card now collides with). Independent of `QUAL-011` (QUAL-011 keeps `.sd-eta` as a page-specific scoped rule and does not move it — this is a pre-existing placement issue, not a consolidation regression).
