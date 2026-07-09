@@ -1139,7 +1139,7 @@ Triage whether this is a backend endpoint concern (spread/reserve, or a claim-ne
 
 ## BUG-046 — Appium `ActiveJobTests.…GoogleMapContainerIsPresentWithOverlayTestIds` fails with `StaleElementReferenceException` (map element read after Maps-SDK DOM churn)
 
-- **Status:** Open
+- **Status:** Fixed
 - **Severity:** Low (test-only fragility — the feature is fine: the ActiveJob Google map and its rep-marker / requester-pin / route-line overlays all render. But it leaves the QUAL-004 Appium suite permanently 1-red, which erodes the "green suite = healthy" signal and can mask a future real regression on this screen.)
 - **Repo / Area:** **Frontend** — Appium E2E test `tests/ServiceDelivery.Client.Appium/ActiveJobTests.cs:97` (`GivenRep1AcceptedJob_WhenActiveJobScreenLoads_ThenGoogleMapContainerIsPresentWithOverlayTestIds`). Part of the QUAL-004 Appium suite. Same live-Appium timing-race family flagged in the App-Nap / WebView notes, but here it reproduces deterministically, not just under load.
 - **Related stories:** `FE-026` (real Google map on the active-job screen), `FE-013` (active job / mark complete), `QUAL-004` (Appium end-to-end suite).
