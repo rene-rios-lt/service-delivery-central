@@ -1188,3 +1188,36 @@ Move the ETA/distance card from center-top to **center-bottom** of the map: chan
 - On the live ActiveJob screen, the ETA/distance card renders at center-bottom of the map and does **not** overlap the Map/Satellite control (nor the zoom, Google logo, or ToS controls).
 - The ETA minutes and distance values still render correctly (`data-testid='eta-minutes'`, `eta-distance`).
 - Verified live on the mobile ServiceRep active-job screen (Appium / manual), not bUnit alone.
+
+---
+
+## BUG-048 — Appium `TakeOverFirstIdleVehicle` precondition flakes under full-suite load: bare `FindElement('idle-vehicle-row')` races the async idle-list load
+
+- **Status:** Open
+- **Severity:** Low–Medium (test-only fragility — the take-over feature works; but the shared `TakeOverFirstIdleVehicle()` helper is a precondition for several Appium scenarios, so its flake fails whichever test happens to run it under load, intermittently 1-reddening the QUAL-004 Appium suite and eroding the "green suite = healthy" signal. Non-deterministic, so it can mask — or be mistaken for — a real regression).
+- **Repo / Area:** **Frontend** — Appium E2E shared helper `tests/ServiceDelivery.Client.Appium/AppiumFixture.cs:319` (`TakeOverFirstIdleVehicle()`), used as a precondition by the FE-020 / FE-008 / FE-011 / QUAL-009 scenarios. Surfaced most recently through `HeartbeatGoOffDutyTests.GivenRepOnDuty_WhenAppIsClosedSoHeartbeatsStop_ThenBackendTimesOutAndVehicleReappears`, which calls it. This is the **`TakeOverFirstIdleVehicle`-under-load flake family** explicitly named in BUG-046 and in the App-Nap / WebView timing-race notes — known and referenced, but never filed until now.
+- **Related stories:** `FE-020` (take-over an idle vehicle), `QUAL-004` (Appium end-to-end suite), `QUAL-009` (heartbeat / go-off-duty live E2E), `QUAL-008` (per-runtime integration targets). Related bug: `BUG-046` (a *deterministic* Appium timing bug on the same suite; this one is the load-dependent sibling it contrasts itself against).
+- **Found:** QUAL-011 live re-verification (`test-appium.sh`, full suite, 7m22s run). Failed once in the full suite (`NoSuchElementException` at `AppiumFixture.cs:319`); **re-ran green 2/2 in isolation** (single-test run, unloaded host) — confirming it is load-dependent, not a QUAL-011 regression (QUAL-011 is CSS-only and cannot affect whether a native element exists). Same family recorded in prior live runs.
+
+**Summary**
+`TakeOverFirstIdleVehicle()` calls `Login()` (which waits only for the take-over screen's `take-over-button` *chrome* to exist), then immediately does a **bare** `Driver.FindElement(By.CssSelector("[data-testid='idle-vehicle-row']")).Click()`. The idle-vehicle rows are populated by a *separate async data load* (REST + SignalR fleet snapshot) that lands **after** the take-over screen mounts, so the row is not guaranteed to be in the DOM the instant `Login()` returns. The bare `FindElement` leans on the implicit wait and races that load; under full-suite load (busy host, WebView render lag, App-Nap timer throttling over a multi-minute run) the row hasn't rendered yet → `NoSuchElementException`. The two follow-on lookups (`take-over-button`, `available-indicator`) are bare `FindElement`s for the same reason.
+
+**Expected**
+`TakeOverFirstIdleVehicle()` reliably selects the first idle vehicle and completes take-over, both in isolation and in the full Appium suite under load, across repeated runs.
+
+**Actual**
+`OpenQA.Selenium.NoSuchElementException` thrown from `AppiumFixture.cs:319` when the idle-vehicle list has not finished loading before the bare `FindElement` fires — intermittently, only under full-suite load.
+
+**Proposed fix (via `/master`)**
+Route the async lookups in `TakeOverFirstIdleVehicle()` through the existing bounded-poll helper `WaitForSignalR()` (a `WebDriverWait`, 15 s budget / 500 ms interval, already ignoring `NoSuchElementException` while polling), exactly as BUG-046 did for every lookup in `ActiveJobTests`:
+```csharp
+WaitForSignalR(d => d.FindElement(By.CssSelector("[data-testid='idle-vehicle-row']"))).Click();
+WaitForSignalR(d => d.FindElement(By.CssSelector("[data-testid='take-over-button']"))).Click();
+WaitForSignalR(d => d.FindElement(By.CssSelector("[data-testid='available-indicator']")));
+```
+Also convert `Login()`'s trailing bare `FindElement("[data-testid='take-over-button']")` wait to `WaitForSignalR` for the same reason. Do **not** widen the implicit wait as a fix (mixing implicit + explicit waits compounds unpredictably — the real fix is the explicit poll). Test-only change; no production code. Because the failure is load-dependent and non-deterministic, the verification gate is **re-running the full Appium suite under load repeatedly (2–3×) and confirming it stays green**, not a new isolated red test.
+
+**Acceptance criteria (bug resolved when):**
+- `TakeOverFirstIdleVehicle()` and its dependent scenarios (`HeartbeatGoOffDutyTests`, FE-020/FE-008/FE-011 take-over scenarios) pass green in the **full Appium suite under load**, across repeated runs (2–3 consecutive full-suite runs with no `NoSuchElementException` from this helper).
+- The waits remain genuine gates — bounded (they still time out and fail if the element never appears), not no-ops or unbounded sleeps.
+- No bare `FindElement` on an async-loaded element remains in `TakeOverFirstIdleVehicle()` / `Login()`; the suite's established `WaitForSignalR` convention is applied consistently.
