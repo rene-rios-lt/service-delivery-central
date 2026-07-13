@@ -264,7 +264,7 @@
 
 | Story | Repo | Description |
 |-------|------|-------------|
-| [FE-029](frontend.md) | Frontend | App-bar & nav chrome — ServiceRep left hamburger + left-anchored safe-area drawer (header removed); shared `env(safe-area-inset-*)` top/bottom on all mobile personas; no clipping; design-system tokens; Dispatcher notification bell removed |
+| ~~[FE-029](frontend.md)~~ | ~~Frontend~~ | ~~App-bar & nav chrome — ServiceRep left hamburger + left-anchored safe-area drawer (header removed); shared `env(safe-area-inset-*)` top/bottom on all mobile personas; no clipping; design-system tokens; Dispatcher notification bell removed~~ |
 
 **Depends on:** FE-021 (app shell & menu exist). The redesigned `rep-*` / `requester-*` / `dispatcher-*` mockups + shared `design-system.css` are already updated to the target design.
 **Exit criteria:** Every ServiceRep screen shows the toggle on the left with the app-bar content below the Dynamic Island; the left-anchored drawer renders fully within the safe area (footer note clears the home indicator); Requester mobile app bars clear the safe area while their web renders are unchanged; the Dispatcher app bar shows no bell — verified live (iOS host) and by the AI-review render-and-screenshot check.
