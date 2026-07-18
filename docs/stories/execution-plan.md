@@ -221,6 +221,7 @@
 | Story | Repo | Description |
 |-------|------|-------------|
 | [FE-003](frontend.md) | Frontend | Live fleet map with colour-coded rep markers |
+| ~~[BE-032](backend.md)~~ | ~~Backend~~ | ~~Enrich `GET /dispatcher/fleet` with the active-request DTC title so the FE-003 popover can show it (FE-003 AC-5 follow-up; filed from the FE-003 AI review)~~ |
 | [FE-004](frontend.md) | Frontend | Active request queue with tier badges |
 | [FE-005](frontend.md) | Frontend | Redirect controls with confirmation dialog |
 | [FE-006](frontend.md) | Frontend | Rep offline alert banner |
@@ -322,10 +323,10 @@ Frontend phases (8–11) can begin in parallel with Phase 2+ on the backend — 
 
 | Repo | Stories | Phases |
 |------|---------|--------|
-| Backend | BE-001 – BE-030 (30 stories) | 1–6, 12 |
+| Backend | BE-001 – BE-032 (32 stories) | 1–6, 11, 12 |
 | Simulator | SIM-001 – SIM-012 (12 stories) | 2, 4, 7 |
 | Frontend | FE-001 – FE-029 (29 stories) | 8–11, 13, 14 |
-| **Total** | **70 stories** | **13 phases** |
+| **Total** | **73 stories** | **13 phases** |
 
 Plus **40 bugs** ([`bug.md`](bug.md)) — `BUG-001` – `BUG-040`; all resolved. `BUG-003`–`BUG-015` were central-repo doc/pipeline fixes (shipped via `/ship-it`). `BUG-024`–`BUG-026` were frontend E2E failures found via `test-e2e.sh`. `BUG-027`–`BUG-031` were found via `test-appium.sh` (backend idle-vehicle semantics, frontend REST + SignalR auth headers, startup error, and Appium harness defects); `BUG-032` then made the suite's 4 job-offer tests pass (backend-only run + a fleet-positioning/request precondition) and `[Ignore]`d the JWT-expiry test, taking the Appium suite to **8/9 passing, 1 skipped**. `BUG-033` (rep take-over/idle mockup fidelity, PR #36), `BUG-034` (idle view showed a hardcoded vehicle, PR #37), and `BUG-035` (surface the vehicle model in the DTO and render "<reg> · <model>", backend PR #47 + frontend PR #38) were fixed via `/master`. `BUG-036` (job-offer tier badge invisible + app-bar/card fidelity — a `JobOfferReceived` wire-contract mismatch defaulting `Tier` to `None`) was fixed via `/master` (frontend PR #45), live-verified by the Appium `JobOfferTests` (4/4). `BUG-037` (frontend ignored the `JobOfferExpired` RepHub event) was fixed via `/master` (frontend PR #47). `BUG-038` (idle-screen unhandled-error banner when RepHub can't connect at mount) was fixed via `/master` (frontend PR #48). `BUG-039` (active-job screen mockup-fidelity gaps — app-bar title, ETA-card distance + placement, En Route chip style) was fixed via `/master`: the root cause was the screen reading the impoverished `service-requests/my-active` endpoint instead of the purpose-built `rep/active-job-state` (which carries real rep position, ETA, and — after this fix — distance + tier), so the backend surfaced `DistanceMiles` + `Tier` (backend PR #49) and the frontend repointed the endpoint and closed all four gaps (frontend PR #49), live-verified end-to-end. `BUG-040` (the `JobOfferExpired` Appium E2E test could never pass — a 15 s throwing `WaitForSignalR` vs a ~60 s server offer-expiry, so it aborted on its first lap) was found running `test-appium.sh` after BUG-039 and fixed via `/master` across three repos: backend made the offer-expiry configurable (default 60 s; backend PR #50), `test-appium.sh` shortens it to 15 s for the E2E run via an env override (central PR #165), and the test uses a non-throwing `TryWaitForSignalR` so its loop governs the wait (frontend PR #50) — live-verified, Appium `JobOfferTests` 6/6.
 
