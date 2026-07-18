@@ -55,6 +55,7 @@ _No dedicated screen — redirects to the login screen (see FE-001)._
 **so that** I have real-time situational awareness of every rep.
 
 **Acceptance Criteria:**
+- **Pre-flight fix (blocking):** Desktop login completes end-to-end. Currently every Desktop login crashes right after a successful `/auth/login` — `SecureStorageTokenStore.SetTokenAsync` writes to the Keychain via MAUI `SecureStorage`, and Mac Catalyst's App Sandbox (`Entitlements.plist`) requires a `keychain-access-groups` entitlement that only a paid-developer provisioning profile can authorize (this project builds unsigned). Fix: swap the Desktop `ITokenStore` off Keychain onto `Preferences` (or an equivalent non-Keychain store), Mac Catalyst only — Mobile/Web untouched, App Sandbox stays enabled (found live-verifying Desktop before starting this story; without it, none of the ACs below are reachable on Desktop at all).
 - Map loads with all vehicle markers on initial `GET /dispatcher/fleet`
 - Marker colours reflect rep state: Green = Available, Blue = En Route, Yellow = Within 15 Miles, Red = On Site, Grey = Unclaimed / Offline
 - Positions update in real time via `VehiclePositionHub` (every ~3 seconds)
@@ -63,6 +64,7 @@ _No dedicated screen — redirects to the login screen (see FE-001)._
 - Offline reps' markers are removed from the map
 - The map shows the whole fleet uniformly — reps driven by the simulator and reps a human has taken over look and behave the same (the popover may optionally note "human-controlled"); all positions arrive via `VehiclePositionHub` regardless of who is driving decisions
 - Layout is responsive across Desktop and Web; the map fills available width with the request queue beside it
+- **Desktop E2E harness (new infrastructure):** a Mac2Driver-based Appium harness exists for the Desktop host — mirroring `Client.E2E` (Playwright/Web, QUAL-003) and `Client.Appium` (XCUITest/Mobile, QUAL-004) — with `appium driver install mac2`, accessibility-identifier wiring on the Dispatcher fleet-map components, and at least one live scenario for this story (dispatcher login → fleet map renders with markers) running green against a live system on a real macOS Desktop build. Establishes the live-verification gate for Desktop that Web/Mobile already have; this story is the first consumer.
 
 **Mockup**
 

@@ -491,3 +491,21 @@
 - No change to `RepPositionUpdated`; no new endpoint; read-only enrichment of an existing broadcast.
 
 **Consumed by:** [FE-017](../stories/frontend.md#fe-017--live-rep-tracking) — the frontend `RepAssignedPayload` model mirrors the new field and renders the vehicle registration on the tracking screen. Frontend field name/casing (`VehicleRegistration` → `vehicleRegistration`) is locked to this contract.
+
+---
+
+### BE-032 — Include the active-request DTC title in the dispatcher fleet snapshot
+**As a** Dispatcher,
+**I want to** see the active request's DTC title in a fleet-map marker popover,
+**so that** I know what fault an assigned rep is working on without cross-referencing the request queue.
+
+**Context:** FE-003's marker popover must show "active request title and tier (if assigned)" (AC-5). The `GET /dispatcher/fleet` contract (`DispatcherFleetEntryDto`) carries `activeRequestId` + `activeRequestTier` but **no DTC title**, so the frontend — which already renders the title whenever it is present (`RepMarkerPopover` gated on `FleetVehicleEntry.ActiveRequestTitle`) — can never show it in production. FE-003 shipped with AC-5 accepted as **partial** pending this story. The projection chain to enrich is `IVehicleRepository.GetDispatcherFleetByDealerAsync` → `DispatcherFleetEntry` (Domain projection) → `DispatcherFleetEntryDto` (`GetDispatcherFleetQueryHandler`). Enriching the `VehiclePositionUpdated` broadcast with assignment metadata is deliberately **out of scope** — position events stay position+state only; the popover title sources from the REST snapshot exactly as the tier already does.
+
+**Acceptance Criteria:**
+- `DispatcherFleetEntry` (Domain projection) gains `ActiveRequestTitle` (`string?`) — the DTC title of the rep's active service request; `null` when the rep has no active request.
+- `IVehicleRepository.GetDispatcherFleetByDealerAsync` populates it from the same active service request that already sources `ActiveRequestId` / `ActiveRequestTier`.
+- `DispatcherFleetEntryDto` gains `ActiveRequestTitle` (`string?`), serialised as `activeRequestTitle` on the wire (System.Text.Json Web defaults / camelCase), `null` when unassigned — mirroring the `activeRequestTier` nullability convention.
+- Covered by handler and repository tests asserting title-when-assigned and `null`-when-unassigned, plus a captured-payload/contract test guarding the `activeRequestTitle` wire field name and casing (ADR-0011); the committed OpenAPI contract is regenerated in sync (QUAL-006).
+- No new endpoint; no change to `VehiclePositionUpdated`; read-only enrichment of an existing query.
+
+**Consumed by:** [FE-003](../stories/frontend.md#fe-003--live-fleet-map) — the frontend `DispatcherFleetEntryDto` mirrors the new field into `FleetVehicleEntry.ActiveRequestTitle`, which `RepMarkerPopover` already renders when present (a one-field frontend consumption change; wire name/casing locked to this contract). Closes FE-003 AC-5 from partial to full.
