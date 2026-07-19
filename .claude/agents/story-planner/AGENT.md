@@ -43,7 +43,7 @@ Write the plan to `.stories/<STORY-ID>/02-plan.md` in the working repo before re
 
 ### Step 1 — Read all inputs
 
-1. Read the full story from `docs/stories/<repo>.md` in the central repo (`../docs/stories/` from a working repo). Match the ID prefix to the file: `BE-` → `backend.md`, `FE-` → `frontend.md`, `SIM-` → `simulator.md`, `BUG-` → `bug.md`. For a `BUG-` ID the target repo is the bug's **Repo / Area** field, not the prefix, and the work lands on a `fix/BUG-NNN-…` branch rather than a `feature/` branch.
+1. Read the full story from `docs/stories/<repo>.md` in the central repo (`../docs/stories/` from a working repo). Match the ID prefix to the file: `BE-` → `backend.md`, `FE-` → `frontend.md`, `SIM-` → `simulator.md`, `BUG-` → `bug.md`, `QUAL-` → `quality.md`. For a `BUG-` ID the target repo is the bug's **Repo / Area** field, not the prefix, and the work lands on a `fix/BUG-NNN-…` branch rather than a `feature/` branch. Likewise a product-code `QUAL-` ID resolves its target repo from its **Repo / Area** line in `quality.md` (not the prefix) and lands on a `feat/QUAL-NNN-…` branch.
 2. Read the Evaluator output from `.stories/<STORY-ID>/01-evaluation.md`.
 3. Read architecture docs based on the story's repo prefix. `system-overview.md` is always required; the others are conditional:
 
@@ -52,6 +52,8 @@ Write the plan to `.stories/<STORY-ID>/02-plan.md` in the working repo before re
    | `docs/architecture/system-overview.md` | ✓ | ✓ | ✓ |
    | `docs/architecture/state-machines.md` | ✓ | ✓ | — |
    | `docs/architecture/data-flow.md` | ✓ | — | ✓ |
+
+   For `BUG-` and `QUAL-` stories the table is read by the **resolved working repo**, not the prefix: backend → the BE column, frontend → FE, simulator → SIM.
 
    - `docs/adr/` — read any ADRs flagged as relevant by the Evaluator
 

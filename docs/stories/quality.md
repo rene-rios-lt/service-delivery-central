@@ -1,6 +1,6 @@
 # Engineering-Quality Stories (`QUAL-`)
 
-> Cross-cutting enhancements to the AI pipeline and engineering practice — not feature work for a single product repo. Tracked in [`execution-plan.md`](execution-plan.md) under **Cross-Cutting — Engineering Quality**. Central skill/agent changes ship via `/ship-it` (the `/master` pipeline never targets the central repo); any product-repo code changes (e.g. a test-suite audit's fixes) go through `/master`.
+> Cross-cutting enhancements to the AI pipeline and engineering practice — not feature work for a single product repo. Tracked in [`execution-plan.md`](execution-plan.md) under **Cross-Cutting — Engineering Quality**. **Routing:** a QUAL story with a `- **Repo / Area:**` bullet directly under its heading is **product-code** work — it runs the full TDD pipeline via `/master QUAL-NNN` (or `/worktree QUAL-NNN`), targeting the repo named first on that line (backend / frontend / simulator), on a `feat/QUAL-NNN-<kebab-title>` branch. A QUAL story **without** that bullet is **central-only** governance work (skill/agent/doc edits) and ships via `/ship-it` (the `/master` pipeline never targets the central repo). Mixed stories split per their own **Done when**: central edits via `/ship-it`, product-repo code via `/master`.
 
 ---
 
@@ -318,6 +318,8 @@ These tokens are currently defined only as Blazor *scoped* CSS on specific pages
 
 ## QUAL-012 — Route HubConnection internal logging through the host logger in every SignalR hub client (kill silent transport failures)
 
+- **Repo / Area:** Frontend — SignalR hub client services (`SignalRRepHubService`, `SignalRRequesterHubService`; mirrors FE-003's `SignalRVehiclePositionHubService` fix)
+
 **As a** frontend developer debugging a live SignalR issue,
 **I want** all three hub client services (`SignalRRepHubService`, `SignalRRequesterHubService`, `SignalRVehiclePositionHubService`) to route the `HubConnection`'s internal transport/dispatch logging through the host's `ILoggerFactory`,
 **so that** a client-side connect, handshake, binding, or dispatch failure is visible in the host log instead of vanishing into a `NullLogger`.
@@ -340,6 +342,8 @@ FE-003's live-gate forensics burned two full diagnostic loops on a phantom "hub 
 ---
 
 ## QUAL-013 — Schematize REST responses in the committed OpenAPI contract (the sync-check currently guards no response shape)
+
+- **Repo / Area:** Backend — Api endpoint response metadata (`TypedResults` / `.Produces<T>()`) + regenerated `contracts/openapi.json`
 
 **As a** frontend or simulator developer binding a backend REST response,
 **I want** every endpoint's success response to carry a schema in the committed `contracts/openapi.json`,

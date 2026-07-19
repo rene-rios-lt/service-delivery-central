@@ -17,8 +17,10 @@
 #   worktree.sh remove --merged          # sweep every merged story worktree
 #   worktree.sh <STORY-ID> [...]         # bare ids default to `create`
 #
-# Story ids: BE-### / FE-### / SIM-### / BUG-### (BUG resolves its repo from
-# the "Repo / Area" line in docs/stories/bug.md).
+# Story ids: BE-### / FE-### / SIM-### / BUG-### / QUAL-### (BUG and QUAL
+# resolve their repo from the "Repo / Area" line in docs/stories/bug.md /
+# quality.md; a QUAL story with no such line is central-only governance work —
+# refused here, it ships via /ship-it).
 #
 # Env:
 #   SD_WORKTREES_DIR        override worktree root (default: <central>/.worktrees)
@@ -40,27 +42,38 @@ info() { echo "worktree: $*"; }
 
 # absolute working-repo path for a story id
 repo_for_id() {
-  local id="$1" repo
+  local id="$1" repo area
   case "${id%%-*}" in
     BE)  repo="service-delivery-backend" ;;
     FE)  repo="service-delivery-frontend" ;;
     SIM) repo="service-delivery-simulator" ;;
-    BUG) repo="service-delivery-$(area_for_bug "$id")" ;;
-    *)   die "unrecognised prefix in '$id' (expected BE-/FE-/SIM-/BUG-)" ;;
+    BUG)
+      area="$(area_from_repo_line "$id" bug.md)"
+      [ -n "$area" ] || die "$id: could not resolve Repo / Area from bug.md"
+      repo="service-delivery-$area" ;;
+    QUAL)
+      area="$(area_from_repo_line "$id" quality.md)"
+      [ -n "$area" ] || die "$id: no Repo / Area line in quality.md — central-only QUAL story; it ships via /ship-it, not /worktree + /master (see docs/stories/quality.md)"
+      repo="service-delivery-$area" ;;
+    *)   die "unrecognised prefix in '$id' (expected BE-/FE-/SIM-/BUG-/QUAL-)" ;;
   esac
   echo "$CENTRAL/$repo"
 }
 
-# backend|frontend|simulator from a bug's "Repo / Area" line
-area_for_bug() {
-  local id="$1" area
+# backend|frontend|simulator from a story's "- **Repo / Area:**" line in
+# docs/stories/<file>. Scans only the story's own section — stops at the next
+# H2 heading — so a story with no line never picks up the next story's (that
+# absence is meaningful for QUAL: it means central-only). Prints empty when
+# absent; callers decide whether that is fatal and with what message.
+area_from_repo_line() {
+  local id="$1" file="$2" area
   area="$(awk -v id="$id" '
-    $0 ~ "^## "id" " {f=1}
+    $0 ~ "^## "id" "    {f=1; next}
+    f && /^## /         {exit}
     f && /Repo \/ Area/ {print; exit}
-  ' "$STORIES_DIR/bug.md" 2>/dev/null \
-    | grep -oiE 'backend|frontend|simulator' | head -1 | tr '[:upper:]' '[:lower:]')"
-  [ -n "$area" ] || die "$id: could not resolve Repo / Area from bug.md"
-  echo "$area"
+  ' "$STORIES_DIR/$file" 2>/dev/null \
+    | grep -oiE 'backend|frontend|simulator' | head -1 | tr '[:upper:]' '[:lower:]' || true)"
+  printf '%s\n' "$area"
 }
 
 story_file_for_id() {
@@ -69,11 +82,14 @@ story_file_for_id() {
     FE)  echo "$STORIES_DIR/frontend.md" ;;
     SIM) echo "$STORIES_DIR/simulator.md" ;;
     BUG) echo "$STORIES_DIR/bug.md" ;;
+    QUAL) echo "$STORIES_DIR/quality.md" ;;
   esac
 }
 
 # branch name derived from the story heading: feature/<id>-<kebab-title>
-# (fix/ for BUG-). Errors out if the id is not in the backlog (typo guard).
+# (fix/ for BUG-, feat/ for QUAL- — matching /ship-it's QUAL branch shape so
+# the post-merge hook strikes the plan row from either entry point). Errors
+# out if the id is not in the backlog (typo guard).
 branch_for_id() {
   local id="$1" file title slug kind
   file="$(story_file_for_id "$id")"
@@ -83,14 +99,14 @@ branch_for_id() {
   [ -n "$title" ] || die "$id: not found in $(basename "$file") — check the id"
   slug="$(printf '%s' "$title" | tr '[:upper:]' '[:lower:]' \
             | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//')"
-  case "${id%%-*}" in BUG) kind="fix" ;; *) kind="feature" ;; esac
+  case "${id%%-*}" in BUG) kind="fix" ;; QUAL) kind="feat" ;; *) kind="feature" ;; esac
   echo "$kind/$id-$slug"
 }
 
 # normalise an argument to a bare story id, or fail
 require_id() {
   local id
-  id="$(printf '%s' "$1" | grep -oE '(BE|FE|SIM|BUG)-[0-9]+' || true)"
+  id="$(printf '%s' "$1" | grep -oE '(BE|FE|SIM|BUG|QUAL)-[0-9]+' || true)"
   [ -n "$id" ] || die "'$1' is not a story id (expected e.g. BE-030)"
   echo "$id"
 }
@@ -211,7 +227,7 @@ remove_merged() {
   local d id repo branch
   for d in "$WORKTREES_DIR"/*/; do
     [ -d "$d" ] || continue
-    id="$(printf '%s' "$(basename "$d")" | grep -oE '(BE|FE|SIM|BUG)-[0-9]+' || true)"
+    id="$(printf '%s' "$(basename "$d")" | grep -oE '(BE|FE|SIM|BUG|QUAL)-[0-9]+' || true)"
     [ -n "$id" ] || { info "skip $(basename "$d") — not a story worktree"; continue; }
     repo="$(repo_for_id "$id")"
     branch="$(branch_for_id "$id")"

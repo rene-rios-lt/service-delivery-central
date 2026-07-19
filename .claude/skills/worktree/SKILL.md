@@ -25,7 +25,7 @@ All work is done by `scripts/utils/worktree.sh` (from the central repo). The ski
 1. **Parse the request** into a verb and one or more story ids:
    - Bare ids (`/worktree BE-030 BE-031`) → **create**.
    - `create <ids…>` → create. `remove <ids…>` → remove. `remove --merged` → sweep merged worktrees.
-2. **Validate ids** look like `BE-### / FE-### / SIM-### / BUG-###`. The script itself errors out if an id is not in the backlog (typo guard), so do not pre-invent ids.
+2. **Validate ids** look like `BE-### / FE-### / SIM-### / BUG-### / QUAL-###`. A `QUAL-` id must be a **product-code** QUAL story (one with a **Repo / Area** line in `quality.md`) — the script refuses a central-only QUAL id with a pointer to `/ship-it`. The script itself errors out if an id is not in the backlog (typo guard), so do not pre-invent ids.
 3. **Run the script** from the central repo root:
    ```bash
    scripts/utils/worktree.sh create BE-030 BE-031
@@ -54,5 +54,6 @@ This skill runs from the **central repo** and operates on the working repos by a
 | `FE-`  | `service-delivery-frontend/`  | `feature/` |
 | `SIM-` | `service-delivery-simulator/` | `feature/` |
 | `BUG-` | resolved from the bug's **Repo / Area** line in `docs/stories/bug.md` | `fix/` |
+| `QUAL-` | resolved from the story's **Repo / Area** line in `docs/stories/quality.md` — no line ⇒ central-only, refused (ships via `/ship-it`) | `feat/` |
 
-The branch slug is derived from the story heading in `docs/stories/<repo>.md` (or `bug.md`) — e.g. `### BE-028 — Rep heartbeat & go-off-duty` → `feature/BE-028-rep-heartbeat-go-off-duty`. Worktree directories are named by bare id (`.worktrees/BE-028`). Each worktree gets a `.claude` symlink to central's so the pipeline resolves there; `/master` detects this and runs in worktree mode. Terminal launching is macOS / Terminal.app specific (via `osascript`): it opens Claude bare and sends `/master <id>` after a delay (`SD_WORKTREE_LAUNCH_DELAY`, default 6s — if a first-run trust prompt appears, type the command yourself). Set `SD_WORKTREE_NO_LAUNCH=1` to create the worktree without opening a window.
+The branch slug is derived from the story heading in `docs/stories/<repo>.md` (or `bug.md` / `quality.md`) — e.g. `### BE-028 — Rep heartbeat & go-off-duty` → `feature/BE-028-rep-heartbeat-go-off-duty`. A product-code `QUAL-` story branches as `feat/QUAL-NNN-<kebab-title>` — the same shape `/ship-it` uses for central QUAL shipments, so the post-merge hook strikes the plan row either way. Worktree directories are named by bare id (`.worktrees/BE-028`). Each worktree gets a `.claude` symlink to central's so the pipeline resolves there; `/master` detects this and runs in worktree mode. Terminal launching is macOS / Terminal.app specific (via `osascript`): it opens Claude bare and sends `/master <id>` after a delay (`SD_WORKTREE_LAUNCH_DELAY`, default 6s — if a first-run trust prompt appears, type the command yourself). Set `SD_WORKTREE_NO_LAUNCH=1` to create the worktree without opening a window.
