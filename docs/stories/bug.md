@@ -1285,3 +1285,31 @@ Make the valid-token branch resolve the persona home instead of `null`: read the
 - `"/"` never renders a blank authenticated page: every `ResolveStartRouteAsync` outcome leads to a rendered screen.
 
 **Resolution** — Fixed within FE-003 (frontend PR #76; folded onto that branch because the blank cold start blocked the story's Desktop live gate, which is also what exposed it). `AppStartViewModel.ResolveStartRouteAsync` now returns a concrete route for every outcome: a valid token resolves the persona home by reading the JWT `role` claim (new Core `Authentication/JwtRoleReader` + shared `JwtPayloadReader` base64url decode) and mapping it through the new Core `Navigation/PersonaHomeRoutes` (single source of truth; the UI `PersonaRouteMap` now delegates to it — launch path uses fail-safe `TryGetRoute` → `/login`, the trusted post-login navigator keeps the throwing `RouteFor`). `Home.razor` navigates unconditionally (`replace: true`) so `"/"` never renders a blank body. The masking negative-only launch test was replaced with per-persona positive routing assertions plus role-invalid negatives at both the ViewModel and render-boundary levels (net +8 tests; suite 722/0 at merge). **Live-verified on Desktop:** cold start with a persisted dispatcher token lands on the dispatcher dashboard with the fleet map and markers rendered (screenshot evidence in the FE-003 run), and the Mac2Driver Desktop E2E suite runs green against the fixed launch path.
+
+---
+
+## BUG-051 — Unclaimed vehicles are hidden by the fleet snapshot but appear grey after a position event: same vehicle, two renderings depending on data path
+
+- **Status:** Open
+- **Severity:** Low (consistency/product-decision defect — no crash, no data loss. In normal POC operation the simulator claims all vehicles, so unclaimed vehicles are rare live; the asymmetry is guaranteed visible in backend-only test/dev runs and whenever a vehicle is released/parked mid-session.)
+- **Repo / Area:** **Backend** (primary) — `GetDispatcherFleetQueryHandler` maps a vehicle with no rep state to `"Offline"` (`(e.RepState ?? RepState.Offline).ToString()`), while `UpdateVehiclePositionCommandHandler.BroadcastVehiclePositionAsync` broadcasts the same vehicle as `"Unassigned"` (`repState?.State.ToString() ?? "Unassigned"`). **Frontend** (consumer) — `DispatcherFleetViewModel` correctly renders what it is told: `"Offline"` is filtered off the map (AC-7), `"Unassigned"` falls through to the grey marker (AC-3's "Grey = Unclaimed / Offline").
+- **Related stories:** `FE-003` (whose AI-review cycle-1 advisory first recorded this), `BE-032` (same snapshot handler), `BE-008` (position broadcast).
+- **Found:** FE-003 AI review (cycle-1 advisory, code-level); live-confirmed during FE-003's Desktop gate — in backend-only mode an all-unclaimed fleet is invisible after the snapshot load and materialises as grey markers only after the first post-connect position event.
+
+**Summary**
+The REST snapshot and the position event disagree about what an unclaimed vehicle *is*: the snapshot calls it `"Offline"` (map hides it), the event calls it `"Unassigned"` (map shows it grey). Consequence: an unclaimed vehicle is absent on dashboard load, pops into existence as a grey marker at its first position tick, and vanishes again on a full reload. The frontend deliberately follows the wire values (FE-003's plan encoded the `!= "Offline"` filter), so this is a backend contract inconsistency awaiting a product decision: **should unclaimed vehicles be uniformly visible (grey) or uniformly hidden?**
+
+**Expected**
+An unclaimed vehicle renders identically whether the dispatcher's knowledge of it came from the `GET /dispatcher/fleet` snapshot or a `VehiclePositionUpdated` event.
+
+**Actual**
+Hidden on load (`"Offline"` from the snapshot), grey after the first position event (`"Unassigned"` from the broadcast), hidden again on reload.
+
+**Proposed fix (via `/master`, after the product decision)**
+Prefer **uniformly visible grey** — the AC-3 legend already labels grey "Unclaimed / Offline", and a dispatcher arguably wants to see idle unclaimed trucks: `GetDispatcherFleetQueryHandler` distinguishes *unclaimed* (`ClaimingRepId == null` → `"Unassigned"`) from *claimed-but-offline-rep* (`"Offline"`), aligning the snapshot to the event vocabulary; the frontend needs no change (it already renders `"Unassigned"` grey and keeps filtering `"Offline"`). Alternatively **uniformly hidden**: the broadcast maps unclaimed to `"Offline"` — one word either way. Handler tests assert the chosen mapping for both unclaimed and claimed-offline vehicles.
+
+**Acceptance criteria (bug resolved when):**
+- Snapshot and event produce the same rep-state vocabulary for an unclaimed vehicle (whichever the product decision selects).
+- A claimed vehicle whose rep is genuinely offline still renders per AC-7 (hidden/removed).
+- Handler tests cover both the unclaimed and claimed-offline mappings; the frontend visibility filter is unchanged.
+- Live check on a backend-only boot: the fleet renders consistently at snapshot load, after the first position tick, and after a reload.

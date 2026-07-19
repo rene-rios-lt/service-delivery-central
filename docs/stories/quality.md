@@ -313,3 +313,50 @@ These tokens are currently defined only as Blazor *scoped* CSS on specific pages
 **Depends on:** the pages that consume the tokens (FE-008/011/012/015/016 — all merged). Best taken before the remaining requester/dispatcher screens (FE-003/004/005/006/017/018/019) are built, so they consume the global sheet rather than each re-hitting the gap.
 
 **Done when:** the global stylesheet exists, is loaded by all three hosts, the per-page duplicates are removed, every affected page is re-verified live with no visual regression, and the story is struck in `execution-plan.md`. **Ships via `/master`** (frontend production CSS + host-bootstrapping code with tests + live re-verification — the product-code QUAL case, like QUAL-003/004), **not** `/ship-it`.
+
+---
+
+## QUAL-012 — Route HubConnection internal logging through the host logger in every SignalR hub client (kill silent transport failures)
+
+**As a** frontend developer debugging a live SignalR issue,
+**I want** all three hub client services (`SignalRRepHubService`, `SignalRRequesterHubService`, `SignalRVehiclePositionHubService`) to route the `HubConnection`'s internal transport/dispatch logging through the host's `ILoggerFactory`,
+**so that** a client-side connect, handshake, binding, or dispatch failure is visible in the host log instead of vanishing into a `NullLogger`.
+
+**Motivation**
+FE-003's live-gate forensics burned two full diagnostic loops on a phantom "hub events don't arrive under XCTest" defect, because the vehicle-hub `HubConnection` was built with **no logger** — every client-side SignalR diagnostic went nowhere, forcing server-side log correlation, raw probe clients, and screenshot archaeology to establish basic facts. FE-003 fixed `SignalRVehiclePositionHubService` (injected `ILoggerFactory`, routed via `ConfigureLogging`, spy-factory guard test) and gave Desktop an `OsLogLoggerProvider` (NSLog → unified log, since the XCTest launcher swallows stdout). The Rep and Requester hub services still build their connections with no logger — the next live SignalR incident on those hubs starts blind again.
+
+**Acceptance Criteria:**
+- `SignalRRepHubService` and `SignalRRequesterHubService` inject `ILoggerFactory` and route the `HubConnection`'s internal logging through it, mirroring `SignalRVehiclePositionHubService.BuildConnection` (`ConfigureLogging` → `SetMinimumLevel(Debug)` + host factory), in both the production and test-seam constructors.
+- Each service gains a spy-factory guard test (the `GivenAnInjectedLoggerFactory_WhenTheServiceIsConstructed_ThenTheHubConnectionLoggingIsRoutedToTheFactory` pattern) — asserting the factory is genuinely consumed, not merely accepted.
+- No behavioural change to connect/back-off semantics (BUG-038 retry loops untouched); existing service tests updated for the new constructor parameter only.
+- `ILoggerFactory` resolves from default DI in all three hosts — no host registration changes.
+
+**Out of scope:** new logging sinks (Desktop's `OsLogLoggerProvider` already exists; Web/Mobile keep their defaults); changing log levels or message content; the backend.
+
+**Depends on:** FE-003 (merged — the pattern and the Desktop sink exist).
+
+**Done when:** both services route hub logging through the host factory with spy-factory guards, the offline suite is green, and the story is struck in `execution-plan.md`. **Ships via `/master`** (frontend production code + tests — the product-code QUAL case, like QUAL-011), **not** `/ship-it`.
+
+---
+
+## QUAL-013 — Schematize REST responses in the committed OpenAPI contract (the sync-check currently guards no response shape)
+
+**As a** frontend or simulator developer binding a backend REST response,
+**I want** every endpoint's success response to carry a schema in the committed `contracts/openapi.json`,
+**so that** the QUAL-006 contract sync-check actually guards the shapes consumers bind — not just request bodies.
+
+**Motivation**
+Verified during FE-003/BE-032: **0 of 24 responses across all 23 paths** in `contracts/openapi.json` carry a schema — every response is an untyped `200 OK`; only request bodies are schematized. The committed contract is documented as the REST wire-contract source of truth (ADR-0011, QUAL-006), and `OpenApiContractTests` faithfully guards it — but the guarded document is silent about the half of the contract consumers actually deserialize. Concretely: BE-032 added `activeRequestTitle` to the `GET /dispatcher/fleet` response and the committed contract needed **no change** — a response-shape drift the sync-check can never catch. The endpoints lack response-type metadata (`Produces<T>`/`TypedResults`), so the generator has nothing to emit.
+
+**Acceptance Criteria:**
+- Every REST endpoint declares its success response type via the appropriate metadata (`TypedResults` / `.Produces<T>()` / `[ProducesResponseType]` per the Api layer's conventions), including `GET /dispatcher/fleet` (`DispatcherFleetEntryDto[]`).
+- `./scripts/regen-openapi.sh` then emits response schemas for all 2xx responses (0/24 → 24/24 with content), and the regenerated `contracts/openapi.json` is committed.
+- `OpenApiContractTests` still passes and now fails on response-shape drift — verified by demonstrating (in a test or documented dry run) that adding/removing a response DTO field produces a contract diff, i.e. replaying the BE-032 class of change is no longer invisible.
+- Error responses (4xx) may be typed opportunistically but are not required — success shapes are the deliverable.
+- No behavioural change to any endpoint; metadata and contract only.
+
+**Out of scope:** SignalR hub event payloads (explicitly outside OpenAPI per the backend CLAUDE.md — guarded by consumer-side captured-payload tests); generating client code from the contract; versioning.
+
+**Depends on:** QUAL-006 (merged — the committed contract + sync-check exist).
+
+**Done when:** all success responses are schematized in the committed contract, the sync-check demonstrably guards response shapes, the backend suite is green, and the story is struck in `execution-plan.md`. **Ships via `/master`** (backend production metadata + contract + tests — the product-code QUAL case), **not** `/ship-it`.
