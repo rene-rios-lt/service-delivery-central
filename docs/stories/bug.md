@@ -1223,3 +1223,65 @@ Also convert `Login()`'s trailing bare `FindElement("[data-testid='take-over-but
 - No bare `FindElement` on an async-loaded element remains in `TakeOverFirstIdleVehicle()` / `Login()`; the suite's established `WaitForSignalR` convention is applied consistently.
 
 **Resolution** — Fixed via `/master` (frontend PR #74). Converted the four bare `Driver.FindElement` lookups on async-loaded elements to the existing `WaitForSignalR()` bounded poll (15 s budget / 500 ms interval, ignores `NoSuchElementException` while polling, throws on timeout): `Login()` L282 (`take-over-button`) and `TakeOverFirstIdleVehicle()` L315/316/319 (`idle-vehicle-row`, `take-over-button`, `available-indicator`) — mirroring the pattern BUG-046 applied across `ActiveJobTests`. Test-only change (4 insertions / 4 deletions in `AppiumFixture.cs`); no production code. **AC-1 verified live under load:** the full Appium suite ran **3× consecutively** on a loaded host (`caffeinate` held, ~7.5 min each) — all green at **26 passed / 0 failed / 1 skipped**, with the previously-flaky `HeartbeatGoOffDutyTests` (which calls `TakeOverFirstIdleVehicle()`) passing all three and zero `NoSuchElementException` from the converted lines. Pre-fix the same suite was 25/1/1.
+
+---
+
+## BUG-049 — Playwright `RequesterRedirectTests` starves in full-suite runs: pending→tracking transition depends on a matching re-run that its re-positioning poll cannot trigger
+
+- **Status:** Open
+- **Severity:** Low–Medium (test-only fragility — matching, acceptance, and the redirect flow all work live; but the flake intermittently 1-reddens the Playwright suite in full-suite mode, eroding the "green suite = healthy" signal exactly as BUG-048 did for the Appium suite. Non-deterministic, so it can mask — or be mistaken for — a real regression: it cost FE-003's live gate a control-experiment run to prove innocence.)
+- **Repo / Area:** **Frontend** — Playwright E2E `tests/ServiceDelivery.Client.E2E/RequesterRedirectTests.cs` (`ReachTrackingRouteAsync` / `WaitForTrackingWithFleetRepositioningAsync`), the arrange path of `GivenRequesterOnTrackingPage_WhenRepIsRedirected_ThenRedirectBannerAndNewRepNameAreVisible`.
+- **Related stories:** `FE-005` (dispatcher redirect), `FE-018` (requester redirect banner), `QUAL-003` (Playwright end-to-end suite). Related bug: `BUG-048` (the Appium sibling: an intermittent suite-mode-only E2E flake in a shared arrange path).
+- **Found:** FE-003 Checkpoint-#2 live gate (`test-playwright.sh`, full-suite runs, 2026-07-18). Failed identically in two consecutive full-suite runs on fresh boots (47 s / 47 s, stuck on `/requester/pending` — "no HydraulicTool rep accepted the Silver request"). **Control run exonerating FE-003:** the full suite with the FE-003 `DispatcherFleetMapTests` fixture filtered out (`FullyQualifiedName!~DispatcherFleetMapTests` — the exact pre-FE-003 suite composition) failed the same way on a fresh boot (19/20, 37 s) — the flake pre-exists FE-003 on main.
+
+**Summary**
+The test's own mitigation comment documents the pressure: fixtures share a finite fleet, `RequesterFindingTests` runs earlier and leaves a HydraulicTool rep `EnRoute`, and the pending→tracking transition fires only after a matched rep **accepts**. The existing mitigation re-positions the whole fleet at the request coordinates every 5 s while polling — which guarantees an in-range candidate **at the next matching re-run** but cannot **cause** one: the backend re-runs matching only when a rep transitions to `Available` (business-rules.md), and the simulator overwrites test-set positions from its internal route model every ~3 s. If no qualified rep happens to become `Available` inside the 45 s budget — or the one that does is momentarily out of range at the instant its re-run fires, before the test's next re-position lands — the Silver request starves on `/requester/pending` and the bounded wait times out. Event-driven matching re-runs and a reactive 5 s re-position cadence can keep missing each other indefinitely; the test passes or fails on that coin-flip under full-suite fleet pressure.
+
+**Expected**
+`GivenRequesterOnTrackingPage_WhenRepIsRedirected_ThenRedirectBannerAndNewRepNameAreVisible` passes reliably in full-suite runs (`test-playwright.sh` / `test-e2e.sh`) as well as in isolation, across repeated runs.
+
+**Actual**
+Intermittent full-suite failure in (at least) three distinct modes, all in the arrange path:
+1. *Pending starvation* (twice with the FE-003 fixture present, once in the pre-FE-003 control composition, all fresh boots): `Requester did not transition from /requester/pending to /requester/tracking within 45s despite the fleet being repeatedly positioned in range — no HydraulicTool rep accepted the Silver request.`
+2. *Redirect ineligibility on a warm system* (isolation run, state accumulated): `POST /dispatcher/redirect failed (422 UnprocessableEntity): {"reason":"RepNotEnRoute"}` — the fleet was parked at the request coordinates, so the accepting rep skipped past `EnRoute` before the redirect fired.
+3. *EnRoute-rep wait timeout* (fresh boot, 2026-07-18 evening full-suite run, 25/26): `BackendApiHelper.WaitForEnRouteRepAtAsync` timed out inside `TriggerRedirectAsync` — tracking was reached, but no rep entered/held `EnRoute` at the staged coordinates within the arrange budget.
+All three are timing races between event-driven matching/state transitions and the test's reactive re-positioning — same structural cause, different surface per run.
+
+**Proposed fix (via `/master`)**
+Make the arrange path condition-driven rather than cadence-driven. Candidate directions, in preference order: (1) before submitting the request, poll `GET /dispatcher/fleet` (dispatcher auth, both already available to the suite via `BackendApiHelper`) until at least one HydraulicTool-qualified rep is **`Available` and in range** — submitting only then makes the submit-time matching run deterministic instead of hoping for a later re-run; (2) if starvation can still occur post-submit (the candidate accepts a different pending request first), extend the poll to also re-verify the request's status via the backend between laps and re-submit-or-fail with the observed fleet state in the message; (3) do **not** simply widen the 45 s budget — the race is structural (event-driven re-runs vs reactive re-positioning), so more time only lowers the frequency, and the BUG-048 lesson applies: fix the synchronisation, not the timeout. Test-only change; no production code. Verification gate mirrors BUG-048: repeated full-suite runs (2–3× consecutive) staying green, not a single isolated pass.
+
+**Acceptance criteria (bug resolved when):**
+- The redirect scenario passes in **full-suite** `test-playwright.sh` runs across 2–3 consecutive fresh-boot executions, and still passes in isolation.
+- The arrange path's waits remain genuine bounded gates (they still fail loudly, with diagnostic fleet/request state, if no rep ever accepts) — no unbounded sleeps, no widened flat timeouts.
+- The fix is test-side only; no matching/backend behaviour change is required to make the suite deterministic.
+
+---
+
+## BUG-050 — Cold start with a valid persisted JWT lands on a permanently blank "/" page (all hosts): the valid-token launch path never routes to the persona home
+
+- **Status:** Fixed
+- **Severity:** Medium (real-user-facing: any user whose token survives an app restart gets a dead app — authenticated shell chrome over an empty body, no recovery except manually navigating or clearing state. On Desktop this is the *default* relaunch experience because `PreferencesTokenStore` (FE-003) persists the JWT across app restarts. Web/Mobile share the same code path and are latently affected wherever a stored token outlives the session.)
+- **Repo / Area:** **Frontend** — `src/ServiceDelivery.Client.UI/Features/Dashboard/Pages/Home.razor` (`@page "/"`) + `src/ServiceDelivery.Client.Core/ViewModels/AppStartViewModel.cs` (`ResolveStartRouteAsync`). Related: `Features/Authentication/Services/PersonaRouteMap.cs` (the unused-at-launch persona-home resolver).
+- **Related stories:** `FE-001` (login + role routing), `FE-002` (session expiry), `FE-003` (whose `PreferencesTokenStore` pre-flight fix made authenticated Desktop cold starts routine and exposed this).
+- **Found:** FE-003 Checkpoint-#2 live gate — the Mac2Driver Desktop suite's `EnsureLoggedOut` timed out because the relaunched app rendered *neither* the login card *nor* the dashboard. The AX-tree dump showed the authenticated shell (app bar persona + avatar) with an **empty `main` landmark**; reproduced **outside Appium** by launching the built Desktop app with a persisted valid token against a live backend — 30 s after launch the body is still blank (screenshot evidence, 2026-07-18).
+
+**Summary**
+`AppStartViewModel.ResolveStartRouteAsync` returns `/login` when the stored token is missing/expired, but **`null` when the token is valid** — and `Home.razor` (`@page "/"`) treats `null` as "stay put" while rendering **no markup whatsoever**. The persona-home mapping (`PersonaRouteMap.RouteFor(role)`) exists and is used after an interactive login, but nothing consumes it on the launch path, so a valid-token cold start strands the user on a blank page beneath the authenticated shell.
+**Why the suite never caught it (masking):** `AppLaunchRoutingTests.GivenAValidStoredJwt_WhenAppLaunches_ThenLoginScreenIsNotShown` asserts only the negative (login absent) — a blank page passes it. No test asserts the positive behaviour ("valid token routes to the persona home"). Every E2E suite starts from clean state (fresh browser context / fresh simulator install), so no automated path ever cold-started authenticated until FE-003's Desktop harness relaunched the same app instance state.
+
+**Expected**
+Launching any host with a valid stored JWT routes to the persona home (`Dispatcher → /dispatcher`, `ServiceRep → /rep/takeover`, `Requester → /requester`) — same destination the interactive login flow uses.
+
+**Actual**
+The app stays on `/` and renders an empty body under the persona shell, indefinitely. Verified on Desktop (Mac Catalyst) live; the code path is host-agnostic.
+
+**Proposed fix (via `/master`)**
+Make the valid-token branch resolve the persona home instead of `null`: read the role from the stored JWT (the claims reader FE-001 already uses) and return `PersonaRouteMap.RouteFor(role)` — hoisting the route map (or the mapping) into Core if UI-layer placement blocks the ViewModel, keeping one source of truth with the post-login navigator. Replace the masking test with positive assertions (one per persona: `GivenAValidStoredDispatcherJwt_WhenAppLaunches_ThenDispatcherHomeIsShown`, etc.) plus the existing negative for missing/expired tokens. Manual/Mac2 verification gate: relaunch the Desktop app with a persisted dispatcher token → fleet map renders (the exact scenario that exposed this).
+
+**Acceptance criteria (bug resolved when):**
+- A valid persisted JWT cold-starts each persona to its home screen on all three hosts (Desktop verified live; Web via Playwright with a pre-seeded token if feasible).
+- An expired/missing/unreadable token still routes to `/login` (existing behaviour preserved).
+- The masking negative-only launch test is replaced by positive per-persona routing assertions.
+- `"/"` never renders a blank authenticated page: every `ResolveStartRouteAsync` outcome leads to a rendered screen.
+
+**Resolution** — Fixed within FE-003 (frontend PR #76; folded onto that branch because the blank cold start blocked the story's Desktop live gate, which is also what exposed it). `AppStartViewModel.ResolveStartRouteAsync` now returns a concrete route for every outcome: a valid token resolves the persona home by reading the JWT `role` claim (new Core `Authentication/JwtRoleReader` + shared `JwtPayloadReader` base64url decode) and mapping it through the new Core `Navigation/PersonaHomeRoutes` (single source of truth; the UI `PersonaRouteMap` now delegates to it — launch path uses fail-safe `TryGetRoute` → `/login`, the trusted post-login navigator keeps the throwing `RouteFor`). `Home.razor` navigates unconditionally (`replace: true`) so `"/"` never renders a blank body. The masking negative-only launch test was replaced with per-persona positive routing assertions plus role-invalid negatives at both the ViewModel and render-boundary levels (net +8 tests; suite 722/0 at merge). **Live-verified on Desktop:** cold start with a persisted dispatcher token lands on the dispatcher dashboard with the fleet map and markers rendered (screenshot evidence in the FE-003 run), and the Mac2Driver Desktop E2E suite runs green against the fixed launch path.

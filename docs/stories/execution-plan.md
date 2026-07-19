@@ -220,7 +220,7 @@
 
 | Story | Repo | Description |
 |-------|------|-------------|
-| [FE-003](frontend.md) | Frontend | Live fleet map with colour-coded rep markers |
+| ~~[FE-003](frontend.md)~~ | ~~Frontend~~ | ~~Live fleet map with colour-coded rep markers~~ |
 | ~~[BE-032](backend.md)~~ | ~~Backend~~ | ~~Enrich `GET /dispatcher/fleet` with the active-request DTC title so the FE-003 popover can show it (FE-003 AC-5 follow-up; filed from the FE-003 AI review)~~ |
 | [FE-004](frontend.md) | Frontend | Active request queue with tier badges |
 | [FE-005](frontend.md) | Frontend | Redirect controls with confirmation dialog |
