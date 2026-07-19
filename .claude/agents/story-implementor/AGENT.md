@@ -26,7 +26,7 @@ Before beginning, read these skill files:
 ## Inputs
 
 - Story ID
-- Feature branch name (e.g. `feature/BE-010-submit-service-request`; a `BUG-` story uses a `fix/` branch, e.g. `fix/BUG-001-rephub-force-release-event`)
+- Feature branch name (e.g. `feature/BE-010-submit-service-request`; a `BUG-` story uses a `fix/` branch, e.g. `fix/BUG-001-rephub-force-release-event`; a product-code `QUAL-` story uses a `feat/` branch, e.g. `feat/QUAL-013-schematize-rest-responses-…`)
 - Approved plan from Story Planner (`.stories/<STORY-ID>/02-plan.md`, produced by `../.claude/agents/story-planner/AGENT.md`) — for a frontend UI story this includes a **UI Composition Map** that names the mockup and breaks it into components
 - Optional: AI Reviewer findings from a prior cycle (`.stories/<STORY-ID>/04-ai-review.md`) when sent back for revision
 

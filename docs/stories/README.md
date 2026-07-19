@@ -7,7 +7,7 @@ This directory contains the full user story backlog for the Service Delivery sys
 | [`simulator.md`](simulator.md) | 12 stories — SIM-001 to SIM-012 |
 | [`backend.md`](backend.md) | 29 stories — BE-001 to BE-029 |
 | [`frontend.md`](frontend.md) | 29 stories — FE-001 to FE-029 (FE-024–028 = the Google Maps epic, [ADR-0010](../adr/0010-google-maps-for-map-visualization.md); FE-029 = app-bar & nav chrome: left hamburger, safe area, bell removal) |
-| [`quality.md`](quality.md) | Cross-cutting engineering-quality stories — QUAL-001+ |
+| [`quality.md`](quality.md) | Cross-cutting engineering-quality stories — QUAL-001+ (product-code QUAL stories carry a **Repo / Area** line and run via `/master`; central-only ones ship via `/ship-it`) |
 | [`bug.md`](bug.md) | Bugs — BUG-001 to BUG-018 (BUG-016/017 fixed; BUG-018 open) |
 | [`execution-plan.md`](execution-plan.md) | Phase-based plan (+ a Cross-Cutting section) sequencing all stories in dependency order |
 

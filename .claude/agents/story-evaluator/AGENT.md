@@ -40,11 +40,13 @@ Write results to `.stories/<STORY-ID>/01-evaluation.md` in the working repo befo
 
 ### Step 1 — Read the story
 
-Find the story in `docs/stories/<repo>.md` in the central repo (match prefix: `BE-` → `backend.md`, `SIM-` → `simulator.md`, `FE-` → `frontend.md`, `BUG-` → `bug.md`). Central repo is at `../` from a working repo.
+Find the story in `docs/stories/<repo>.md` in the central repo (match prefix: `BE-` → `backend.md`, `SIM-` → `simulator.md`, `FE-` → `frontend.md`, `BUG-` → `bug.md`, `QUAL-` → `quality.md`). Central repo is at `../` from a working repo.
 
 Read the full story: title, narrative, and every acceptance criterion bullet.
 
 **Bugs (`BUG-` IDs):** the file is `bug.md`, but — unlike story prefixes — the prefix does **not** encode the target repo. Read the bug's **Repo / Area** field to determine which working repo it applies to (backend, frontend, or simulator), and treat its **Acceptance criteria (bug resolved when…)** bullets as the acceptance criteria. A documentation-only bug (no code/tests) is out of scope for this TDD pipeline — flag it as such so it can be handled as a direct doc edit instead.
+
+**Product-code QUAL stories (`QUAL-` IDs):** the file is `quality.md`; like bugs, the prefix does **not** encode the target repo — read the story's **Repo / Area** line directly under its heading (backend / frontend / simulator). A `QUAL-` story with **no Repo / Area line** is central-only governance work outside this TDD pipeline: immediately return `BLOCKED` with a single blocker directing it to `/ship-it` (mirror the documentation-only-bug rule). Do not evaluate further.
 
 If the story file does not exist or the story ID is not found within it, immediately return:
 

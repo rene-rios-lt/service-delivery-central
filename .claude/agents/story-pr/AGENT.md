@@ -24,7 +24,7 @@ Before beginning, read this skill file:
 ## Inputs
 
 - Story ID (e.g. `BE-010`)
-- Feature branch name (e.g. `feature/BE-010-submit-service-request`; a `BUG-` story uses a `fix/` branch, e.g. `fix/BUG-001-rephub-force-release-event`)
+- Feature branch name (e.g. `feature/BE-010-submit-service-request`; a `BUG-` story uses a `fix/` branch, e.g. `fix/BUG-001-rephub-force-release-event`; a product-code `QUAL-` story uses a `feat/` branch, e.g. `feat/QUAL-013-schematize-rest-responses-…`)
 - AI Reviewer output (`.stories/<STORY-ID>/04-ai-review.md`, produced by `../.claude/agents/story-ai-reviewer/AGENT.md`)
 - Approved plan (`.stories/<STORY-ID>/02-plan.md`)
 - Story file (`../docs/stories/<repo>.md` in the central repo — for the business narrative)
@@ -177,7 +177,7 @@ If any staged file is not in the story's change list, unstage it.
 ### Step 4 — Derive the commit summary
 
 Before writing the commit message:
-1. Read the story title from `docs/stories/<repo>.md` in the central repo (`BUG-` IDs live in `bug.md`).
+1. Read the story title from `docs/stories/<repo>.md` in the central repo (`BUG-` IDs live in `bug.md`; `QUAL-` IDs in `quality.md`).
 2. Read the plan's one-line responsibility summary from `.stories/<STORY-ID>/02-plan.md` (Responsibility column of the most central new file).
 3. Compose: `[STORY-ID] <imperative verb> <what> — <why in 5–8 words>`.
 

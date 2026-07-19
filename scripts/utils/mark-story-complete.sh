@@ -10,9 +10,10 @@
 #   2. Hook (no args): reads the PostToolUse JSON on stdin, extracts the merged
 #      PR's head-branch story ID, and crosses it out. Fired after `gh pr merge`.
 #
-# Handles story IDs (BE-/FE-/SIM-) and bug IDs (BUG-), matching the ID whether
-# the row's first cell is a bare ID (`| BE-014 |`) or a markdown link
-# (`| [BE-014](backend.md) |`, `| [**BUG-001**](bug.md) |`).
+# Handles story IDs (BE-/FE-/SIM-), bug IDs (BUG-), and engineering-quality
+# IDs (QUAL-), matching the ID whether the row's first cell is a bare ID
+# (`| BE-014 |`) or a markdown link (`| [BE-014](backend.md) |`,
+# `| [**BUG-001**](bug.md) |`, `| [QUAL-013](quality.md) |`).
 #
 # Idempotent — a row that is already struck through is left untouched.
 

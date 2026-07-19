@@ -1,5 +1,5 @@
 ---
-description: Implements a user story end-to-end using the TDD pipeline. Invoke with /master <STORY-ID> (e.g. /master BE-010, /master FE-007, /master SIM-003, /master BUG-001).
+description: Implements a user story end-to-end using the TDD pipeline. Invoke with /master <STORY-ID> (e.g. /master BE-010, /master FE-007, /master SIM-003, /master BUG-001, /master QUAL-013 for a product-code QUAL story).
 ---
 
 # Master Orchestrator
@@ -23,6 +23,7 @@ Invoked with a story ID:
 /master SIM-003
 /master FE-007
 /master BUG-001
+/master QUAL-013
 ```
 
 ---
@@ -35,9 +36,9 @@ Invoked with a story ID:
 | `SIM-` | `service-delivery-simulator/` |
 | `FE-` | `service-delivery-frontend/` |
 | `BUG-` | not encoded by the prefix — read the bug's **Repo / Area** field in `bug.md` (backend / frontend / simulator) |
-| `QUAL-` (or any prefix not listed above) | **none — not a `/master` story.** `QUAL-` is cross-cutting governance work (skill / agent / doc edits, sometimes with a product-repo test audit), not a single-repo TDD feature, so `/master` has no working repo to target. |
+| `QUAL-` | not encoded by the prefix — read the story's **Repo / Area** line in `quality.md` (backend / frontend / simulator). **No Repo / Area line ⇒ not a `/master` story** — central-only governance work (see `QUAL-` routing below). |
 
-**If the story prefix is `QUAL-` — or anything not in the table above — do not run this pipeline.** Stop before Step 1 and redirect: a `QUAL-` story ships via `/ship-it` for its central edits per the story's own **Done when**, and any product-repo *code* it calls for is filed and run as its own `BE-`/`FE-`/`SIM-` work (or a test-only PR via `/ship-it`, as QUAL-007 did). Do **not** create a feature branch or invoke the Evaluator for an unmapped prefix. (`ship-it` already owns `QUAL-NNN` branch naming so the post-merge hook strikes the plan; see `quality.md` and the `ship-it` skill.)
+**`QUAL-` routing.** A `QUAL-` story is a `/master` story **only if** its entry in `quality.md` carries a **Repo / Area** line directly under its heading (e.g. QUAL-012 → frontend, QUAL-013 → backend). If it does, resolve the working repo exactly as for a `BUG-` ID and run the full pipeline; the branch is `feat/QUAL-NNN-<kebab-title>` (see Step 2) — the same shape `/ship-it` uses for central QUAL shipments, so the post-merge hook strikes the plan row from either entry point. If it does **not**, it is cross-cutting central governance work (skill / agent / doc edits): do **not** run this pipeline — stop before Step 1 and redirect to `/ship-it` per the story's own **Done when**, with any product-repo *code* it calls for filed as its own story. Never create a branch or invoke the Evaluator for a central-only `QUAL-` story or for any prefix not in the table above. (`ship-it` owns `QUAL-NNN` branch naming for central shipments; see `quality.md` and the `ship-it` skill.)
 
 ---
 
@@ -94,7 +95,7 @@ Each stage's model is pinned in its AGENT.md `model:` frontmatter (Opus 4.8 for 
 
 ### 1. Display the story
 
-Read `docs/stories/<repo>.md` in the central repo (match story prefix: `BE-` → `backend.md`, `SIM-` → `simulator.md`, `FE-` → `frontend.md`, `BUG-` → `bug.md`). Display the story title and all acceptance criteria. For a `BUG-` ID, also read its **Repo / Area** field — that determines the working repo (see Working Repo Resolution above).
+Read `docs/stories/<repo>.md` in the central repo (match story prefix: `BE-` → `backend.md`, `SIM-` → `simulator.md`, `FE-` → `frontend.md`, `BUG-` → `bug.md`, `QUAL-` → `quality.md`). Display the story title and all acceptance criteria. For a `BUG-` or `QUAL-` ID, also read its **Repo / Area** field — that determines the working repo (see Working Repo Resolution above). A `QUAL-` ID with **no** Repo / Area line: stop and redirect to `/ship-it` (see `QUAL-` routing).
 
 If the story ID does not appear in the file, stop and report: `Story [ID] not found in docs/stories/[repo].md. Verify the ID and re-run.`
 
@@ -113,6 +114,7 @@ In the working repo for this story, at the start of every execution:
    ```
    Example: story "BE-010 — Submit a service request" → `feature/BE-010-submit-service-request`.
    For a `BUG-` ID, use a `fix/` branch instead — e.g. `fix/BUG-001-rephub-force-release-event`.
+   For a `QUAL-` ID, use a `feat/` branch — e.g. `feat/QUAL-013-schematize-rest-responses-…` — matching `/ship-it`'s QUAL branch shape; the post-merge hook keys on the `QUAL-NNN` token.
    If the branch already exists (prior failed run), check it out instead:
    ```bash
    git checkout feature/<STORY-ID>-<kebab-case-title>
@@ -311,5 +313,6 @@ This skill runs from the **central repo** (`service-delivery-central`) and dispa
 | `SIM-` | `service-delivery-simulator/` |
 | `FE-` | `service-delivery-frontend/` |
 | `BUG-` | not encoded by the prefix — read the bug's **Repo / Area** field in `bug.md` (see Working Repo Resolution) |
+| `QUAL-` | product-code QUAL only — read the story's **Repo / Area** line in `quality.md`; a QUAL story without one is central-only and ships via `/ship-it` (see Working Repo Resolution) |
 
 All agent invocations, branch operations, and audit file paths are scoped to the resolved working repo. The central repo itself is never the target of story implementation work.
