@@ -1463,3 +1463,59 @@ Replace the `WaitForSelectorAsync`/`IElementHandle` pattern with an auto-retryin
 - `GivenAuthenticatedDispatcher_WhenFleetMarkerClicked_ThenPopoverShowsRepDetails` uses a re-resolving locator (not a fixed `IElementHandle`) for the marker click.
 - The test passes across 2–3 consecutive fresh-boot `test-playwright.sh` runs while the simulator is posting live position updates.
 - The rep popover assertions (`rep-popover`, `popover-rep-name`) are unchanged and still verified.
+
+---
+
+## BUG-057 — `POST /job-offers/{id}/accept` has no active-job guard: a rep already on a job can accept another offer, clobbering its `ActiveRequestId` and producing concurrent assignments
+
+- **Status:** Open
+- **Severity:** Medium (product-logic / data-integrity defect — violates the one-rep-one-active-job invariant. `AcceptJobOfferCommandHandler` calls `repState.GoEnRoute(newRequestId)`, which unconditionally overwrites `ActiveRequestId`, so accepting a second offer silently abandons the rep's in-flight job; two near-simultaneous accepts both succeed. No crash, but a displaced request loses its rep with no state trace. Observed live: one rep ended with three concurrent jobs.)
+- **Repo / Area:** **Backend** — `Application/Features/JobOffers/Commands/AcceptJobOfferCommandHandler.cs` (`Handle` loads offer + request + rep state, then calls `offer.Accept()` and `repState.GoEnRoute(serviceRequest.Id)` with **no** `repState.IsOnActiveJob()` check and no verification the offer is still `Pending`); `Domain/Entities/RepStateRecord.cs` (`GoEnRoute` sets `State = EnRoute` and overwrites `ActiveRequestId` unconditionally — no guard against replacing a live assignment). Nothing serializes concurrent accepts for the same rep.
+- **Related stories:** `BUG-054` (filed together — recorded as related observation (a) during the same gate), `BUG-058` (the duplicate-offer race — a rep holding two live offers is what makes this exploitable), `docs/business-rules.md` / matching + state-machine stories (the one-rep-one-active-job invariant; `RepStateRecord.IsOnActiveJob()` already exists and gates take-over eligibility but is not consulted by accept).
+- **Found:** `BUG-049` resumed `/master` live gate, 2026-07-20. Rep One accepted **two** offers within the same second while a third job was already `InProgress`, ending with three concurrent jobs.
+
+**Summary**
+`AcceptJobOfferCommandHandler` treats every accept as if the rep were idle. It never checks `repState.IsOnActiveJob()` (which already exists on `RepStateRecord`) nor that the offer is still `Pending`, and `GoEnRoute` overwrites `ActiveRequestId` with no guard. A rep that is `EnRoute` / `Within15Miles` / `OnSite` can therefore accept another offer — abandoning its current request — and because there is no concurrency control, two accepts landing in the same instant both persist.
+
+**Expected**
+A rep already on an active job cannot accept a new offer: the accept is rejected (409/422), the offer stays available for another rep, and the rep's existing assignment is untouched. Accepting a non-`Pending` (expired / declined / already-accepted) offer is rejected. Concurrent accepts by the same rep resolve to exactly one winner.
+
+**Actual**
+No guard at all. An on-active-job rep's accept succeeds and clobbers `ActiveRequestId`; concurrent accepts all succeed; a rep can hold multiple concurrent assignments.
+
+**Proposed fix (via `/master`)**
+In `AcceptJobOfferCommandHandler`, before `offer.Accept()` / `GoEnRoute`: reject when `repState.IsOnActiveJob()` (surface a domain error mapped to 409/422), and reject when the offer is not `Pending` (expired / declined / already-accepted). Add optimistic concurrency (a row version / conditional update on `RepStateRecord` or the offer) so two simultaneous accepts cannot both commit. Handler tests: on-active-job rep accept → rejected, state + prior assignment unchanged; non-`Pending` offer accept → rejected; two concurrent accepts by one rep → exactly one succeeds; idle rep accepting a valid `Pending` offer → still succeeds.
+
+**Acceptance criteria (bug resolved when):**
+- Accepting an offer while the rep is `EnRoute` / `Within15Miles` / `OnSite` is rejected and leaves the rep's existing `ActiveRequestId` intact.
+- Accepting a non-`Pending` offer (expired, declined, or already accepted) is rejected.
+- Two concurrent accepts by the same rep result in exactly one active assignment (no clobbered `ActiveRequestId`, no double-assignment).
+- An idle (`Available`) rep accepting a valid `Pending` offer still succeeds (existing behaviour preserved).
+
+---
+
+## BUG-058 — Expiry sweeper and pending-request reconciler race in `MatchingService.RunAsync`, creating duplicate concurrent `Pending` offers for the same request+rep
+
+- **Status:** Open
+- **Severity:** Medium (product-logic defect — two live offers for the same request+rep. Wastes the qualified pool, distorts skip-list churn, and — combined with `BUG-057` — lets one rep accept the same request twice. Non-deterministic; no crash. Observed live twice in one run.)
+- **Repo / Area:** **Backend** — `Application/Common/Services/MatchingService.cs` (`RunAsync` selects the nearest eligible winner and unconditionally `AddAsync`es a new `Pending` `JobOffer` — **no** check for an already-live `Pending` offer for the request / request+rep, no idempotency); driven concurrently by two independent background services with no coordination: `Application/Common/Services/ExpiredJobOfferSweeper.cs` (`ReRunMatchingAsync` after each expiry) and `Application/Common/Services/PendingRequestReconciler.cs` (`ReRunMatchingAsync` per orphaned-`Pending` request). Both call `_matching.RunAsync(requestId)`; nothing serializes them or dedupes the resulting offer.
+- **Related stories:** `BUG-054` (filed together — related observation (b), same gate), `BUG-057` (missing accept guard — a duplicate offer is what that bug's clobber exploits), `BUG-053` (deaf reps produce more expiries → more sweeper re-matches → more races).
+- **Found:** `BUG-049` resumed `/master` live gate, 2026-07-20. Rep Eight received **two** concurrent offers at 19:01:09; Rep Seven **two** at 19:02:19.
+
+**Summary**
+`MatchingService.RunAsync` is not idempotent: it always creates a fresh `Pending` offer for the chosen winner without checking whether the request already has a live offer. Two background services can trigger it for the same request at nearly the same time — the `ExpiredJobOfferSweeper` (immediately after expiring an offer) and the `PendingRequestReconciler` (its periodic orphaned-pending pass) — and each independently picks the same nearest rep and persists an offer, yielding two concurrent `Pending` offers for the same request+rep.
+
+**Expected**
+A request with a live (unexpired) `Pending` offer is not given a second concurrent offer, regardless of which service (sweeper, reconciler, or both) triggers matching. Matching for a given request is idempotent / serialized.
+
+**Actual**
+`RunAsync` blindly adds an offer; the two services race with no coordination or dedup; duplicate concurrent offers are persisted for the same request+rep.
+
+**Proposed fix (via `/master`)**
+Make offer creation idempotent in `MatchingService.RunAsync`: before creating, short-circuit if the request already has a live (`Pending`, not-expired) offer; and/or enforce persistence-level uniqueness (upsert / unique index keyed on `(ServiceRequestId, Status = Pending)`) so a duplicate cannot be stored; and/or funnel the sweeper and reconciler through a single matching entry point with a per-request lock so the two passes cannot interleave. Tests: two `RunAsync` calls for the same request create exactly one `Pending` offer; a request that already holds a live `Pending` offer is not re-offered; a genuinely un-offered pending request still gets exactly one offer.
+
+**Acceptance criteria (bug resolved when):**
+- A request with a live (unexpired) `Pending` offer is never given a second concurrent offer, whether matching is triggered by the sweeper, the reconciler, or both.
+- Two near-simultaneous matching passes for the same request create at most one new `Pending` offer.
+- A genuinely un-offered pending request still receives exactly one offer (existing behaviour preserved).
+- The declined/expired re-offer behaviour from `BUG-054` is preserved (this dedup must not re-introduce skip-list starvation).
