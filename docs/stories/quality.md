@@ -364,3 +364,372 @@ Verified during FE-003/BE-032: **0 of 24 responses across all 23 paths** in `con
 **Depends on:** QUAL-006 (merged — the committed contract + sync-check exist).
 
 **Done when:** all success responses are schematized in the committed contract, the sync-check demonstrably guards response shapes, the backend suite is green, and the story is struck in `execution-plan.md`. **Ships via `/master`** (backend production metadata + contract + tests — the product-code QUAL case), **not** `/ship-it`.
+
+---
+
+> **QUAL-014 – QUAL-028** were filed on **2026-07-21** from a read-only design investigation of the frontend **shared code** (the `Core` and `UI` projects). They are ordered by importance: **QUAL-014** is the highest-leverage item (a genuine reliability defect), descending to convention/decision items at the end. QUAL-014/015 are defect-flavoured and could alternatively be reclassified as `BUG-`; they are filed here as requested. All are **Frontend product-code** stories and ship via `/master`.
+
+---
+
+## QUAL-014 — Self-healing SignalR reconnect in the frontend hub clients (kill silent, permanent connection death)
+
+- **Repo / Area:** Frontend — SignalR hub client services (`SignalRRepHubService`, `SignalRRequesterHubService`, `SignalRVehiclePositionHubService`)
+
+**As a** ServiceRep, Requester, or Dispatcher whose client holds a live SignalR connection,
+**I want** a dropped hub connection to keep trying to reconnect (and to recover its subscriptions) instead of dying permanently after ~42 s of default retries,
+**so that** a transient network blip doesn't leave me silently deaf to job offers, tracking updates, or fleet positions for the rest of my session.
+
+**Motivation**
+All three hub services build their `HubConnection` with a bare `.WithAutomaticReconnect()`, whose default policy retries only 4 times (`{0,2,10,30}` s) and then transitions to `Closed` **permanently**. None of the three subscribe to `HubConnection.Closed`, `.Reconnecting`, or `.Reconnected`, so once the built-in retries are exhausted the connection is dead forever with no restart path and no surfaced state. The BUG-038 back-off loop only covers the **initial cold connect**, not a post-establishment drop. This is the exact "connection dies silently and stays dead → deaf-but-available client" mechanism being investigated as **BUG-053** on the simulator — the frontend RepHub carries the identical latent defect.
+
+**Acceptance Criteria:**
+- Each hub connection is configured with a custom/unbounded `IRetryPolicy` (or a `Closed`-handler that re-invokes the existing back-off connect loop), so a drop after establishment triggers continued reconnection rather than permanent death.
+- On `Reconnected`/reconnect, any per-connection server-side subscription state the hub relies on is re-established (verify each hub's `On*` handlers survive a reconnect, or are re-registered).
+- Connection-state transitions are observable to the consuming ViewModel/UI (at minimum logged via the QUAL-012 host logger; optionally surfaced as a "reconnecting" state) so a degraded connection is never invisible.
+- A test proves that a simulated `Closed` after a successful connect drives a reconnect attempt (spy/fake connection seam), for each of the three services.
+- No regression to the BUG-038 cold-connect back-off semantics.
+
+**Out of scope:** the simulator's BUG-053 fix (tracked separately); changing the backend hub contract; adding a UI reconnecting banner beyond what an AC minimally requires.
+
+**Depends on:** best landed **after** QUAL-017 (the shared `ResilientHubConnection` collaborator), so the reconnect policy lives in one place; if QUAL-017 slips, apply per-service.
+
+**Done when:** all three hub clients self-heal after a post-establishment drop with tests proving it, the offline suite is green, the behaviour is live-verified (drop + recover), and the story is struck in `execution-plan.md`. **Ships via `/master`**.
+
+---
+
+## QUAL-015 — Fix the JobOffer RepHub callback leak (discarded subscription `IDisposable`)
+
+- **Repo / Area:** Frontend — `Features/ServiceRep/Pages/JobOffer.razor` (+ `IRepHubService.OnJobOfferExpired` registration contract)
+
+**As a** ServiceRep who navigates to the job-offer screen more than once in a session,
+**I want** each visit's SignalR `JobOfferExpired` handler to be unregistered when the component is disposed,
+**so that** stale handlers capturing dead component instances don't stack up and fire against disposed state.
+
+**Motivation**
+`JobOffer.razor` registers `RepHubService.OnJobOfferExpired(OnJobOfferExpiredAsync)`, which calls `_connection.On(...)`. `_connection.On` returns an `IDisposable` that is **discarded**, and the component's `Dispose` never unregisters it. Because `RepHubService` is **session-scoped**, every visit to `/rep/offer` stacks another handler that captures a now-disposed component's `this`. The `if (_viewModel is null) return` guard doesn't protect against this because `_viewModel` is never nulled on dispose. This is a genuine handler/memory leak, not a style issue.
+
+**Acceptance Criteria:**
+- `IRepHubService.OnJobOfferExpired` returns the subscription `IDisposable` (or exposes a paired unsubscribe), and `JobOffer` captures it and disposes it in `Dispose`.
+- A test proves that disposing the component unregisters the handler (re-emitting `JobOfferExpired` after dispose does not invoke the old callback), and that navigating to the offer screen N times leaves exactly one live handler.
+- The fix pattern is checked against the other hub `On*` registrations (see QUAL-014/017) so no other discarded-`IDisposable` subscriptions remain.
+
+**Out of scope:** the broader observing-component base class (QUAL-018) — this is the targeted defect fix; QUAL-018 would later subsume the pattern.
+
+**Done when:** the subscription is deterministically disposed with a proving test, the offline suite is green, and the story is struck in `execution-plan.md`. **Ships via `/master`**.
+
+---
+
+## QUAL-016 — Enforce ADR-0011 throw-on-unmapped tier across ALL wire types (one `ServiceTierWire.Parse`)
+
+- **Repo / Area:** Frontend — wire DTO → domain mapping boundaries (`RedirectPayload`, `ActiveJobContext`, `DispatcherFleetEntryDto`; consolidate with `JobOfferReceivedWirePayload.ToJobOfferPayload`)
+
+**As a** frontend developer binding a backend tier value to a badge,
+**I want** every wire payload carrying a service tier to parse-or-throw at its mapping boundary (per ADR-0011), through one shared helper,
+**so that** a drifted or unmapped tier fails loudly at the boundary instead of silently producing an invisible/garbage badge downstream.
+
+**Motivation**
+ADR-0011 (frontend CLAUDE.md, "Wire Contract") mandates that a wire enum arriving unmapped/missing must **throw**, never silently default. Today only `JobOfferReceivedWirePayload.ToJobOfferPayload()` honours it. `RedirectPayload.RequesterTier`, `ActiveJobContext.Tier`, and `DispatcherFleetEntryDto.ActiveRequestTier` sidestep the rule by keeping tier as a **raw string that is never parsed to `ServiceTier`** — so it can never throw. Those strings flow straight into `sd-badge--{tier}` (e.g. `ActiveJob.razor`), reproducing exactly the invisible-badge class of failure (**BUG-036**) that ADR-0011 exists to prevent — and the two payloads with no boundary mapper are the most exposed.
+
+**Acceptance Criteria:**
+- A single `ServiceTierWire.Parse(string)` (parses-or-throws `InvalidOperationException` naming the drifted value) is the one place tier strings become `ServiceTier`; `JobOfferReceivedWirePayload` is refactored to use it (dedupe, no behaviour change).
+- `RedirectPayload`, `ActiveJobContext`, and `DispatcherFleetEntryDto` gain real wire-DTO → domain mappers that call `ServiceTierWire.Parse`, instead of binding the raw string onto the consumed model.
+- Each is backed by a captured-payload deserialization test (per the repo's wire-contract test rule) plus a test proving an unmapped tier throws at the boundary.
+- No consumer downstream still receives an unparsed tier string.
+
+**Out of scope:** `RepStateColour`'s unknown→offline-grey fallback (a defensible presentation fallback, not a data-binding default); backend changes.
+
+**Done when:** all tier-bearing wire types parse-or-throw through the shared helper with tests, the offline suite is green, and the story is struck in `execution-plan.md`. **Ships via `/master`**.
+
+---
+
+## QUAL-017 — Extract a `ResilientHubConnection` collaborator to kill the ~80% hub-client duplication and unify the connect-idempotency guard (composition, not a base class)
+
+- **Repo / Area:** Frontend — SignalR hub client services (`SignalRRepHubService`, `SignalRRequesterHubService`, `SignalRVehiclePositionHubService`) + a new connection abstraction in `Core/Interfaces`
+
+**As a** maintainer of the frontend hub clients,
+**I want** the shared connection lifecycle (build, access-token provider, back-off connect, state guard, stop, dispose) extracted into an injected collaborator that each hub service *has-a*, not a base class each hub service *is-a*,
+**so that** a fix or guard applied once holds for all three hubs — without the LSP/fragile-base coupling of inheritance and without the test-seam constructor hack.
+
+**Design note — composition over inheritance.** There is no genuine "`SignalRRepHubService` **is-a** hub-service-base"; what the three share is a *collaborator* (connection resilience), so it is modelled as one. This is the strongest composition case in the batch: it keeps each hub service to a single responsibility (its domain events), puts the QUAL-014 reconnect policy and the QUAL-015 subscription-disposal in exactly one place, and — critically — **removes the current "second internal constructor purely to swap the connection for tests"**, which is the tell that inheritance is fighting testability. Inject the abstraction and pass a fake in tests instead. (Rejected alternative: an `abstract SignalRHubServiceBase` with template-method hooks — tighter coupling, an LSP contract each subclass must honour, and it bundles resilience + domain concerns into one type.)
+
+**Motivation**
+The three `SignalR*Service.cs` files are ~190–220 lines each with only ~25 lines unique (hub path constant, event names, `On*` handlers). Everything else — the `InitialConnectBackoff` array, both constructors (public + internal test seam), `BuildConnection`, `ProvideAccessTokenAsync`, `IsConnected`, `StartAsync`, `RetryConnectAsync`, `StopAsync`, `DisposeAsync` — is verbatim. The duplication is already **actively harmful**: `SignalRRequesterHubService.StartAsync` has an FE-019 `Disconnected`-state idempotency guard (gating on `Func<HubConnectionState>`) that **RepHub and VehiclePosition lack** (they gate on `Func<bool> _isConnected`). So calling `StartAsync` on an already-live RepHub throws "cannot be started if not Disconnected", swallowed into a pointless back-off. One shared collaborator collapses this and forces the guard — and the QUAL-014 reconnect fix — to apply uniformly.
+
+**Acceptance Criteria:**
+- A `IResilientHubConnection` abstraction (in `Core/Interfaces`) and its concrete implementation own the connection field, back-off array, `BuildConnection`, access-token provider, `State`/`IsConnected` guard, `StartAsync`/`RetryConnectAsync`, `StopAsync`, and `DisposeAsync`. Its `On<T>(method, handler)` **returns the subscription `IDisposable`** (the seam QUAL-015 needs), and it exposes connection-state transitions (`Closed`/`Reconnected`) for QUAL-014.
+- Each of the three hub services depends on `IResilientHubConnection` by constructor injection (created per-hub via a factory/named registration supplying that hub's path); the service body is reduced to registering its `On<T>` handlers and exposing its domain methods — no lifecycle code.
+- The `StartAsync` idempotency guard (skip when already connected/connecting) lives once in the collaborator and is therefore identical across all three hubs — the RepHub/VehiclePosition drift is eliminated.
+- The internal test-seam constructors are **removed**: tests inject a fake/spy `IResilientHubConnection` instead. Existing per-service tests are updated to the injected fake (no behavioural change).
+- Hub logging (QUAL-012, already merged) is carried into the collaborator so all three keep host-logger routing.
+
+**Out of scope:** the reconnect behaviour change itself (QUAL-014 — it lands *in* this collaborator); changing the backend hub contract.
+
+**Done when:** the three services compose one `IResilientHubConnection`, the guard is unified, the test-seam constructors are gone, tests green, live-verified across all three hubs, and the story is struck in `execution-plan.md`. **Ships via `/master`**.
+
+---
+
+## QUAL-018 — `INotifyStateChanged` interface (ViewModel side) + an `ObservingComponentBase` (kill the hand-rolled StateChanged/subscribe/dispose triad)
+
+- **Repo / Area:** Frontend — `Core` (`INotifyStateChanged` interface + optional shared notifier) + `UI` component base (subscribe/marshal/unsubscribe)
+
+**As a** maintainer of the frontend UI,
+**I want** one shared *contract* for a ViewModel to announce state changes and one shared way for a component to subscribe, marshal to the render thread, and unsubscribe,
+**so that** the most-copied code in the repo lives in one place and the "forgot to unsubscribe" leak class is structurally impossible.
+
+**Design note — interface on the VM side, base class only where the framework mandates it.** The two halves get different treatment on purpose:
+- **ViewModel side → an interface, not a base class.** Define `INotifyStateChanged { event Action StateChanged; }` so components depend on an *abstraction* (ISP/DIP), not a concrete `ObservableViewModel` parent. VMs raise the event via a tiny reusable notifier field (composition) or a two-line hand-roll — either is fine, and neither forces an inheritance chain onto types that already have other reasons to exist. A base class here would spend the VM's single base slot on a one-event concern.
+- **Component side → a base class is acceptable.** Blazor *is* a class hierarchy — every component already inherits `ComponentBase`, and Microsoft ships `OwningComponentBase<T>` for exactly this "manage a per-component lifecycle concern" job. An `ObservingComponentBase<TViewModel>` goes *with* the framework grain; there is no DI-injected mixin for Razor lifecycle, so composing this instead would be less idiomatic, not more SOLID.
+
+**Motivation**
+There is no shared observable/state-notification pattern. Five ViewModels each declare their own identical `public event Action? StateChanged;` (`ActiveJobViewModel`, `DispatcherFleetViewModel`, `JobOfferViewModel`, `RequesterTrackingViewModel`, plus `ShellViewModel` as `TitleChanged`); only one bothers with a `RaiseStateChanged()` helper, and the other ViewModels expose no event at all — so there is no rule for **when** a VM needs one. On the UI side every page re-implements the identical triad: subscribe in `OnInitialized`, `OnViewModelStateChanged => InvokeAsync(StateHasChanged)`, unsubscribe in `Dispose` (`DispatcherHome`, `FleetMap.razor.cs`, `ActiveJob`, `RequesterTracking`, …). This is the direct breeding ground for the QUAL-015 leak.
+
+**Acceptance Criteria:**
+- An `INotifyStateChanged` interface (in `Core`) declares the `StateChanged` event; the five hand-rolled events are migrated to implement it, raising via a small shared notifier or a minimal hand-roll (no `ObservableViewModel` base class). Core stays free of any UI-framework dependency.
+- An `ObservingComponentBase<TViewModel>` in UI (deriving from `ComponentBase`/`OwningComponentBase`) owns subscribe-on-init, `InvokeAsync(StateHasChanged)` marshaling, and unsubscribe-on-dispose against `INotifyStateChanged`; pages that follow the triad derive from it and drop their boilerplate.
+- A test proves the base unsubscribes on dispose (no leak) and marshals hub-thread notifications through `InvokeAsync`.
+- A short convention note is added (frontend CLAUDE.md or the ViewModels folder) stating when a VM should implement `INotifyStateChanged` (out-of-band/async/hub/timer updates) vs relying on Blazor's post-handler re-render.
+
+**Out of scope:** rewriting ViewModels that legitimately don't need change notification; the `ShellViewModel` `TitleChanged` naming (can be folded in opportunistically).
+
+**Done when:** the interface + component base exist with the triad migrated, tests prove no-leak marshaling, the offline suite is green, and the story is struck in `execution-plan.md`. **Ships via `/master`**.
+
+---
+
+## QUAL-019 — Unify HTTP service response→result handling behind a shared request helper (and fix the empty-2xx-body NRE unwraps)
+
+- **Repo / Area:** Frontend — `Features/*/Services/Http*Service.cs` (all ~12 HTTP service adapters)
+
+**As a** maintainer of the frontend HTTP services,
+**I want** one shared, thin helper for turning an HTTP response into a typed `Result`/`Conflict`/collection,
+**so that** the same status-mapping isn't copy-pasted three different ways and empty-body responses fail cleanly instead of throwing `NullReferenceException`.
+
+**Motivation**
+The ~12 `Http*Service` classes are individually clean thin adapters, but there is no shared convention for response→result mapping — **three** competing styles coexist: `EnsureSuccessStatusCode()` throw-based (4 services), typed `Result` with an explicit `409 → Conflict` (3 services, the 409 branch copy-pasted), and bare `bool`/`Error` (2 services). Two force-unwraps (`HttpAuthService`, `HttpServiceRequestService`) will `NullReferenceException` on an empty 2xx body instead of returning a clean error. The `GET + deserialize + ?? []` shape is triplicated (`HttpDtcService`, `HttpVehicleService`, `HttpDispatcherFleetService`).
+
+**Acceptance Criteria:**
+- A small internal helper/extension (e.g. `PostForResultAsync` mapping status→typed result, and a `GetListAsync` for the GET+`?? []` shape) is introduced; the ~12 services adopt it. **Deliberately light** — an extension/helper, not a heavy base class, given how thin these adapters are.
+- The `409 → Conflict` mapping is defined once and reused (no per-file copies).
+- Empty/short 2xx bodies no longer throw `NullReferenceException`; they return the appropriate typed error/result, proven by a test for each of the two affected services.
+- One consistent JSON options convention (the redundant explicit `JsonOptions` in `HttpDispatcherFleetService` reconciled with the `System.Net.Http.Json` Web default).
+- No change to the ViewModel-facing `Result` contracts.
+
+**Out of scope:** the `DelegatingHandler` pipeline (already well-designed); SignalR services (QUAL-017).
+
+**Done when:** the services share one response-mapping helper, the empty-body NRE risks are fixed with tests, the offline suite is green, and the story is struck in `execution-plan.md`. **Ships via `/master`**.
+
+---
+
+## QUAL-020 — Single source of truth for rep-state contract strings (`RepStates`)
+
+- **Repo / Area:** Frontend — `Core/Models` (new `RepStates` constants) + consumers (`ActiveJobViewModel`, `RequesterTrackingViewModel`)
+
+**As a** frontend developer comparing an incoming rep state to the backend contract,
+**I want** the rep-state strings (`"EnRoute"`, `"Within15Miles"`, `"OnSite"`, …) defined in exactly one place,
+**so that** a backend rename can't silently break one screen while the other keeps working.
+
+**Motivation**
+The rep-state contract strings are declared independently in `ActiveJobViewModel` and `RequesterTrackingViewModel`, with comments in both warning that they must match the backend — two sources of truth for one wire contract. A drift on the backend would need to be fixed in two places, and missing one is a silent, screen-specific break.
+
+**Acceptance Criteria:**
+- A single `RepStates` constants type (or enum with an explicit wire-mapping) in `Core/Models` holds the state strings; both ViewModels reference it, and the duplicate literals + "must match" comments are removed.
+- A test asserts the constants match the values the backend/wire tests expect (or references the captured-payload fixtures) so drift is caught by a failing test.
+
+**Out of scope:** changing the backend's state vocabulary; folding in `RepStateColour` (tracked separately if pursued).
+
+**Done when:** the strings live in one place with both consumers migrated and a drift-guard test, the offline suite is green, and the story is struck in `execution-plan.md`. **Ships via `/master`**.
+
+---
+
+## QUAL-021 — Add a `ShellChromeScope` *component* to remove per-page shell-title push/restore duplication (composition by containment)
+
+- **Repo / Area:** Frontend — `Shared/Components` (new `ShellChromeScope` component) + pages that set shell chrome (`SubmitRequest`, `RequesterPending`, `RequesterTracking`, `RequesterComplete`, `ActiveJob`, …)
+
+**As a** maintainer of the persona shell,
+**I want** a reusable *component* a page drops in to set the app-bar title/subtitle on entry and restore it on exit,
+**so that** every page stops hand-writing the same set-in-init / restore-in-dispose (and the BUG-044 re-apply-on-first-render workaround) boilerplate.
+
+**Design note — composition by containment, not a page base class.** This is deliberately a *component* the page contains (e.g. `<ShellChromeScope Title="…" Subtitle="…" />`), whose own lifecycle sets chrome on init/first-render and restores it on dispose — not a `ShellChromePageBase` that pages inherit. Containment keeps a page free to compose *several* such scoped concerns (chrome, observing, …) without spending its single base slot, and each concern's lifecycle is self-contained. (This one was already component-shaped in the original filing; the note pins it so it doesn't drift into a base class, and detaches it from any shared base with QUAL-018.)
+
+**Motivation**
+Every page manually pushes `Shell.SetTitle`/`SetSubtitle` in init and restores `null` in `Dispose`. Worse, the BUG-044 workaround — re-applying chrome in `OnAfterRenderAsync(firstRender)` — is duplicated verbatim across `RequesterTracking` and `RequesterComplete`. This cross-cutting concern is copy-pasted per page and is easy to get subtly wrong (see also QUAL-022's off-thread mutation note).
+
+**Acceptance Criteria:**
+- A `ShellChromeScope` component sets the shell title/subtitle on init **and** on first render (subsuming the BUG-044 re-apply) and restores the previous chrome on dispose; pages declare their chrome by placing the component (parameters) once and drop the manual push/restore.
+- Shell mutations triggered from hub-thread callbacks are marshaled through `InvokeAsync` (fixes the latent off-render-thread `StateHasChanged` in `RequesterTracking`/`ActiveJob` where `Shell.SetTitle` runs outside `InvokeAsync`).
+- A test proves chrome is set on entry and restored on dispose, and that the first-render re-apply still occurs.
+
+**Out of scope:** redesigning `PersonaShell` itself; sharing a base class with QUAL-018 (kept as an independent contained component, per the design note).
+
+**Done when:** pages use the shared component, the BUG-044 duplication is gone, the off-thread mutation is marshaled, tests pass, the offline suite is green, and the story is struck in `execution-plan.md`. **Ships via `/master`**.
+
+---
+
+## QUAL-022 — Extract a shared `TripMap` component for the duplicated ActiveJob/RequesterTracking map-overlay engine
+
+- **Repo / Area:** Frontend — `Features/Maps/Components` (new `TripMap`) consumed by `ActiveJob` and `RequesterTracking`
+
+**As a** maintainer of the trip views,
+**I want** the rep-marker + requester-pin + route-polyline overlay logic in one component,
+**so that** the ServiceRep and Requester trip screens stay in lock-step instead of drifting between two ~60-line copies.
+
+**Motivation**
+`ActiveJob` and `RequesterTracking` share a near-identical map-overlay engine: `UpdateMapOverlaysAsync`, `RoutePoints()`, the marker-id constants, `RequesterPinColour = "#2B2F3A"`, `OnSiteZoom = 15`, and the status/state → `sd-chip--*` switch are duplicated across both. A change to marker behaviour or the on-site collapse must currently be made twice.
+
+**Acceptance Criteria:**
+- A `TripMap` component encapsulates the rep marker, requester pin, route polyline, the shared constants, and the on-site collapse/zoom behaviour, wrapping `GoogleMap`; `ActiveJob` and `RequesterTracking` consume it and drop their duplicated overlay code.
+- The status/state → chip mapping shared by both is defined once.
+- Existing bUnit/interop coverage for both screens passes; a test asserts the shared component renders the expected overlay elements (`data-testid`s) so the QUAL-004 Appium overlay assertions still hold.
+
+**Out of scope:** the `GoogleMap` interop wrapper itself (already well-encapsulated); pixel-level restyling.
+
+**Done when:** both trip screens render through the shared `TripMap`, tests pass, the overlays are live-verified on both screens, and the story is struck in `execution-plan.md`. **Ships via `/master`**.
+
+---
+
+## QUAL-023 — De-duplicate the four `InMemory*Store` classes via a contained `Cell<T>` value-holder (composition) — or leave them
+
+- **Repo / Area:** Frontend — `Core/Services` (`InMemoryClaimedVehicleStore`, `InMemoryJobOfferStore`, `InMemoryRepAssignedStore`, `InMemoryServiceCompletedStore`)
+
+**As a** maintainer of the Core in-memory hand-off stores,
+**I want** the shared "hold one nullable `T`; Set; Clear" mechanism factored out (if we touch it at all),
+**so that** the store logic isn't maintained in four places — *without* coupling the stores into an inheritance chain.
+
+**Design note — composition (or leave-it), not a base class.** Two honest caveats:
+1. **The DRY win is marginal.** These are ~10-line classes and the duplicated body is trivial and stable. This story is a legitimate **leave-it** candidate — flag it, and only proceed if the batch is already touching `Core/Services`.
+2. **If we do it, compose, don't inherit.** Rather than an `abstract InMemoryHandoffStore<T>` the stores subclass, give each store a private `Cell<T>` value-holder it *contains* and delegate its domain-named members to it:
+   ```csharp
+   internal sealed class Cell<T> { public T? Value { get; private set; } public void Set(T v)=>Value=v; public void Clear()=>Value=default; }
+
+   public sealed class InMemoryJobOfferStore : IJobOfferStore
+   {
+       private readonly Cell<JobOffer> _cell = new();
+       public JobOffer? CurrentOffer => _cell.Value;
+       public void SetOffer(JobOffer o) => _cell.Set(o);
+       public void Clear() => _cell.Clear();
+   }
+   ```
+   The shared mechanism lives in `Cell<T>` (trivially unit-testable in isolation); each store keeps its domain names as thin delegation with no base coupling. The cost is a few lines of delegation per store — the honest composition trade — which is negligible here.
+
+**Motivation**
+The four `InMemory*Store` implementations are the same "hold one nullable value, Set, Clear" body three times over (the fourth adds a `DtcTitle` string). The bodies are effectively identical — but small and stable, hence the leave-it caveat above.
+
+**Acceptance Criteria:**
+- **If pursued:** a reusable `Cell<T>` value-holder is introduced; each of the four stores *contains* one and delegates its domain-named members to it — no shared base class.
+- The **four interfaces stay separate** — they carry distinct payloads and the domain-specific names are worth keeping (do **not** merge them; that would violate the repo's ISP-per-capability convention).
+- Existing store tests pass unchanged; `Cell<T>` gets its own focused test.
+- Member-naming inconsistency across the store interfaces (`CurrentOffer`/`SetOffer` vs generic `CurrentPayload`/`SetPayload`) is reconciled to one convention as part of the same change.
+- **If not pursued:** close as a documented leave-it (the duplication is trivial/stable), with the naming reconciliation optionally still applied.
+
+**Out of scope:** adding locking/thread-safety (Blazor's per-circuit sync context makes it unnecessary for the POC — note it, don't build it); any base class.
+
+**Done when:** the stores either compose a `Cell<T>` (names reconciled, tests pass, suite green) or are closed as a documented leave-it, and the story is struck in `execution-plan.md`. **Ships via `/master`** if code changes.
+
+---
+
+## QUAL-024 — Collapse the three identical `{Success, Conflict}` result enums into one `OperationOutcome`
+
+- **Repo / Area:** Frontend — `Core/Models` (`AcceptOfferResult`, `DeclineOfferResult`, `TakeOverResult`)
+
+**As a** maintainer of the Core result types,
+**I want** the three byte-for-byte `{Success, Conflict}` enums unified into one,
+**so that** the same two-member outcome isn't defined (and documented) three times.
+
+**Motivation**
+`AcceptOfferResult`, `DeclineOfferResult`, and `TakeOverResult` are identical `{ Success, Conflict }` two-member enums with near-copy XML docs. `ReleaseVehicleResult` (`{NothingToRelease, Released, Blocked}`) and `SubmitServiceRequestResult` (a proper closed discriminated union carrying data) are **legitimately distinct** and stay as-is.
+
+**Acceptance Criteria:**
+- The three identical enums are replaced by one `enum OperationOutcome { Success, Conflict }`; the three services and their ViewModels/tests are updated to the shared type.
+- `ReleaseVehicleResult` and `SubmitServiceRequestResult` are left unchanged.
+- The (small) loss of type-distinctness is a conscious trade — noted in the story — because the semantics are genuinely identical (200 vs 409).
+
+**Out of scope:** turning the outcome into a richer `Result<T>` framework — the closed DU (`SubmitServiceRequestResult`) already models the data-carrying case and is the pattern to reach for if a future result needs a payload.
+
+**Done when:** the three enums are unified with consumers migrated, tests pass, the offline suite is green, and the story is struck in `execution-plan.md`. **Ships via `/master`**.
+
+---
+
+## QUAL-025 — Restore DI for the JobOffer view model via an `IJobOfferViewModelFactory`
+
+- **Repo / Area:** Frontend — `Features/ServiceRep/Pages/JobOffer.razor` (+ new factory abstraction in `Core/Interfaces`)
+
+**As a** maintainer of the frontend pages,
+**I want** the job-offer ViewModel created through an injected factory instead of `new`-ed in the page,
+**so that** `JobOffer` follows the same Dependency-Inversion pattern as every other page.
+
+**Motivation**
+`JobOffer` is the only page that constructs its ViewModel with `new`, manually injecting four services into the constructor — every other page `@inject`s its ViewModel. The reason is that the offer is runtime data (`JobOfferPayload`), so a plain DI-resolved singleton/scoped VM doesn't fit; but a factory that takes the runtime payload and resolves the services restores DI consistency.
+
+**Acceptance Criteria:**
+- An `IJobOfferViewModelFactory` (in `Core/Interfaces`) creates a `JobOfferViewModel` from the runtime `JobOfferPayload`, resolving the four services via DI; `JobOffer` injects the factory instead of `new`-ing the VM.
+- The factory is registered in every host per the register-in-every-host convention.
+- A test proves the factory produces a fully-wired ViewModel; existing `JobOffer` tests pass.
+
+**Out of scope:** changing `JobOfferViewModel`'s behaviour; the observing-component base (QUAL-018).
+
+**Done when:** `JobOffer` resolves its VM via the injected factory, tests pass, the offline suite is green, and the story is struck in `execution-plan.md`. **Ships via `/master`**.
+
+---
+
+## QUAL-026 — Consolidate over-segregated ISP interfaces where a single consumer uses both halves
+
+- **Repo / Area:** Frontend — `Core/Interfaces` (`IArriveService`+`ICompleteJobService`; `IJobOfferService`+`IDeclineOfferService`) + their consumers/impls
+
+**As a** maintainer of the Core service contracts,
+**I want** interfaces that are only ever consumed together to be merged where the split buys no decoupling,
+**so that** ISP serves real consumer isolation instead of adding files, registrations, and mocks for no benefit.
+
+**Motivation**
+`IArriveService.ArriveAsync` and `ICompleteJobService.CompleteAsync` are both injected into the **same** `ActiveJobViewModel`; `IJobOfferService.AcceptAsync` and `IDeclineOfferService.DeclineAsync` are both injected into the **same** `JobOfferViewModel`. ISP protects consumers from methods they don't use — but here one consumer uses both halves, so the split buys zero decoupling while adding two extra interfaces, two registrations, and two mocks per test. This is the clearest case where the repo's ISP preference costs more than it returns. **This is a judgement call** and deliberately ranked low — it runs counter to the repo's strong ISP-per-capability convention, so it needs a conscious sign-off.
+
+**Acceptance Criteria:**
+- Evaluate (and, if agreed, implement) merging into `IRepJobActionService { ArriveAsync; CompleteAsync }` and `IJobOfferResponseService { AcceptAsync; DeclineAsync }`, updating impls, registrations, ViewModels, and mocks.
+- If the team decides the split stays (ISP convention wins), the story is closed as **won't-do** with the rationale recorded — either outcome is acceptable, the point is a deliberate decision rather than drift.
+- Any other single-consumer-uses-both interface pairs surfaced during the change are listed.
+
+**Out of scope:** the host-swapped or Core-inward-dependency interfaces (geolocation, token store, HTTP/hub services) — those splits are justified and stay.
+
+**Done when:** the pairs are either merged (with consumers/tests migrated and the suite green) or explicitly kept with rationale, and the story is struck in `execution-plan.md`. **Ships via `/master`** if code changes; closes as a documented decision otherwise.
+
+---
+
+## QUAL-027 — Establish one component code-organization convention (`.razor.cs` vs inline `@code`)
+
+- **Repo / Area:** Frontend — `UI` components + frontend CLAUDE.md (convention) 
+
+**As a** frontend developer,
+**I want** one documented rule for when component logic lives in a `.razor.cs` code-behind vs an inline `@code` block,
+**so that** components are organized consistently instead of per-author preference.
+
+**Motivation**
+No rule is followed: `RequesterPending`/`Complete`/`Submit`/`Home` use `.razor.cs`; `RequesterTracking`/`ActiveJob`/`JobOffer`/`RepIdle`/`DispatcherHome`/`TakeOver` use inline `@code`. `RequesterPending` even splits **both ways** — lifecycle in `.razor.cs`, tier-display logic in the `.razor` `@code`. The inconsistency makes it harder to know where a component's logic lives.
+
+**Acceptance Criteria:**
+- A convention is decided and documented in the frontend CLAUDE.md (recommended: `.razor.cs` for anything with lifecycle or non-trivial logic; inline `@code` only for tiny display glue).
+- Existing components are migrated to the convention (at minimum, split-both-ways cases like `RequesterPending` are made consistent).
+- The `story-implementor`/`story-ai-reviewer` convention references are updated if they need to enforce it (central edit via `/ship-it` if so — mixed-story split noted below).
+
+**Out of scope:** rewriting component behaviour; a lint/analyzer to enforce it automatically.
+
+**Done when:** the convention is documented and existing components conform, the offline suite is green, and the story is struck in `execution-plan.md`. **Frontend code + CLAUDE.md ship via `/master`**; any central pipeline-doc edit ships via `/ship-it` (mixed story — split per this Done-when).
+
+---
+
+## QUAL-028 — Decide and document MudBlazor-first vs raw `sd-*` CSS for the map/trip screens
+
+- **Repo / Area:** Frontend — map/trip screens (`ActiveJob`, `RequesterTracking`, `JobOffer`, `RequesterComplete`) + frontend CLAUDE.md (UI Framework rule)
+
+**As a** maintainer of the frontend UI conventions,
+**I want** an explicit, documented decision about where the "MudBlazor-first" rule yields to hand-authored `sd-*` CSS,
+**so that** the current mixed styling is a conscious architecture choice rather than silent drift from the CLAUDE.md rule.
+
+**Motivation**
+MudBlazor usage is mixed but seemingly deliberate: `RepIdle`/`TakeOver`/`RequesterPending`/`PersonaMenu` use Mud primitives, while the map/trip views (`ActiveJob`, `RequesterTracking`, `JobOffer`, `RequesterComplete`) use raw `sd-*` CSS for pixel-matched mockup chrome. This is consistent per-screen but **contradicts the CLAUDE.md "MudBlazor-first" rule** — it should be a recorded decision, not an implicit exception.
+
+**Acceptance Criteria:**
+- The frontend CLAUDE.md "UI Framework" section is amended to state exactly when raw `sd-*` design-system CSS is acceptable in preference to a Mud primitive (e.g. "map/trip overlay chrome that must pixel-match an approved mockup"), or the screens are migrated toward Mud primitives where a component parameter covers the need.
+- The decision is consistent with the QUAL-011 shared-token stylesheet already loaded by all three hosts.
+- No visual regression on the affected screens (live-verify against the mockups).
+
+**Out of scope:** introducing a second component library (forbidden); re-theming.
+
+**Done when:** the rule is documented (and any agreed migration applied) with the affected screens live-verified, and the story is struck in `execution-plan.md`. **Frontend code + CLAUDE.md ship via `/master`**; a pure CLAUDE.md-only outcome ships via `/ship-it`.
