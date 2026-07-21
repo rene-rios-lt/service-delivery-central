@@ -1290,7 +1290,7 @@ Make the valid-token branch resolve the persona home instead of `null`: read the
 
 ## BUG-051 — Unclaimed vehicles are hidden by the fleet snapshot but appear grey after a position event: same vehicle, two renderings depending on data path
 
-- **Status:** Open
+- **Status:** Fixed
 - **Severity:** Low (consistency/product-decision defect — no crash, no data loss. In normal POC operation the simulator claims all vehicles, so unclaimed vehicles are rare live; the asymmetry is guaranteed visible in backend-only test/dev runs and whenever a vehicle is released/parked mid-session.)
 - **Repo / Area:** **Backend** (primary) — `GetDispatcherFleetQueryHandler` maps a vehicle with no rep state to `"Offline"` (`(e.RepState ?? RepState.Offline).ToString()`), while `UpdateVehiclePositionCommandHandler.BroadcastVehiclePositionAsync` broadcasts the same vehicle as `"Unassigned"` (`repState?.State.ToString() ?? "Unassigned"`). **Frontend** (consumer) — `DispatcherFleetViewModel` correctly renders what it is told: `"Offline"` is filtered off the map (AC-7), `"Unassigned"` falls through to the grey marker (AC-3's "Grey = Unclaimed / Offline").
 - **Related stories:** `FE-003` (whose AI-review cycle-1 advisory first recorded this), `BE-032` (same snapshot handler), `BE-008` (position broadcast).
@@ -1314,11 +1314,13 @@ Prefer **uniformly visible grey** — the AC-3 legend already labels grey "Uncla
 - Handler tests cover both the unclaimed and claimed-offline mappings; the frontend visibility filter is unchanged.
 - Live check on a backend-only boot: the fleet renders consistently at snapshot load, after the first position tick, and after a reload.
 
+**Resolution** — Fixed via `/master` (backend PR #56, merged 2026-07-20): `GetDispatcherFleetQueryHandler` now distinguishes *unclaimed* (`ClaimingRepId == null` → `"Unassigned"`, uniformly-visible-grey per the product decision) from *claimed-but-offline-rep* (`"Offline"`), aligning the snapshot to the broadcast vocabulary. Frontend unchanged.
+
 ---
 
 ## BUG-052 — Simulator rep claim loop livelocks on the take-over listing: reps stampede `FirstOrDefault` of `/vehicles/available` (which includes claimed-but-idle vehicles), starving vehicles 5–8 and the whole E2E fleet
 
-- **Status:** Open
+- **Status:** Fixed
 - **Severity:** Medium (test-infrastructure / systemic — no crash, but it non-deterministically starves the live fleet the entire E2E suite depends on. Because how many reps ever acquire a vehicle is a per-boot dice roll on job-timing alignments, it 1-to-N-reddens fleet-dependent Playwright scenarios unpredictably and is a strong candidate for the *true* root cause behind the BUG-049 family and other "no rep accepted / no fleet markers" E2E flakes. In normal POC/demo operation it is masked because vehicles happen to get claimed eventually and no one inspects claim latency; it is guaranteed-visible under the fresh-boot-then-immediately-assert timing an E2E suite imposes.)
 - **Repo / Area:** **Simulator** (primary) — `ServiceDelivery.Simulator` startup/rebalance claim path: `Workers/FleetClaimCoordinator.cs:58` (`available.FirstOrDefault(id => !yielded)` — no ordering, no jitter, no per-rep offset), driven by `Workers/FleetReconciler.cs` on a fixed 3 s tick (`PositionUpdateIntervalSeconds`, `appsettings.json`), claim call `Services/BackendApiClient.cs:118-128` (logs the 409 and returns — **no backoff, no advance past the conflicted id**). **Backend** (contributing) — `GET /vehicles/available` (`GetAvailableVehiclesQueryHandler.cs:45-55`) deliberately **includes claimed-but-idle vehicles** so a human can take one over (intentional per BUG-027/FE-007), and applies **no ordering**; the endpoint answers "vehicles available for take-over", which the simulator wrongly consumes as "unclaimed vehicles to grab".
 - **Related stories:** `BUG-049` (the Playwright redirect flake, during whose live gate this was found — the fleet-state diagnostic BUG-049 added is what exposed it), `BUG-048` (the Appium sibling flake), `BUG-027` / `FE-007` (the take-over semantics that make the available-listing include claimed-idle vehicles), `QUAL-003` (Playwright E2E suite), `SIM-*` (simulator fleet-claim work).
@@ -1341,3 +1343,62 @@ Make claim selection collision-free and self-healing on the simulator side (the 
 - On a claim `Conflict`, the rep advances to a different unclaimed candidate (with backoff/jitter) rather than re-selecting the same front-of-list vehicle every tick.
 - The fix is simulator-side; the backend `/vehicles/available` take-over semantics (claimed-idle vehicles remain listed for human take-over, per BUG-027/FE-007) are unchanged.
 - Simulator unit/integration tests cover the collision case (N reps, one shared front-of-list candidate → distinct claims, no livelock) and the 409-advance behaviour; the E2E fleet-dependent Playwright scenarios stop starving on fresh boots across repeated full-suite runs.
+
+**Resolution** — Fixed via `/master` (simulator PR #26, merged 2026-07-20): claim selection fans reps out across the take-over listing with distinct targets and advances past 409s. Live-verified during BUG-049's resumed gate (2026-07-20): a fresh full-suite boot claimed **all 8** vehicles — the dispatcher fleet dump showed every vehicle holding a rep (6 `Available`, 1 `EnRoute`, 1 `Within15Miles`), where pre-fix runs left vehicles 5–8 unclaimed with zero attempts.
+
+---
+
+## BUG-053 — Simulator rep RepHub connections die silently and stay dead: deaf-but-`Available` reps let every job offer expire, starving requests and the E2E fleet non-deterministically
+
+- **Status:** Open
+- **Severity:** Medium–High (systemic / test-infrastructure — no crash, but it non-deterministically breaks the fleet's ability to answer job offers. Every offer routed to a deaf rep silently burns its full 60 s TTL; with `BUG-054`'s skip-list poisoning the affected request can become **permanently** unmatchable. This is the true root cause of the *remaining* `BUG-049` pending-starvation flake now that `BUG-052` is fixed: whether a given E2E run goes green is a dice roll on whether the nearest `Available` qualified rep happens to be deaf. In demo operation it is masked because healthy reps eventually complete jobs, re-trigger matching, and pick up the slack — minutes later.)
+- **Repo / Area:** **Simulator** (primary) — `Services/SignalRClient.cs` (per-rep `HubConnection`s: `Closed` event unobserved, so reconnect-exhaustion is invisible), `Services/DefaultHubConnectionFactory.cs` (`WithAutomaticReconnect([0s, 2s, 10s, 30s])` then **permanent silent death**; **no logger is passed to the `HubConnectionBuilder`**, so the client's own lifecycle logging goes to `NullLogger` — the sim log contains *zero* connection-lifecycle lines), `Workers/SimulatorStartupService.cs` (connects each rep's hub exactly once at startup; nothing ever reconciles connection state afterwards). **Backend** (aggravating, see `BUG-054`): a rep whose hub connection is gone but whose disconnect the server never observed stays `Available`, so matching keeps offering to reps that cannot hear.
+- **Related stories:** `BUG-049` (the Playwright redirect flake whose resumed live gate exposed this), `BUG-052` (the previous fleet-starvation root cause, fixed — its fan-out fix is confirmed working), `BUG-054` (the backend skip-list poisoning this compounds), `QUAL-012` (hub-connection logging routed through `ILoggerFactory` — done for the **frontend** hub clients; this is the simulator analogue), `BUG-019` (the prior sim-websocket App Nap false alarm — the "keep host awake" memory note documents this exact drop mode).
+- **Found:** BUG-049 resumed `/master` live gate, 2026-07-20. Full-suite fresh-boot run: the sim received only **6** `JobOfferReceived` events all run (rep1 ×4, rep2 ×1, rep3 ×1) while the backend created **19+** offers; every offer to reps 4, 5, 7, 8 (10+ offers across 4 requests, 18:58–19:15 UTC) expired unanswered. **Proof the backend send path is healthy:** a fresh probe listener connected to the same `rep:{id}` groups received the very offers the sim's connections missed — `JobOfferReceived` for rep4 landed on the probe **16 ms** after offer creation (19:14:15.971), plus its `JobOfferExpired` 63 s later and the re-offer to rep5 — while the sim's receipt count did not move. TCP sockets from the sim process to `:5180` remained `ESTABLISHED` and the reps were never marked `Offline` (`RepHub.OnDisconnectedAsync` never fired), i.e. the connections are zombies: alive at the transport/server bookkeeping level, deaf at the SignalR message level.
+
+**Summary**
+Five of the eight per-rep `HubConnection`s went deaf during a single boot (reps 4, 5, 7, 8 before their first-ever offer; rep 2 between two offers three seconds apart) and stayed deaf for the rest of the run. The simulator cannot see this happen: the factory builds connections with no logger, nothing subscribes `Closed`, reconnect attempts exhaust silently ([0 s, 2 s, 10 s, 30 s] then give up forever), and no worker ever checks `HubConnection.State` after startup. The backend keeps the deaf reps `Available` (their disconnect was never observed server-side), so matching keeps routing offers to them; each such offer silently burns its 60 s TTL — longer than any E2E arrange budget — before the sweeper re-offers to the next rep, which may equally be deaf. Requests crawl through the qualified pool one expiry at a time (observed: a request offered rep2→5→4→7→8 across **4.5 minutes**, all expired), and `BUG-054` then poisons the request permanently.
+
+**Expected**
+A simulator-operated rep that is `Available` can always hear its job offers: rep hub connections are monitored, reconnected with unbounded patient retry, and their lifecycle is visible in the sim log. An offer to a sim-operated `Available` rep is accepted (or declined per the configured rate) within the 1–5 s decision window, every time, for the whole life of the process.
+
+**Actual**
+Deaf-but-`Available` reps accumulate silently. In the gated run, every offer to reps 4/5/7/8 expired unanswered while a parallel fresh connection on the same groups received them instantly; the redirect test's Silver request starved past its 45 s bound exactly this way (its submit-time offer went to rep2, freshly deaf, and sat until its 60 s expiry).
+
+**Proposed fix (via `/master`)**
+Simulator-side hardening, in preference order: (1) **observe and log the lifecycle** — pass the host `ILoggerFactory` into the `HubConnectionBuilder` (`.ConfigureLogging`), subscribe `Closed`/`Reconnecting`/`Reconnected` with rep-labelled log lines (the QUAL-012 pattern, sim edition); (2) **self-heal** — on `Closed` (reconnect exhausted), restart the connection with jittered backoff indefinitely rather than dying; additionally reconcile in the existing `FleetReconciler` tick: any operated rep whose `HubConnection.State != Connected` gets a restart attempt, so a deaf rep heals within a tick instead of never; (3) optionally surface a startup + periodic "N/8 rep hubs connected" health line so a degraded fleet is visible in any log tail. Backend take-over/matching semantics unchanged (the `Available`-while-deaf window is inherent to server-side disconnect detection latency; shrinking it is `BUG-054`'s concern).
+
+**Acceptance criteria (bug resolved when):**
+- Rep hub connection lifecycle (connected / reconnecting / reconnected / closed / restart) is visible in the simulator log, per rep.
+- A forcibly-killed rep websocket self-heals: the connection re-establishes within a bounded window (one reconciler tick + backoff) without process restart, verified by a test or scripted live check.
+- Across 2–3 consecutive fresh-boot full-suite `test-playwright.sh` runs, **zero** `JobOfferReceived` events are lost to sim-operated reps: every offer created for an `Available` sim rep is answered (accept/decline) within the decision window — no offer to a sim rep expires unanswered.
+- The `BUG-049` redirect scenario's arrange path stops starving on the deaf-rep mode (its gate polls and diagnostics remain unchanged).
+
+---
+
+## BUG-054 — Expired job offers permanently poison a request's skip list: once every qualified rep has one expired offer, the request is unmatchable forever
+
+- **Status:** Open
+- **Severity:** Medium (product-logic defect with a systemic E2E footprint — a request that cycles through its qualified pool without an accept is **permanently** starved even when the whole fleet later sits `Available`. Live-observed twice in one run. For human reps this is a real product bug: ignoring one offer permanently disqualifies that rep from that request. Compounded 5× by `BUG-053`'s deaf reps, which convert transient delivery failures into skip-list entries.)
+- **Repo / Area:** **Backend** — `Infrastructure/Repositories/JobOfferRepository.cs` `GetSkippedRepIdsForRequestAsync` (`Status == Declined || Status == Expired`, no time bound, never cleared) consumed by `Application/Common/Services/MatchingService.cs` (`.Where(c => !skippedRepIds.Contains(c.RepId))` → `winner = null` → request stays `Pending` forever once the qualified pool is exhausted).
+- **Related stories:** `BUG-053` (deaf sim reps — the main producer of expired offers today), `BUG-049` (whose live gate exposed the whole chain), `BE-` matching stories / `docs/business-rules.md` (declined-rep cooldown semantics).
+- **Found:** BUG-049 resumed `/master` live gate, 2026-07-20. Requests `88d7115c` and `b0f26f9e` each burned through offers to reps One, Five, Four, Seven, Eight (all `Expired`, courtesy of `BUG-053`); their offer cycling then **stopped entirely at 19:02:39** — every remaining qualified rep was either skip-listed or busy — and both sat `Pending` indefinitely while 4+ qualified reps were `Available`. Control observation proving the mechanism: two sibling requests whose skip lists did *not* contain Rep One were both offered to him within the same second of his becoming `Available` (19:10:12) and were assigned instantly.
+- **Related observations recorded during the same gate (triage with this bug or split):** (a) `POST /job-offers/{id}/accept` does not guard against a rep already on an active job — Rep One accepted **two** offers in the same second while a third job was `InProgress`, ending with three concurrent jobs; (b) the expiry sweeper and the pending-request reconciler race and create **duplicate concurrent offers** for the same request+rep (Rep Eight ×2 at 19:01:09, Rep Seven ×2 at 19:02:19).
+
+**Summary**
+The skip list exists so a rep who *declined* a request isn't immediately re-offered it. But `GetSkippedRepIdsForRequestAsync` treats `Expired` identically to `Declined`, holds entries forever, and matching hard-filters on it — so expiry-through-no-fault (a deaf connection, a busy moment, a human who didn't glance at their phone in 60 s) permanently disqualifies the rep *for that request*. A request whose qualified pool has cycled once is permanently `Pending`: the reconciler re-runs matching every 30 s, finds `winner = null` every pass, and emits `ServiceRequestPending` to the dispatcher group into eternity.
+
+**Expected**
+A rep who lets an offer expire becomes eligible for that request again — immediately, after a cooldown, or at minimum once the qualified pool is exhausted (retry-from-the-top rather than starve-forever). Only an explicit decline earns a durable per-request skip.
+
+**Actual**
+`Expired` ≡ `Declined`, forever. Two live requests became permanently unmatchable with 4+ qualified `Available` reps on the board.
+
+**Proposed fix (via `/master`, after a product decision on expiry semantics)**
+Preferred: exclude only `Declined` offers in `GetSkippedRepIdsForRequestAsync`, and rely on the existing "most recent expiry" ordering pressure — or, if repeat-offer churn to a genuinely-absent rep is a concern, time-bound expired entries (skip while `ExpiresAt > now − N minutes`) or clear the skip list whenever matching comes up empty (`winner == null` with a non-empty candidate pool ⇒ pool exhausted ⇒ reset and retry from nearest). Handler tests cover: declined-rep stays skipped; expired-rep becomes re-offerable per the chosen rule; a fully-cycled request recovers instead of starving. The two related observations ((a) accept-while-on-job guard, (b) duplicate-offer race) get their own decision: fold in here or file separately.
+
+**Acceptance criteria (bug resolved when):**
+- A request whose qualified reps all let offers expire is re-matched successfully once any qualified rep is `Available` (no permanent starvation), verified by handler tests and a live check.
+- An explicitly declined rep remains skipped for that request (existing behaviour preserved).
+- The reconciler/sweeper cycle can no longer go permanently silent for a `Pending` request while qualified `Available` reps exist.
+- Live gate: in a full-suite fresh-boot run with `BUG-053` fixed, no request ends the run `Pending` while qualified reps sit `Available`.
