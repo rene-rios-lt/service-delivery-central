@@ -1402,3 +1402,57 @@ Preferred: exclude only `Declined` offers in `GetSkippedRepIdsForRequestAsync`, 
 - An explicitly declined rep remains skipped for that request (existing behaviour preserved).
 - The reconciler/sweeper cycle can no longer go permanently silent for a `Pending` request while qualified `Available` reps exist.
 - Live gate: in a full-suite fresh-boot run with `BUG-053` fixed, no request ends the run `Pending` while qualified reps sit `Available`.
+
+---
+
+## BUG-055 — Playwright `RequesterRedirectTests` arrange helper matches only `RepState == "EnRoute"`, so a rep that has already advanced to `Within15Miles` is missed and the redirect setup starves
+
+- **Status:** Open
+- **Severity:** Low (frontend test-infrastructure flake — the product path is healthy: the request is matched, accepted, and reps are actively navigating to it with **zero** expired offers. Non-deterministic; surfaced *more* often now that `BUG-053`'s fix keeps rep hubs healthy, because instant acceptance shrinks the catchable `EnRoute` window.)
+- **Repo / Area:** **Frontend** — `tests/ServiceDelivery.Client.E2E/Helpers/BackendApiHelper.cs` `WaitForEnRouteRepAtAsync` (predicate `v.RepState == "EnRoute" && <coords match>`, 30 s poll), consumed by `TriggerRedirectAsync` / `TriggerRedirect` and `RequesterRedirectTests.GivenRequesterOnTrackingPage_WhenRepIsRedirected_ThenRedirectBannerAndNewRepNameAreVisible`.
+- **Related stories:** `BUG-053` (whose resumed live gate surfaced this; the deaf-rep fix makes acceptance fast → shorter `EnRoute` window), `BUG-049` (the redirect test's *prior* full-suite flake — pending→tracking starvation, a different root cause now fixed). The `Simulator__AutoDeclineRatePercent=0` E2E-determinism override (see `scripts/local/test-playwright.sh`) makes every offer an instant accept, which is what races the poll.
+- **Found:** `BUG-053` resumed `/master` live gate, 2026-07-21. Fresh-boot `test-playwright.sh` cycle 3: the helper threw `No EnRoute rep whose active request is at (41.5868,-93.625) appeared within 30s — the tracked request was never assigned to an EnRoute rep, so there is nothing to redirect.` while the fleet snapshot in the same exception showed **three** reps (rep1, rep2, rep4) in state `Within15Miles` with `activeReq=41.5868,-93.625` — i.e. matched and driving, just past the `EnRoute` state the helper polls for. Cycles 1 and 2 of the same run did not hit it.
+
+**Summary**
+`WaitForEnRouteRepAtAsync` treats `EnRoute` as the only "assigned and heading to the request" state. But a rep transitions `EnRoute → Within15Miles` as its truck closes on the requester, and under the E2E `AutoDeclineRatePercent=0` override acceptance is instant, so a rep starting near the request can cross into `Within15Miles` before the 30 s poll ever observes `EnRoute`. The helper then declares "never assigned" and fails the redirect setup — even though the request is demonstrably assigned and in flight.
+
+**Expected**
+The redirect arrange step finds any rep that is assigned to the tracked request and navigating toward it — regardless of which en-route substate (`EnRoute` or `Within15Miles`) it currently occupies — so the redirect can proceed deterministically.
+
+**Actual**
+The predicate matches only `RepState == "EnRoute"`; a rep already at `Within15Miles` is invisible to it, and the helper starves for the full 30 s and throws.
+
+**Proposed fix (via `/master`)**
+Broaden the helper's state predicate to accept the full "assigned and en route to this request" set — `EnRoute` **or** `Within15Miles` (any state where the rep holds an active request at the target coordinates and has not yet arrived). Optionally widen the poll window. Verify with the existing `RequesterRedirectTests` scenario run green across 2–3 fresh boots.
+
+**Acceptance criteria (bug resolved when):**
+- The redirect arrange helper succeeds when the assigned rep is in `EnRoute` **or** `Within15Miles` at the tracked request's coordinates.
+- `GivenRequesterOnTrackingPage_WhenRepIsRedirected_ThenRedirectBannerAndNewRepNameAreVisible` passes across 2–3 consecutive fresh-boot `test-playwright.sh` runs.
+- An explicitly-declined / genuinely-unassigned request still fails the arrange step (no false positive that hides a real matching failure).
+
+---
+
+## BUG-056 — Playwright `DispatcherFleetMapTests` fleet-marker click flakes with "Element is not attached to the DOM": stale `IElementHandle` races the 3 s Maps-SDK marker re-render
+
+- **Status:** Open
+- **Severity:** Low (frontend test-infrastructure flake — intermittent; passed in cycle 2 of the same run. No product defect: the marker renders and the popover works when the click lands.)
+- **Repo / Area:** **Frontend** — `tests/ServiceDelivery.Client.E2E/DispatcherFleetMapTests.cs` `GivenAuthenticatedDispatcher_WhenFleetMarkerClicked_ThenPopoverShowsRepDetails`: `var marker = await Page.WaitForSelectorAsync("[data-testid^='fleet-marker-']"); await marker!.ClickAsync();` — a fixed `IElementHandle` clicked after the wait.
+- **Related stories:** `BUG-046` (Appium `ActiveJobTests` map `StaleElementReferenceException` — the same class of Google-Maps-SDK DOM-churn flake, WKWebView edition), `BUG-053` (whose resumed live gate surfaced this).
+- **Found:** `BUG-053` resumed `/master` live gate, 2026-07-21. Fresh-boot `test-playwright.sh` cycle 1: `Microsoft.Playwright.PlaywrightException : Element is not attached to the DOM`. The Playwright call log shows repeated retries against a `<div class="sd-map-marker" data-testid="fleet-marker-…"> from <gmp-advanced-marker …> subtree intercepts pointer events`, then the element detaches. Cycles 2 and 3 did not hit it.
+
+**Summary**
+The simulator posts vehicle positions every 3 s, so the Google Maps advanced-marker elements (`<gmp-advanced-marker>` wrapping the `sd-map-marker` div) are re-rendered continuously. `WaitForSelectorAsync` returns a handle bound to one specific element; if the map re-renders that element between the wait and `ClickAsync`, the click fails against the now-detached handle. The idiomatic fix is an auto-retrying `Locator`, which re-resolves the element on each action attempt.
+
+**Expected**
+Clicking a fleet marker is resilient to the marker layer re-rendering underneath it — the click retries against a freshly-resolved element and opens the rep popover deterministically.
+
+**Actual**
+A stale `IElementHandle` is clicked; when the 3 s position tick re-renders the marker first, Playwright throws `Element is not attached to the DOM`.
+
+**Proposed fix (via `/master`)**
+Replace the `WaitForSelectorAsync`/`IElementHandle` pattern with an auto-retrying locator — e.g. `await Page.Locator("[data-testid^='fleet-marker-']").First.ClickAsync();` — which re-resolves on each attempt and rides out the marker re-render. If pointer-interception from the `<gmp-advanced-marker>` wrapper persists, click the stable wrapper or add a short actionability retry. Verify green across 2–3 fresh-boot `test-playwright.sh` runs.
+
+**Acceptance criteria (bug resolved when):**
+- `GivenAuthenticatedDispatcher_WhenFleetMarkerClicked_ThenPopoverShowsRepDetails` uses a re-resolving locator (not a fixed `IElementHandle`) for the marker click.
+- The test passes across 2–3 consecutive fresh-boot `test-playwright.sh` runs while the simulator is posting live position updates.
+- The rep popover assertions (`rep-popover`, `popover-rep-name`) are unchanged and still verified.
