@@ -146,6 +146,16 @@ docs/
 
 All code across the Service Delivery system follows two non-negotiable standards: Test-Driven Development and SOLID design principles. These apply in both the frontend and backend repos. This section states the system-wide intent; each repo's own CLAUDE.md contains repo-specific rules.
 
+### Before Proposing or Applying Any Design or Refactor
+
+This is a **hard prerequisite**, not a preference — do it before suggesting a structure, filing a design/quality story, or writing refactor code:
+
+1. **Read the governing `CLAUDE.md` for the repo you are touching** — *this* central file **and** the working repo's own (`service-delivery-backend/`, `service-delivery-frontend/`, or `service-delivery-simulator/`). The working-repo files are **not** auto-loaded when operating from central — `Read` them. Do not rely on memory for the rules; read the files.
+2. **Invoke `/solid-principles`** (and `/clean-architecture` for layer questions). These are the authoritative rule sets — cite them, do not paraphrase from memory.
+3. **Derive the design from SOLID first.** Default to **composition** — inject a collaborator, or depend on a small focused interface. Reach for **inheritance / a base class only** with an explicit, stated justification: a genuine, stable *is-a*, or a framework that is already a class hierarchy (e.g. Blazor `ComponentBase`/`OwningComponentBase<T>`). When you do, name the composition alternative you rejected and why. Signals that composition/DIP is the right call: shared *mechanism* rather than a true is-a, or a "test-seam-only constructor."
+
+A `UserPromptSubmit` hook re-injects this checklist every turn (see `.claude/settings.json`) so it does not depend on memory — but it is a reminder; applying it is still your responsibility.
+
 ### Test-Driven Development
 
 TDD is the default working mode — not optional, not aspirational.

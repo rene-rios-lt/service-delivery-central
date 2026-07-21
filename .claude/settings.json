@@ -7,6 +7,18 @@
     ]
   },
   "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '[Design guardrail] Before proposing or applying ANY design or refactor: (1) READ the governing CLAUDE.md for the repo you are touching — the central file AND the working-repo CLAUDE.md (service-delivery-backend/frontend/simulator); they are not auto-loaded from central, so Read them. (2) Invoke /solid-principles (and /clean-architecture for layer questions) for the authoritative rules. Derive from SOLID first; composition is the default, inheritance needs an explicit is-a or framework-hierarchy reason and the rejected alternative named. Do not rely on memory — read the files.'",
+            "timeout": 5,
+            "statusMessage": "Loading design guardrail..."
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Bash",
