@@ -10,12 +10,13 @@
                                    job accepted
                                          │
                                          ▼
-                                    [En Route]
-                                         │
-                              backend detects < 15 mi
-                                         │
-                                         ▼
-                                [Within 15 Miles]
+                                    [En Route] ◄────────────────┐
+                                         │                       │
+                              backend detects < 15 mi   backend detects ≥ 17 mi
+                                 (enter proximity)      (exit — hysteresis, ADR-0012)
+                                         │                       │
+                                         ▼                       │
+                                [Within 15 Miles] ───────────────┘
                                          │
                               rep taps "I've Arrived"
                                          │
@@ -33,7 +34,7 @@
 | **Offline** | Rep has not claimed a vehicle (or a human-controlled rep logged out / timed out). Not visible on map, not eligible for dispatch. | N/A |
 | **Available** | Rep has claimed a vehicle and has no active job. Eligible for assignment. | N/A — receives new assignments normally |
 | **En Route** | Rep accepted a job and is traveling to the requester. | Yes — dispatcher can hard-reassign to a higher-tier request (subject to cooldown rules) |
-| **Within 15 Miles** | Backend detected rep is within 15 straight-line miles of destination. | No — protected, no tier can override |
+| **Within 15 Miles** | Backend detected rep is within 15 straight-line miles of destination. Reverts to **En Route** if the rep's vehicle later moves back out past **17 mi** (hysteresis dead-band 15–17 mi prevents flapping — see ADR-0012). | No — protected while in this state, no tier can override |
 | **On Site** | Rep manually confirmed arrival. | No — protected, no tier can override |
 
 ### State Transition Owners
@@ -42,7 +43,8 @@
 |-----------|-------|
 | Offline → Available | Rep (claims vehicle at session start) |
 | Available → En Route | System (rep accepts job offer) |
-| En Route → Within 15 Miles | **Backend** (checks Haversine distance on every position update from simulator) |
+| En Route → Within 15 Miles | **Backend** (checks Haversine distance on every position update from simulator; **enters** at < 15 mi) |
+| Within 15 Miles → En Route | **Backend** (bidirectional proximity recompute; **exits** back to En Route at ≥ 17 mi — hysteresis dead-band prevents boundary flapping; re-opens redirect eligibility. See ADR-0012, BUG-059) |
 | Within 15 Miles → On Site | Rep (taps "I've Arrived") |
 | On Site → Available | Rep (taps "Mark Complete") |
 | Any → Offline (mid-job) | App crash or rep logout — job returns to Pending and is **re-matched** to another available rep, dispatcher notified. **Detection mechanism (POC):** SignalR `OnDisconnectedAsync` callback on the RepHub (plus a heartbeat timeout for human devices). When a rep's connection drops, the backend immediately transitions the rep to Offline, moves any active job back to Pending, and notifies dispatchers. |
