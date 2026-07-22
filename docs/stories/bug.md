@@ -1407,7 +1407,7 @@ Preferred: exclude only `Declined` offers in `GetSkippedRepIdsForRequestAsync`, 
 
 ## BUG-055 — Playwright `RequesterRedirectTests` arrange helper matches only `RepState == "EnRoute"`, so a rep that has already advanced to `Within15Miles` is missed and the redirect setup starves
 
-- **Status:** Open
+- **Status:** Open — **BLOCKED on [BUG-059]. A frontend-only fix was proven impossible on 2026-07-22 (see "Investigation outcome" below); this bug is now a follow-up of the backend BUG-059 proximity-model fix.**
 - **Severity:** Low (frontend test-infrastructure flake — the product path is healthy: the request is matched, accepted, and reps are actively navigating to it with **zero** expired offers. Non-deterministic; surfaced *more* often now that `BUG-053`'s fix keeps rep hubs healthy, because instant acceptance shrinks the catchable `EnRoute` window.)
 - **Repo / Area:** **Frontend** — `tests/ServiceDelivery.Client.E2E/Helpers/BackendApiHelper.cs`. The shared arrange helper was renamed `WaitForEnRouteRepAtAsync` → **`WaitForRepServingRequestAtAsync(..., params string[] acceptStates)`** in frontend PR #78 (during BUG-054's live gate); it now takes the accepted rep states per caller. The **redirect** consumer (`TriggerRedirectAsync` / `TriggerRedirect`, `RequesterRedirectTests.GivenRequesterOnTrackingPage_WhenRepIsRedirected_ThenRedirectBannerAndNewRepNameAreVisible`) still passes `"EnRoute"` only — **that is the still-open flake described here.** The sibling **completion** consumer (`CompleteAssignedRequestAtAsync`, `RequesterCompleteTests.GivenRequesterOnTrackingPage_WhenServiceCompletedEventArrives_…`) was a second, previously-unfiled victim of the same race and was **FIXED in PR #78** (it now safely passes `"EnRoute","Within15Miles"` — see the Proposed fix for why that is safe for completion but not for redirect).
 - **Related stories:** `BUG-053` (whose resumed live gate surfaced this; the deaf-rep fix makes acceptance fast → shorter `EnRoute` window), `BUG-054` (whose live gate hit the *completion*-path manifestation of this exact helper race, fixed it, and renamed the helper — frontend PR #78; that gate is also where the corrected analysis below was worked out), `BUG-049` (the redirect test's *prior* full-suite flake — pending→tracking starvation, a different root cause now fixed). The `Simulator__AutoDeclineRatePercent=0` E2E-determinism override (see `scripts/local/test-playwright.sh`) makes every offer an instant accept, which is what races the poll.
@@ -1436,6 +1436,16 @@ Verify the chosen fix with `RequesterRedirectTests` green across 2–3 consecuti
 - The redirect arrange reliably yields an **`EnRoute`** rep for the tracked request at the instant of redirect (so `POST /dispatcher/redirect` succeeds) even under the simulator's instant-accept — **not** by redirecting a `Within15Miles` rep (the backend rejects that; see the corrected analysis above).
 - `GivenRequesterOnTrackingPage_WhenRepIsRedirected_ThenRedirectBannerAndNewRepNameAreVisible` passes across 2–3 consecutive fresh-boot `test-playwright.sh` runs.
 - An explicitly-declined / genuinely-unassigned request still fails the arrange step (no false positive that hides a real matching failure).
+
+**Investigation outcome — 2026-07-22 (`/master` live gate; frontend-only fix DISPROVEN, re-pointed to [BUG-059])**
+
+A full `/master` run took both frontend-only candidate fixes to the live Playwright gate. Both failed, and the root cause is architectural — no frontend arrange helper can satisfy the redirect precondition:
+
+- **Fix (A) — far-pin the assigned rep after match** (implemented, offline-green, AI-reviewer-APPROVED). Live gate cycle 1: `RequesterRedirectTests` failed with all matched reps (`rep1/rep2/rep3`) already `Within15Miles`, none `EnRoute`. **Why:** the test's own tracking precondition pins the fleet AT the requester, so the rep latches `Within15Miles` on accept; the one-way latch ([BUG-059]) makes it permanent.
+- **Fix (B) — start the whole fleet far (>15 mi)** so the matched rep stays `EnRoute` (matching has **no** radius gate — `MatchingService.cs:51-59` picks the nearest qualified rep at any distance, confirmed). Live gate, **two** consecutive fresh-boot runs: **deterministic** `pending→tracking` starvation ("no HydraulicTool rep accepted"). **Why:** re-matching a pending request fires only when a rep frees up (complete / decline / offline / sweeper / reconciler) — **never on a position update**; holding the shared, finite fleet far stops busy reps arriving/completing, so none free up and the starved request is never re-offered.
+- **The decisive fact:** the simulator's `VehicleWorker` **Navigate** driver (`PostNavigateStepAsync`) steps every `EnRoute` truck one hop **toward its active request every ~3 s**, reading the target fresh each tick — so it overrides any position the test posts within ~3 s and relentlessly drives an assigned rep to `Within15Miles`. A frontend arrange cannot hold a rep `EnRoute` against it, and the one-way latch ([BUG-059]) makes the resulting state permanent.
+
+**Resolution path:** land [BUG-059] (bidirectional `EnRoute ⇄ Within15Miles` proximity recompute + the product decision on redirect re-eligibility). Once the reverse transition exists, the fix-(A) frontend shape becomes viable (reach tracking with the fleet at the requester, then far-pin the assigned rep → it un-latches to `EnRoute` → redirect succeeds). This BUG-055 frontend arrange fix should then be implemented and verified green across 2–3 consecutive fresh-boot `test-playwright.sh` runs, as its ACs above still require. No frontend branch is open (the fix-A/fix-B changes were reverted — they are not the eventual fix).
 
 ---
 
@@ -1519,3 +1529,36 @@ Make offer creation idempotent in `MatchingService.RunAsync`: before creating, s
 - Two near-simultaneous matching passes for the same request create at most one new `Pending` offer.
 - A genuinely un-offered pending request still receives exactly one offer (existing behaviour preserved).
 - The declined/expired re-offer behaviour from `BUG-054` is preserved (this dedup must not re-introduce skip-list starvation).
+
+---
+
+## BUG-059 — Proximity transition is a one-way `EnRoute → Within15Miles` latch: combined with the simulator's Navigate driver and the redirect `EnRoute`-only rule, a rep assigned to a nearby request can never be (re-)made redirect-eligible
+
+- **Status:** Open
+- **Severity:** Medium (product-behaviour / correctness gap surfaced as a persistent E2E blocker. The one-way latch means a rep that has closed to within 15 mi of its requester can **never** return to `EnRoute` even if it later moves back out past 15 mi — so `POST /dispatcher/redirect` (an `EnRoute`-only action) can never target it again. In the live system this makes "redirect a rep that is almost there" permanently impossible once proximity is reached; in the test system it makes the `RequesterRedirectTests` redirect precondition **unachievable frontend-only**, which is why `BUG-055` could not be fixed in the frontend — see the investigation below.)
+- **Repo / Area:** **Backend** — `Application/Features/.../UpdateVehiclePositionCommandHandler.cs` (`UpdateVehiclePositionCommandHandler.cs:52` recomputes proximity **only while `repState.State == EnRoute`**: `newState = distanceMiles < ThresholdMiles ? Within15Miles : EnRoute` runs solely on the `EnRoute` branch, so once a rep is `Within15Miles` no later position update can move it back — a one-way latch). Redirect eligibility guard lives in `Application/Features/Dispatcher/Commands/RedirectRepCommandHandler.cs` (`"only an EnRoute rep can be redirected"`).
+- **Related stories:** `BUG-055` (the frontend redirect-arrange flake this blocks — now re-pointed as a follow-up of *this* story; see its updated entry). `BUG-054`/`BUG-053` (the shared-fleet live gate that surfaced the whole cluster). ADR-0009 / simulator design (the `VehicleWorker` **Navigate** driver — `service-delivery-simulator/.../Workers/VehicleWorker.cs` `PostNavigateStepAsync` — steps every `EnRoute` truck one hop **toward `row.ActiveRequestLocation` every ~3 s**, reading the target fresh each tick; this is what overrides any externally-posted "hold it far" position and drives an assigned rep to `Within15Miles`). `docs/architecture/state-machines.md` (rep/proximity state machine — the transition this bug proposes to make bidirectional).
+- **Found:** `BUG-055` `/master` live gate, 2026-07-22 — three consecutive fresh-boot `test-playwright.sh` runs (one fix-A, two fix-B) proved no frontend-only arrange can hold a rep `EnRoute` for a nearby request: the simulator's Navigate driver re-closes the gap within ~3 s and the one-way latch makes the resulting `Within15Miles` state permanent. Fix-A left the rep latched with zero `EnRoute` window; fix-B (start the fleet far) deterministically starved the `pending→tracking` match because holding busy reps far stops them arriving/completing, so none free up to re-trigger matching.
+
+**Summary**
+The rep proximity model is asymmetric. `UpdateVehiclePositionCommandHandler` transitions `EnRoute → Within15Miles` when a position update brings an `EnRoute` rep within the threshold, but it does **not** perform the reverse: a `Within15Miles` rep that subsequently moves back out past the threshold stays `Within15Miles`. Because `POST /dispatcher/redirect` rejects any non-`EnRoute` rep, a rep is redirect-eligible only during the (often brief) window before it first crosses 15 mi — and once past it, never again, regardless of where the vehicle actually is.
+
+**Expected**
+Proximity is recomputed on **every** position update regardless of current state, so `EnRoute ⇄ Within15Miles` is bidirectional: a rep whose vehicle moves back out past the threshold returns to `EnRoute` (and thus becomes redirect-eligible again), and a rep that closes in becomes `Within15Miles` as today. The transition reflects the vehicle's actual current distance, not a latched historical minimum.
+
+**Actual**
+The reverse transition never fires. `Within15Miles` is a permanent latch for the remainder of the assignment; a redirect can never target a rep once it has been within 15 mi, even if it is now demonstrably far away.
+
+**Product decision required before implementing**
+This is a genuine behaviour change, not a pure bug fix — resolve explicitly first:
+- **Should a rep that moves back out past 15 mi become redirect-eligible again?** Arguments for: it reflects reality and unblocks the redirect flow. Arguments against: GPS jitter or a brief detour near the 15-mi boundary could flap a rep in/out of `Within15Miles`, and redirecting a rep that is "almost there" is disruptive to the waiting requester. Consider hysteresis (separate enter/exit thresholds) or an explicit "committed" sub-state if flapping is a concern.
+- Confirm no other consumer relies on `Within15Miles` being terminal-until-complete (e.g. arrival reporting, `POST /rep/arrive`, UI proximity badges).
+
+**Proposed fix (via `/master`)**
+Make the proximity recompute in `UpdateVehiclePositionCommandHandler` unconditional on the current `EnRoute`/`Within15Miles` distinction: for any assigned rep in either state, set the state from the current `distanceMiles` vs threshold (with hysteresis if the product decision calls for it). Domain tests: an `EnRoute` rep that closes in → `Within15Miles` (preserved); a `Within15Miles` rep that moves back out past the threshold → `EnRoute` (new); no transition for `Available`/`OnSite`/offline reps; boundary/hysteresis behaviour at the threshold. Then re-enable the `BUG-055` frontend arrange (fix-A shape: reach tracking with the fleet at the requester, then far-pin the assigned rep — which now un-latches it back to `EnRoute` — and redirect), and verify `RequesterRedirectTests` green across 2–3 consecutive fresh-boot `test-playwright.sh` runs.
+
+**Acceptance criteria (bug resolved when):**
+- A `Within15Miles` rep whose vehicle position updates to beyond the threshold transitions back to `EnRoute` (subject to any agreed hysteresis).
+- An `EnRoute` rep that closes within the threshold still transitions to `Within15Miles` (existing behaviour preserved).
+- `POST /dispatcher/redirect` succeeds against a rep that has been moved back out past 15 mi (it is `EnRoute` again).
+- The product decision on re-eligibility (and any hysteresis) is recorded (ADR or state-machine doc update), and no existing `Within15Miles`-dependent behaviour (`/rep/arrive`, arrival reporting, UI) regresses.
