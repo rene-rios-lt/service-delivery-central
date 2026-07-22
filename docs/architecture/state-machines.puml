@@ -18,7 +18,8 @@ state "On Site" as OnSite
 
 Offline --> Available : claims vehicle\n[Rep]
 Available --> EnRoute : accepts job offer\n[System]
-EnRoute --> Within15Miles : Haversine < 15 mi\n[Backend on position update]
+EnRoute --> Within15Miles : Haversine < 15 mi (enter)\n[Backend on position update]
+Within15Miles --> EnRoute : Haversine >= 17 mi (exit, hysteresis)\n[Backend on position update — ADR-0012, BUG-059]
 Within15Miles --> OnSite : taps "I've Arrived"\n[Rep]
 OnSite --> Available : taps "Mark Complete"\n[Rep]
 
@@ -51,8 +52,11 @@ note right of EnRoute
 end note
 
 note right of Within15Miles
-  PROTECTED
+  PROTECTED (while in this state)
   No redirect, any tier.
+  Reverts to En Route if the vehicle
+  moves back out >= 17 mi (hysteresis),
+  which re-opens redirect eligibility.
 end note
 
 note right of OnSite
