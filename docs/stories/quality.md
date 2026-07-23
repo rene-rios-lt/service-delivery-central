@@ -733,3 +733,49 @@ MudBlazor usage is mixed but seemingly deliberate: `RepIdle`/`TakeOver`/`Request
 **Out of scope:** introducing a second component library (forbidden); re-theming.
 
 **Done when:** the rule is documented (and any agreed migration applied) with the affected screens live-verified, and the story is struck in `execution-plan.md`. **Frontend code + CLAUDE.md ship via `/master`**; a pure CLAUDE.md-only outcome ships via `/ship-it`.
+
+---
+
+## QUAL-029 — Make the simulator's rep decisions human-realistic (one offer at a time, human pacing, decline-on-409) so it stops manufacturing impossible-speed races
+
+- **Repo / Area:** Simulator — `Services/JobOfferDecisionEngine.cs`, `Services/BackendApiClient.cs` (`AcceptJobOfferAsync` return/outcome), the per-rep decision loop / operation gate
+
+**As a** maintainer of the Service Delivery POC,
+**I want** the simulator to operate each rep the way a human on the mobile app would — considering one offer at a time, at human pace, and backing off cleanly when the backend rejects an accept,
+**so that** the E2E system exercises human-reachable behaviour instead of machine-speed concurrency a real fleet can never produce.
+
+**Motivation**
+The BUG-055 investigation (2026-07-22/23) fixed six real defects, but a retrospective (see the BUG-057/058/061 entries in `bug.md`) found that several were **only reachable because the simulator acts faster and more concurrently than any human**: it lets one rep hold/accept multiple concurrent offers for different requests (BUG-057's guard now 409-rejects the extras), and it swallows that 409 silently (`BackendApiClient` logs and returns `Task`), leaving the losing request stuck until offer-expiry (BUG-061). A human rep is shown **one** offer at a time and taps accept once — they cannot produce the double-offer/double-accept race at all. Making the simulator human-realistic removes the artificial load at its source and makes the E2E signal trustworthy.
+
+**Acceptance Criteria:**
+- The simulator considers/holds at most **one** live offer per rep at a time (it does not accept a second offer for a rep already deciding on or committed to one) — mirroring the single-offer mobile UX.
+- On an accept rejected with **409** (`RepAlreadyOnActiveJob` / offer no longer Pending), the decision engine **declines/relinquishes** that offer promptly (via the backend decline path) rather than swallowing it — so the request is re-matched immediately, not at ~60 s expiry. Requires surfacing the 409 outcome from `IBackendApiClient.AcceptJobOfferAsync` (today it returns `Task` and logs non-2xx).
+- Decision pacing remains human-plausible (the existing 1–5 s "reviewing" delay is retained/tuned), and the `AutoDeclineRatePercent=0` E2E determinism override still works.
+- Unit tests: a rep with a live offer ignores a second concurrent offer; a 409 on accept triggers a decline; existing decision-engine tests stay green.
+
+**Out of scope:** backend matching changes (BUG-057/058/061 already landed the server-side guards); changing the human-takeover path.
+
+**Done when:** the simulator behaves single-offer + human-paced + decline-on-409, unit-tested, and live-verified that the E2E fleet no longer produces concurrent double-offers; struck in `execution-plan.md`. Ships via `/master` (simulator code).
+
+---
+
+## QUAL-030 — Isolate the redirect + requester-tracking E2E tests onto a dedicated fleet so they stop over-contending the shared 7-rep pool
+
+- **Repo / Area:** Frontend — `tests/ServiceDelivery.Client.E2E/RequesterRedirectTests.cs`, `RequesterTrackingTests.cs`, `Helpers/BackendApiHelper.cs` (fleet arrange)
+
+**As a** maintainer of the Playwright E2E suite,
+**I want** the redirect and requester-tracking scenarios to run against reps they exclusively control,
+**so that** they assert real product behaviour deterministically instead of racing sibling tests for a finite fleet.
+
+**Motivation**
+`RequesterRedirectTests` (BUG-055) could not be made green even after six real fixes: the redirect scenario needs several reps (the leftover from `RequesterFindingTests`, the redirected rep, the Gold-target rep, and a spare for the displaced re-match) while sibling requester-tracking tests draw concurrently from the same **7 HydraulicTool reps**. Under the simulator's machine-speed operation the pool is exhausted and the displaced request isn't re-accepted within the 45 s window — a **self-inflicted contention artifact**, not a product defect (confirmed 2026-07-23: three tracking tests failed one run purely from fleet contention). BUG-055's arrange + reorder fix is correct (branch `fix/BUG-055-requester-redirect-enroute-arrange`, held) — it just needs a fleet it isn't fighting other tests for.
+
+**Acceptance Criteria:**
+- The redirect (and, where affected, requester-tracking) E2E scenarios reserve/claim a dedicated set of reps (or a dedicated dealer) that no sibling test contends, so a spare qualified rep is always available for the post-redirect displaced re-match.
+- `RequesterRedirectTests.GivenRequesterOnTrackingPage_WhenRepIsRedirected_ThenRedirectBannerAndNewRepNameAreVisible` passes across **2–3 consecutive fresh-boot** `test-playwright.sh` runs (this is what finally closes **BUG-055** — merge the held BUG-055 arrange branch as part of this).
+- No reduction in what the tests assert (real redirect + real re-accept + banner/rep-name).
+- Complements QUAL-029 (a human-realistic simulator reduces contention; isolation removes it) — either alone helps, together they close the flake family.
+
+**Out of scope:** backend/product changes; the marker-click flake (BUG-056, separate).
+
+**Done when:** the redirect test is green across 2–3 fresh boots with the isolated fleet, the held BUG-055 branch is merged, BUG-055 is struck/closed, and QUAL-030 is struck in `execution-plan.md`. Ships via `/master` (frontend E2E code).
