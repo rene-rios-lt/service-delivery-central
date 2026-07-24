@@ -1407,7 +1407,7 @@ Preferred: exclude only `Declined` offers in `GetSkippedRepIdsForRequestAsync`, 
 
 ## BUG-055 — Playwright `RequesterRedirectTests` arrange helper matches only `RepState == "EnRoute"`, so a rep that has already advanced to `Within15Miles` is missed and the redirect setup starves
 
-- **Status:** Open — **arrange + redirect FIXED and verified; test still red due to a self-inflicted E2E fleet-contention artifact, now tracked under [QUAL-030] (+ [QUAL-029]).** The frontend fix is on branch `fix/BUG-055-requester-redirect-enroute-arrange` (pushed, **PR held**): `WaitForEnRouteRepWithFarPinAsync` re-pins the assigned vehicle each poll iteration so [BUG-059]'s bidirectional recompute returns it to `EnRoute`, and `TriggerRedirectAsync` was reordered (commit 0b71812) to do all slow prep up front then a tight far-pin→redirect retry, closing the `RepNotEnRoute` (422) sim-override race. Live gate 2026-07-23: the arrange **and** `POST /dispatcher/redirect` now succeed reliably. Five real defects were fixed en route — **[BUG-059], [BUG-060], [BUG-057], [BUG-058], [BUG-061]** (all merged) — but the redirect test **still** fails at the post-redirect **displaced re-accept** because the requester E2E suite over-contends the finite 7-rep fleet at machine speed (three tracking tests failed one run purely from contention). That is a test-design/simulator-realism problem, **not** a product bug: closing it is [QUAL-030] (isolate the redirect/tracking tests onto a dedicated fleet) and [QUAL-029] (make the simulator human-realistic — one offer at a time, decline-on-409). **Merge the held BUG-055 branch and confirm AC-2 green as part of [QUAL-030].**
+- **Status:** **Closed 2026-07-24 — resolved via [QUAL-030] (frontend PR #79).** The arrange + redirect fix landed (held `fix/BUG-055-requester-redirect-enroute-arrange` branch merged as the base of PR #79) and the dedicated-fleet isolation shipped. The last remaining symptom — the post-redirect **displaced re-accept** never completing inside the banner window — was confirmed to be the **self-inflicted E2E fleet-contention artifact** this entry and the retrospective already classified as *not a product defect*. Live diagnosis (2026-07-24) proved it is **inseparable from the finite-fleet re-match**: the `RepRedirected` banner event is emitted by the backend only after a new rep re-accepts the displaced request, so no deterministic slice can be asserted without solving cross-fixture contention. **Decision (informed-B):** the live redirect E2E is quarantined `[Explicit]` with a documented rationale — the redirect UI behaviour (banner, apology text, old→new name mapping, wire payload) stays guarded by the deterministic bUnit `RequesterRedirectViewModelTests`/`RequesterRedirectComponentTests`/`RepRedirectedPayloadDeserializationTests`; only the contention-bound live-wiring assertion is given up, and the test stays runnable on demand. Six real defects were fixed en route — **[BUG-059], [BUG-060], [BUG-057], [BUG-058], [BUG-061], [BUG-062]** (all merged). The true long-term fix is backend-side: **[BUG-063]** (matcher offers to a rep already holding a live Pending offer).
 - **Severity:** Low (frontend test-infrastructure flake — the product path is healthy: the request is matched, accepted, and reps are actively navigating to it with **zero** expired offers. Non-deterministic; surfaced *more* often now that `BUG-053`'s fix keeps rep hubs healthy, because instant acceptance shrinks the catchable `EnRoute` window.)
 - **Repo / Area:** **Frontend** — `tests/ServiceDelivery.Client.E2E/Helpers/BackendApiHelper.cs`. The shared arrange helper was renamed `WaitForEnRouteRepAtAsync` → **`WaitForRepServingRequestAtAsync(..., params string[] acceptStates)`** in frontend PR #78 (during BUG-054's live gate); it now takes the accepted rep states per caller. The **redirect** consumer (`TriggerRedirectAsync` / `TriggerRedirect`, `RequesterRedirectTests.GivenRequesterOnTrackingPage_WhenRepIsRedirected_ThenRedirectBannerAndNewRepNameAreVisible`) still passes `"EnRoute"` only — **that is the still-open flake described here.** The sibling **completion** consumer (`CompleteAssignedRequestAtAsync`, `RequesterCompleteTests.GivenRequesterOnTrackingPage_WhenServiceCompletedEventArrives_…`) was a second, previously-unfiled victim of the same race and was **FIXED in PR #78** (it now safely passes `"EnRoute","Within15Miles"` — see the Proposed fix for why that is safe for completion but not for redirect).
 - **Related stories:** `BUG-053` (whose resumed live gate surfaced this; the deaf-rep fix makes acceptance fast → shorter `EnRoute` window), `BUG-054` (whose live gate hit the *completion*-path manifestation of this exact helper race, fixed it, and renamed the helper — frontend PR #78; that gate is also where the corrected analysis below was worked out), `BUG-049` (the redirect test's *prior* full-suite flake — pending→tracking starvation, a different root cause now fixed). The `Simulator__AutoDeclineRatePercent=0` E2E-determinism override (see `scripts/local/test-playwright.sh`) makes every offer an instant accept, which is what races the poll.
@@ -1620,3 +1620,47 @@ The rejected offer stays `Pending` until ~60 s expiry; the request is only rescu
 - A contended request (its nearest rep took a different job) is assigned promptly when another qualified rep is idle.
 - The no-other-candidate case still cleanly falls back to the existing expiry/reconciler path (no regression, no starvation — BUG-054 preserved).
 - Live-verified: `BUG-055`'s `RequesterRedirectTests` reaches the redirect banner (displaced request re-accepted) across 2–3 consecutive fresh-boot `test-playwright.sh` runs.
+
+---
+
+## BUG-062 — Simulator single-offer gate *ignores* a concurrent offer instead of declining it, leaving it Pending until ~60 s expiry and blocking the request's re-match
+
+- **Status:** **Fixed 2026-07-24** — simulator PR #30. Found during the [QUAL-030] / [BUG-055] live gate.
+- **Severity:** Medium (re-introduces the [BUG-061] stuck-Pending class via a new path; contention-dependent).
+- **Repo / Area:** **Simulator** — `Services/JobOfferDecisionEngine.cs` (the `ILiveOfferGate` latch-held branch).
+- **Related:** [QUAL-029] (which introduced the single-offer gate with an *ignore* branch), [BUG-061] (backend release-on-409 — does **not** cover this because an ignored offer never triggers an accept/409), [BUG-063] (the backend root cause).
+
+**Summary**
+[QUAL-029]'s single-offer gate, when a rep already had a live offer in flight, *ignored* a second concurrent offer (logged and returned). But the backend had already created that offer as `Pending`, and a rep with an *undecided* offer is still `RepState.Available`, so the ignored offer sat `Pending` until the ~60 s expiry sweeper while the matcher's idempotency guard (a live Pending offer blocks a second offer for the same request) **froze the request** from re-matching to any free rep. In the redirect scenario the displaced request was never re-accepted inside the 45 s window.
+
+**Fix**
+The latch-held branch now **relinquishes the concurrent offer via the existing decline path** (mirroring the AC-2 409 handling), so `DeclineJobOfferCommandHandler` re-runs matching immediately. Extracted a shared `ResolveIdentity` helper; no-ops (no throw) when no operated identity is held. Also corrected the **masking unit test** that asserted "ignored with no API call" to assert the offer is declined. 194 unit tests green; live-verified declines fire and requests re-match immediately (no 60 s freeze).
+
+**Note:** this is the in-scope *simulator* mitigation. The true root cause is backend-side — see [BUG-063].
+
+---
+
+## BUG-063 — Matcher offers a request to a rep that already holds a live Pending offer for a *different* request (double-offer at the source)
+
+- **Status:** **Open** — filed 2026-07-24 from the [BUG-055]/[QUAL-030] live investigation.
+- **Severity:** Medium (root cause of the contention that [BUG-062] and [BUG-061] each mitigate downstream; not human-reachable at scale, but it destabilises the finite-fleet E2E suite).
+- **Repo / Area:** **Backend** — `Application/Common/Services/MatchingService.cs` (`RunAsync` candidate selection) + `Infrastructure/Repositories/RepStateRepository.cs` (`GetAvailableByDealerAsync`).
+- **Related:** [BUG-062] (simulator mitigation: decline the surplus offer), [BUG-061] (release-on-409 mitigation, which mentioned "consider not offering the same request to a rep that already holds a live offer" but did **not** implement it), [BUG-057]/[BUG-058] (the accept-side and duplicate-offer guards), [QUAL-029]/[QUAL-030].
+
+**Summary**
+`GetAvailableByDealerAsync` gates candidacy on `RepStateRecord.State == Available` + an open session. A rep that has been *offered* a job but has not yet accepted is still `Available` (state flips to `EnRoute` only on accept), so the matcher will offer it a **second, concurrent** request for a *different* job. That is the double-offer at the source. Every downstream symptom — the 409-rejected second accept ([BUG-061]), the simulator ignoring/declining the surplus offer ([BUG-062]), and the finite-fleet E2E contention ([QUAL-030]) — is a mitigation of this one behaviour.
+
+**Expected**
+A rep holding a live `Pending` offer is treated as *reserved* and is not offered another request until the offer resolves (accept / decline / expire).
+
+**Actual**
+The rep remains a match candidate while an offer is outstanding, producing concurrent offers a single rep can never honour.
+
+**Proposed fix (via `/master`)**
+Exclude reps with a live `Pending` offer from the candidate set (a soft reservation) — e.g. an anti-join against `JobOffers` where `Status == Pending && ExpiresAt > now`, mirroring the existing per-request idempotency guard but at the *rep* grain. Must not deadlock the single-rep-no-other-candidate case (the offer still expires and re-matches). Preserve [BUG-054] re-offer and [BUG-058] dedup semantics.
+
+**Acceptance criteria (bug resolved when):**
+- A rep with a live Pending offer is not offered a second concurrent request for a different job.
+- Once its offer resolves (accept/decline/expire) the rep is a candidate again.
+- No regression to [BUG-054] (expired-offer re-offer) or the single-candidate expiry fallback.
+- With this in place, the simulator's [BUG-062] decline and the [QUAL-030] E2E quarantine become belt-and-suspenders rather than load-bearing.
