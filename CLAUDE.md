@@ -72,13 +72,21 @@ Azure infrastructure provisioned via Terraform (not active for POC local dev)
 # a simulator you already had open before the run is left untouched.
 ./scripts/local/test-appium.sh
 
-# Run the full end-to-end suite — Playwright then Appium (each boots/tears down its own live system)
+# Run the Desktop (Mac Catalyst) Appium suite alone via the Mac2Driver (boots/tears down a live system;
+# needs Appium + the mac2 driver installed and macOS Accessibility granted — see
+# service-delivery-frontend/docs/testing/desktop-appium-setup.md). No iOS simulator: it builds the
+# Desktop app, launches it via mac2, and asserts on the native macOS accessibility tree.
+./scripts/local/test-appium-mac.sh
+
+# Run the full end-to-end suite — Playwright (web), then iOS Appium, then Desktop Mac2Driver (each
+# boots/tears down its own live system). The Desktop suite is skipped (dimmed n/a row, not a failure)
+# when the Appium mac2 driver is absent or SD_SKIP_DESKTOP=1.
 ./scripts/local/test-e2e.sh
 
 # Run the offline unit + integration suite (backend + frontend + simulator) with a live results table — no live system
 ./scripts/local/test-unit-and-integration.sh
 
-# Run the COMPLETE suite — unit + integration, then end-to-end (Playwright + Appium). Boots a live system for the E2E phase
+# Run the COMPLETE suite — unit + integration, then end-to-end (Playwright web + iOS Appium + Desktop Mac2Driver). Boots a live system for the E2E phase; the Desktop suite is skipped (n/a, not a failure) when the mac2 driver is absent or SD_SKIP_DESKTOP=1
 ./scripts/local/test-all.sh
 
 # Bring up the full system locally (backend on HTTP profile + simulator; exports DOTNET_ENVIRONMENT=Local so the simulator loads appsettings.Local.json)
@@ -121,7 +129,7 @@ Azure infrastructure provisioned via Terraform (not active for POC local dev)
 
 `scripts/utils/run-on-simulator.sh` is the shared helper behind `startInPhone.sh` / `startInTablet.sh` — it takes a simulator device name (e.g. `"iPhone 17 Pro"`), resolves an available device (preferring one already booted), boots it, and builds + deploys + launches the MAUI Mobile app on it. The two `startIn*.sh` scripts are thin wrappers that pass the device name.
 
-`scripts/utils/test-report.sh` is a sourced helper (not executed directly) that provides the shared TRX-parsing, colour setup, and root-discovery functions used by `test-unit-and-integration.sh`'s live results table, plus a static results-table renderer (`sd_render_results_table`) used by `test-e2e.sh` and `test-all.sh` for their consolidated end-of-run tables.
+`scripts/utils/test-report.sh` is a sourced helper (not executed directly) that provides the shared TRX-parsing, colour setup, and root-discovery functions used by `test-unit-and-integration.sh`'s live results table, plus a static results-table renderer (`sd_render_results_table`) used by `test-e2e.sh` and `test-all.sh` for their consolidated end-of-run tables. It also owns the Desktop-suite gate: `sd_desktop_enabled` (the single predicate — Appium `mac2` driver installed and `SD_SKIP_DESKTOP` unset) and `sd_desktop_row` (emits the real Desktop TRX row when enabled, else a dimmed `n/a`), used by both `test-e2e.sh` and `test-all.sh` so the decision to run `test-appium-mac.sh` and the decision to show real vs `n/a` results never disagree.
 
 `scripts/utils/validate-ai-system.sh` validates all `AGENT.md` and `SKILL.md` files for internal consistency — required sections, resolvable Required Reading paths, `name:` ↔ folder matching, and `master/SKILL.md` wiring. Invoked by the `/validate-ai-system` skill and automatically by a PostToolUse hook after any `.claude/` file edit.
 

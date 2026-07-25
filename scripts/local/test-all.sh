@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # Runs the COMPLETE test suite and renders one unified results table: the offline unit + integration
-# projects via test-unit-and-integration.sh, then the live end-to-end suite (Playwright + Appium)
-# via test-e2e.sh.
+# projects via test-unit-and-integration.sh, then the live end-to-end suite (Playwright web + iOS
+# Appium + Desktop Mac2Driver) via test-e2e.sh.
 #
 # Unlike test-unit-and-integration.sh, this DOES boot a live system (backend, web host, simulator,
-# iOS sim, Appium server) for the E2E phase — see test-playwright.sh / test-appium.sh for
-# prerequisites. Both phases run even if the first fails, so you get the full picture; the exit code
-# is non-zero if either phase fails.
+# iOS sim, Appium server) for the E2E phase — see test-playwright.sh / test-appium.sh /
+# test-appium-mac.sh for prerequisites. The Desktop suite is skipped (dimmed n/a row, not a failure)
+# when the Appium mac2 driver is absent or SD_SKIP_DESKTOP=1. Both phases run even if the first fails,
+# so you get the full picture; the exit code is non-zero if either phase fails.
 #
 # For the fast, offline-only run (no live system) use test-unit-and-integration.sh directly.
 set -u
@@ -40,6 +41,7 @@ echo "==> Complete suite results"
   grep '^Frontend|Unit|'       "$SD_SUMMARY_FILE"
   sd_trx_row 'Frontend' 'E2E (PW)'     "$SD_TRX_DIR/playwright.trx"
   sd_trx_row 'Frontend' 'E2E (Appium)' "$SD_TRX_DIR/appium.trx"
+  sd_desktop_row "$SD_TRX_DIR"
   grep '^Simulator|Unit|'      "$SD_SUMMARY_FILE"
 } | sd_render_results_table
 

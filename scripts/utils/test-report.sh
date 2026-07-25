@@ -43,6 +43,29 @@ sd_trx_row() {
   printf '%s|%s|%s|%s|%s|%s\n' "$suite" "$level" "${t:-0}" "${p:-0}" "${f:-0}" "$state"
 }
 
+# The Desktop (Mac Catalyst / mac2) E2E suite is gated: it needs the Appium mac2 driver installed and
+# macOS Accessibility grants (see service-delivery-frontend/docs/testing/desktop-appium-setup.md).
+# sd_desktop_enabled is the SINGLE predicate that decides both whether test-appium-mac.sh runs AND
+# whether its results row shows real numbers or a dimmed n/a — so the two can never disagree. Set
+# SD_SKIP_DESKTOP=1 to force-skip on a machine that has mac2 but doesn't want to run the Desktop suite.
+sd_desktop_enabled() {
+  [ "${SD_SKIP_DESKTOP:-0}" != "1" ] || return 1
+  command -v appium > /dev/null 2>&1 || return 1
+  appium driver list --installed 2>&1 | grep -q 'mac2' || return 1
+}
+
+# Echo the "Frontend | E2E (Desktop)" table row: real TRX stats (mac-appium-results.trx) when Desktop
+# is enabled, else a dimmed n/a row — so a machine without the mac2 driver is not failed by a suite it
+# cannot run. Callers must run test-appium-mac.sh only when sd_desktop_enabled (same predicate).
+sd_desktop_row() {
+  local dir="$1"
+  if sd_desktop_enabled; then
+    sd_trx_row 'Frontend' 'E2E (Desktop)' "$dir/mac-appium-results.trx"
+  else
+    printf 'Frontend|E2E (Desktop)|0|0|0|na\n'
+  fi
+}
+
 # Render a static results table from pipe-delimited rows on stdin:
 #   Suite|Level|total|passed|failed|state      (state: pass | fail | na)
 # Appends a Total row summed from the data rows, then a one-line verdict. Colours are empty on a
