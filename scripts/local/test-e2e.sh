@@ -1,15 +1,21 @@
 #!/usr/bin/env bash
-# Runs the full end-to-end suite against a live system: the Playwright (web/desktop) suite via
-# test-playwright.sh, then the Appium (iOS mobile) suite via test-appium.sh.
+# Runs the full end-to-end suite against a live system: the Playwright (web) suite via
+# test-playwright.sh, then the iOS Appium (mobile) suite via test-appium.sh, then the Desktop
+# Mac2Driver (Mac Catalyst) suite via test-appium-mac.sh.
 #
 # Each child script manages its own setup and teardown (backend, web host, simulator, iOS sim,
 # Appium server), so this orchestrator just runs them in sequence and renders a consolidated table.
-# Both suites run even if the first fails, so you get the full picture; the exit code is non-zero
-# if either suite fails.
+# All suites run even if an earlier one fails, so you get the full picture; the exit code is non-zero
+# if any suite fails.
+#
+# The Desktop suite is gated by sd_desktop_enabled (test-report.sh): it runs only when the Appium
+# mac2 driver is installed and SD_SKIP_DESKTOP is not set — otherwise it is skipped and its row
+# renders as a dimmed n/a (not a failure), so web/mobile-only machines stay green.
 #
 # NOT part of the /master pipeline or the offline test-unit-and-integration.sh runner — these need
-# a live system. See test-playwright.sh / test-appium.sh headers for prerequisites (Playwright
-# browsers, Appium + xcuitest driver, a booted iOS simulator).
+# a live system. See test-playwright.sh / test-appium.sh / test-appium-mac.sh headers for
+# prerequisites (Playwright browsers, Appium + xcuitest driver + a booted iOS simulator, Appium +
+# mac2 driver + macOS Accessibility grants).
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -27,14 +33,24 @@ if [ -z "${SD_TRX_DIR:-}" ]; then
   trap 'rm -rf "$SD_TRX_DIR"' EXIT
 fi
 
-echo "==> [1/2] Playwright E2E (test-playwright.sh) ..."
+echo "==> [1/3] Playwright E2E (test-playwright.sh) ..."
 "$SCRIPT_DIR/test-playwright.sh"
 PW_RC=$?
 
 echo
-echo "==> [2/2] Appium E2E (test-appium.sh) ..."
+echo "==> [2/3] iOS Appium E2E (test-appium.sh) ..."
 "$SCRIPT_DIR/test-appium.sh"
 APPIUM_RC=$?
+
+echo
+if sd_desktop_enabled; then
+  echo "==> [3/3] Desktop Appium E2E (test-appium-mac.sh) ..."
+  "$SCRIPT_DIR/test-appium-mac.sh"
+  DESKTOP_RC=$?
+else
+  echo "==> [3/3] Desktop Appium E2E — SKIPPED (Appium mac2 driver not installed, or SD_SKIP_DESKTOP=1)"
+  DESKTOP_RC=0
+fi
 
 if [ "$STANDALONE" -eq 1 ]; then
   echo
@@ -42,8 +58,9 @@ if [ "$STANDALONE" -eq 1 ]; then
   {
     sd_trx_row 'Frontend' 'E2E (PW)'     "$SD_TRX_DIR/playwright.trx"
     sd_trx_row 'Frontend' 'E2E (Appium)' "$SD_TRX_DIR/appium.trx"
+    sd_desktop_row "$SD_TRX_DIR"
   } | sd_render_results_table
 fi
 
-[ "$PW_RC" -eq 0 ] && [ "$APPIUM_RC" -eq 0 ] && exit 0
+[ "$PW_RC" -eq 0 ] && [ "$APPIUM_RC" -eq 0 ] && [ "$DESKTOP_RC" -eq 0 ] && exit 0
 exit 1
