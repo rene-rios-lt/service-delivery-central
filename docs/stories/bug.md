@@ -1663,4 +1663,5 @@ Exclude reps with a live `Pending` offer from the candidate set (a soft reservat
 - A rep with a live Pending offer is not offered a second concurrent request for a different job.
 - Once its offer resolves (accept/decline/expire) the rep is a candidate again.
 - No regression to [BUG-054] (expired-offer re-offer) or the single-candidate expiry fallback.
-- With this in place, the simulator's [BUG-062] decline and the [QUAL-030] E2E quarantine become belt-and-suspenders rather than load-bearing.
+
+**Downstream effect (informational, not an AC):** With this in place, the simulator's [BUG-062] decline and the [QUAL-030] E2E quarantine become belt-and-suspenders rather than load-bearing.
