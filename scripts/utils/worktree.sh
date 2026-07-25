@@ -162,7 +162,15 @@ launch_session() {
   # the session is up. We do NOT pass "/master <id>" as a launch argument: a
   # project slash-command given as the startup prompt is resolved before project
   # skills register and fails with "Unknown command".
-  open_cmd="cd \"$path\" && claude"
+  #
+  # CLAUDE_CODE_FORCE_SESSION_PERSISTENCE=1: a worktree session is meant to be an
+  # independent, resumable /master run. When /worktree is itself invoked from a
+  # nested Claude session, CLAUDE_CODE_CHILD_SESSION is set and would be inherited
+  # by this launched session, disabling its transcript saving ("Transcript saving
+  # is off — inherited CLAUDE_CODE_CHILD_SESSION marker"). Forcing persistence
+  # keeps every spawned worktree session's transcript resumable regardless of how
+  # /worktree was launched.
+  open_cmd="cd \"$path\" && CLAUDE_CODE_FORCE_SESSION_PERSISTENCE=1 claude"
   type_cmd="/master $id"
   delay="${SD_WORKTREE_LAUNCH_DELAY:-6}"
   if [ "${SD_WORKTREE_NO_LAUNCH:-0}" = "1" ]; then
