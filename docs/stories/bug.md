@@ -1228,7 +1228,7 @@ Also convert `Login()`'s trailing bare `FindElement("[data-testid='take-over-but
 
 ## BUG-049 — Playwright `RequesterRedirectTests` starves in full-suite runs: pending→tracking transition depends on a matching re-run that its re-positioning poll cannot trigger
 
-- **Status:** Open
+- **Status:** **Closed 2026-07-25 — superseded by [QUAL-030].** BUG-049 is the full-suite starvation of `RequesterRedirectTests.GivenRequesterOnTrackingPage_WhenRepIsRedirected_…` (its pending→tracking arrange path). QUAL-030 (frontend PR #79, merged 2026-07-24) **quarantined that exact test method `[Explicit]`**, so it no longer runs in full-suite `test-playwright.sh` — BUG-049's symptom and its AC ("passes in full-suite runs across 2–3 fresh boots") are moot. The underlying event-driven-matching-vs-reactive-repositioning race is the same contention family closed under the BUG-055 retrospective; the durable root cause is backend [BUG-063]. See Resolution.
 - **Severity:** Low–Medium (test-only fragility — matching, acceptance, and the redirect flow all work live; but the flake intermittently 1-reddens the Playwright suite in full-suite mode, eroding the "green suite = healthy" signal exactly as BUG-048 did for the Appium suite. Non-deterministic, so it can mask — or be mistaken for — a real regression: it cost FE-003's live gate a control-experiment run to prove innocence.)
 - **Repo / Area:** **Frontend** — Playwright E2E `tests/ServiceDelivery.Client.E2E/RequesterRedirectTests.cs` (`ReachTrackingRouteAsync` / `WaitForTrackingWithFleetRepositioningAsync`), the arrange path of `GivenRequesterOnTrackingPage_WhenRepIsRedirected_ThenRedirectBannerAndNewRepNameAreVisible`.
 - **Related stories:** `FE-005` (dispatcher redirect), `FE-018` (requester redirect banner), `QUAL-003` (Playwright end-to-end suite). Related bug: `BUG-048` (the Appium sibling: an intermittent suite-mode-only E2E flake in a shared arrange path).
@@ -1254,6 +1254,8 @@ Make the arrange path condition-driven rather than cadence-driven. Candidate dir
 - The redirect scenario passes in **full-suite** `test-playwright.sh` runs across 2–3 consecutive fresh-boot executions, and still passes in isolation.
 - The arrange path's waits remain genuine bounded gates (they still fail loudly, with diagnostic fleet/request state, if no rep ever accepts) — no unbounded sleeps, no widened flat timeouts.
 - The fix is test-side only; no matching/backend behaviour change is required to make the suite deterministic.
+
+**Resolution** — **Closed 2026-07-25, superseded by [QUAL-030]** (no code shipped for BUG-049). The redirect test `GivenRequesterOnTrackingPage_WhenRepIsRedirected_ThenRedirectBannerAndNewRepNameAreVisible` — whose arrange path BUG-049 targets — was quarantined `[Explicit]` in QUAL-030 (frontend PR #79) after the BUG-055 live investigation proved the redirect banner is inseparable from a contention-bound finite-fleet re-match. Because the test is no longer part of the full suite, BUG-049's full-suite-starvation symptom cannot recur and its acceptance criteria are unreachable by construction. The redirect UI logic remains guarded by the deterministic bUnit tests (see BUG-055 resolution); the durable product-side root cause of the whole contention family is tracked as backend [BUG-063]. BUG-049's condition-driven-arrange proposal is preserved here for reference should the quarantined test ever be made deterministic (which would first require [BUG-063]). The stale `fix/BUG-049-…` worktree/branch (created pre-QUAL-030) was torn down.
 
 ---
 
