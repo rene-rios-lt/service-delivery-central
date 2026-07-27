@@ -128,18 +128,24 @@ Every AC bullet must have at least one scenario. Both unit and integration level
 *Run this step only for `FE-` stories (and `BUG-` stories whose **Repo / Area** is the frontend and which change a UI component). Skip for backend, simulator, and behaviour-only frontend stories.*
 
 Determine the story's platform(s) from the story text and the [Persona Platform Support](../docs/architecture/system-overview.md) table:
-- **Web or Desktop** → Playwright test file required
-- **Mobile** → Appium test file required
+- **Web** → Playwright test file required
+- **Desktop** → Appium Mac2 (Desktop) test file required
+- **Mobile** → Appium (iOS) test file required
+
+A persona served on **both Web and Desktop** (the Dispatcher — same shared `Client.UI`/`Client.Core` screen) requires **both** a Playwright **and** a mirrored Appium Mac2 test: web-green ≠ WebView-green (Desktop is MAUI `BlazorWebView`/WKWebView, a different runtime), so each E2E-only AC gets a paired Playwright scenario *and* an equivalent Mac2 Desktop scenario. See the **Dispatcher Web/Desktop E2E parity** rule in the frontend `CLAUDE.md`.
 
 For each applicable E2E type, check whether the corresponding test project exists in the working repo:
 - Playwright: `Glob("tests/ServiceDelivery.Client.E2E/**/*.csproj")` — if found, include a Playwright test file in the plan
-- Appium: `Glob("tests/ServiceDelivery.Client.Appium/**/*.csproj")` — if found, include an Appium test file in the plan
+- Appium Mac2 (Desktop): `Glob("tests/ServiceDelivery.Client.Appium.Mac/**/*.csproj")` — if found, include a Mac2 Desktop test file in the plan
+- Appium (iOS): `Glob("tests/ServiceDelivery.Client.Appium/**/*.csproj")` — if found, include an iOS Appium test file in the plan
 
-**If the project exists:** add the E2E test file to the Files to Create table, and add a dedicated "E2E Test Scenarios" sub-section to the AC → Test Scenario Mapping with one named scenario per AC. E2E scenario names follow the same `GivenA_When_Then` convention. Mark them with level `E2E (Playwright)` or `E2E (Appium)`.
+**If the project exists:** add the E2E test file to the Files to Create table, and add a dedicated "E2E Test Scenarios" sub-section to the AC → Test Scenario Mapping with one named scenario per AC — **per platform**. For a Web + Desktop (Dispatcher) story, list the Playwright and the Mac2 Desktop scenario for the same AC side by side. E2E scenario names follow the same `GivenA_When_Then` convention. Mark them with level `E2E (Playwright)`, `E2E (Appium Mac2)`, or `E2E (Appium)`.
+
+**Web-only exception:** an AC that is intrinsically browser-only — responsive reflow at narrower *web* widths (e.g. FE-004 AC-5) — has no native-desktop-window analogue; plan a Playwright scenario only and note the Desktop exemption explicitly so the AI Reviewer does not flag a missing mirror.
 
 **If the project does not exist:** note "E2E project not yet set up (QUAL-003/QUAL-004 pending) — no E2E test file planned for this story" and proceed without adding E2E files. The AI Reviewer will flag this as advisory only when the project is absent.
 
-E2E scenarios assert DOM-observable or accessibility-observable outcomes — element presence by `data-testid` / `accessibilityIdentifier`, text content, button state — not pixel screenshots. SignalR-driven assertions use `WaitForSelector` / polling with ≥ 10 s timeouts. E2E tests are **written but not executed** in the pipeline (they require a live system); execution is via `test-e2e.sh` / `test-appium.sh`.
+E2E scenarios assert DOM-observable or accessibility-observable outcomes — element presence by `data-testid` / `accessibilityIdentifier`, text content, button state — not pixel screenshots. SignalR-driven assertions use `WaitForSelector` / polling with ≥ 10 s timeouts. E2E tests are **written but not executed** in the pipeline (they require a live system); execution is via `test-e2e.sh` / `test-appium.sh` / `test-appium-mac.sh`.
 
 ### Step 5 — Flag SignalR events
 
