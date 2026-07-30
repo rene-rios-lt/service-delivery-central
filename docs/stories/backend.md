@@ -509,3 +509,21 @@
 - No new endpoint; no change to `VehiclePositionUpdated`; read-only enrichment of an existing query.
 
 **Consumed by:** [FE-003](../stories/frontend.md#fe-003--live-fleet-map) — the frontend `DispatcherFleetEntryDto` mirrors the new field into `FleetVehicleEntry.ActiveRequestTitle`, which `RepMarkerPopover` already renders when present (a one-field frontend consumption change; wire name/casing locked to this contract). Closes FE-003 AC-5 from partial to full.
+
+---
+
+### BE-033 — Include the redirect cooldown expiry in the dispatcher fleet snapshot
+**As a** Dispatcher,
+**I want to** see when each rep's 5-minute redirect cooldown expires in the fleet snapshot,
+**so that** the redirect confirmation dialog can warn me the rep is still in cooldown (which only a Gold request overrides).
+
+**Context:** FE-005's redirect confirmation dialog (AC-2) must warn when the target rep is within the 5-minute redirect cooldown — a warning a Gold new-job overrides. The cooldown's source of truth is `RepStateRecord.LastRedirectedAt` (set by `RedirectRepCommandHandler` on each successful redirect) and the window is `RedirectOptions.CooldownMinutes` (default 5, configurable). But the `GET /dispatcher/fleet` contract (`DispatcherFleetEntryDto`) exposes neither, so the frontend has no way to know a rep is in cooldown and the AC-2 warning can never fire in production. This story exposes the **computed cooldown expiry** through the same projection chain BE-032 used for the DTC title (`IVehicleRepository.GetDispatcherFleetByDealerAsync` → `DispatcherFleetEntry` Domain projection → `DispatcherFleetEntryDto` in `GetDispatcherFleetQueryHandler`). Computing the expiry server-side — rather than exposing the raw `LastRedirectedAt` and re-deriving the 5-minute window on the client — keeps the cooldown window authoritative in one place (the backend `RedirectOptions`).
+
+**Acceptance Criteria:**
+- `DispatcherFleetEntry` (Domain projection) gains `RedirectCooldownExpiresAt` (`DateTime?`) — the instant the rep's redirect cooldown lapses; `null` when the rep has never been redirected (`LastRedirectedAt` is null).
+- `IVehicleRepository.GetDispatcherFleetByDealerAsync` populates it from the rep's `RepStateRecord.LastRedirectedAt` plus the configured cooldown window (`RedirectOptions.CooldownMinutes`): `LastRedirectedAt + CooldownMinutes minutes`, or `null` when `LastRedirectedAt` is null.
+- `DispatcherFleetEntryDto` gains `RedirectCooldownExpiresAt`, serialised as `redirectCooldownExpiresAt` on the wire (System.Text.Json Web defaults / camelCase, ISO-8601 UTC), `null` when the rep has no active cooldown — mirroring the existing nullable-field convention (`activeRequestTier` / `activeRequestTitle`).
+- Covered by handler and repository tests asserting expiry-when-recently-redirected and `null`-when-never-redirected, plus a captured-payload/contract test guarding the `redirectCooldownExpiresAt` wire field name and casing (ADR-0011); the committed OpenAPI contract is regenerated in sync (QUAL-006).
+- No new endpoint; no change to any SignalR event; read-only enrichment of an existing query.
+
+**Consumed by:** [FE-005](../stories/frontend.md#fe-005--redirect-a-rep-to-a-higher-priority-request) — the frontend `DispatcherFleetEntryDto` mirrors the new field into `FleetVehicleEntry.RedirectCooldownExpiresAt`; the redirect confirmation dialog shows the cooldown warning (Gold overrides) when `now < RedirectCooldownExpiresAt`. Closes FE-005 AC-2's cooldown-warning sub-criterion from mock-only to full live coverage.
