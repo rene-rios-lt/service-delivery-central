@@ -1667,3 +1667,35 @@ Exclude reps with a live `Pending` offer from the candidate set (a soft reservat
 - No regression to [BUG-054] (expired-offer re-offer) or the single-candidate expiry fallback.
 
 **Downstream effect (informational, not an AC):** With this in place, the simulator's [BUG-062] decline and the [QUAL-030] E2E quarantine become belt-and-suspenders rather than load-bearing.
+
+---
+
+## BUG-064 — Matching assigns requests in arrival/insertion order, not by service tier — a Silver request can be assigned before a waiting Gold
+
+- **Status:** **Fixed** 2026-07-30 (backend PR #64, `fix/BUG-064-matching-tier-priority`) — `GetPendingByDealerAsync` now orders the dealer's `Pending` set by tier descending (Gold→Silver→Bronze) then `CreatedAt` ascending, so the free-up matcher (`RunForPendingByDealerAsync`, via `CompleteCommandHandler`) serves the highest-tier (then oldest) waiter first. 7 new tests (3 Infrastructure integration against the real EF Core store + 4 Application unit driving the real `MatchingService`); 634/0, BUG-054/058/063 guards preserved. **Scope (developer-approved minimum fix):** tier arbitration applies to requests already competing as `Pending` on a rep free-up; submit-time single-request matching is intentionally unchanged (FCFS — a rep is never idled speculatively, and preempting an already-assigned lower-tier rep is the manual dispatcher redirect, [FE-005]). Filed 2026-07-28 from a live dispatcher observation during the [FE-005] review. Shipped via `/master`.
+- **Severity:** High (violates the core domain promise that service tiers are priority levels — a Gold requester can wait while lower-tier Silver requests are assigned first; human-reachable in normal operation, not merely under test contention).
+- **Repo / Area:** **Backend** — `Application/Common/Services/MatchingService.cs` (`RunForPendingByDealerAsync`, and the per-request greedy `RunAsync` on submit) + `Infrastructure/Repositories/ServiceRequestRepository.cs` (`GetPendingByDealerAsync`).
+- **Related:** [BE-014] (matching algorithm — its ACs specify distance-based *rep* selection but never tier-based *request* arbitration), [BE-022] / [FE-005] (dispatcher redirect — the manual Gold-priority tool that exists precisely because the matcher has no automatic tier priority), [BUG-063] (a separate contention defect in the same service).
+
+**Summary**
+The matcher optimises *which rep* serves *one* request (nearest Haversine, then longest-available) but never arbitrates *which request* is served first when several are `Pending`. Two paths:
+- `ServiceRequestRepository.GetPendingByDealerAsync` returns `Pending` requests with **no ordering** (`.Where(...).ToListAsync()`); `MatchingService.RunForPendingByDealerAsync` iterates that list in DB/insertion order, so on a rep free-up the earliest-inserted `Pending` request wins the rep regardless of tier.
+- On submit, each request runs `RunAsync` independently and greedily claims the nearest free rep — no check for a higher-tier request that is (or is about to be) waiting.
+
+Observed live: a Gold and a Silver request arrive; the Silver is assigned first. Another Gold + Silver arrive; again the Silver is assigned. Both Silvers end up assigned and both Golds wait — the opposite of the intended tier priority.
+
+**Expected**
+When multiple `Pending` requests compete for reps, higher service tiers are matched first: Gold → Silver → Bronze (oldest-first within a tier). A Gold request should not wait behind a Silver that could have been served by a rep the Gold was eligible for.
+
+**Actual**
+Requests are matched in arrival / DB-insertion order with no tier arbitration; lower-tier requests can and do get assigned ahead of waiting higher-tier ones.
+
+**Proposed fix (via `/master`)**
+- Minimum, high-impact: order `GetPendingByDealerAsync` by tier descending (Gold → Silver → Bronze), then `CreatedAt` ascending, so `RunForPendingByDealerAsync` always serves the highest tier first.
+- Fuller: make submit-time matching tier-aware — when a request is submitted, run matching over the dealer's `Pending` set in tier order rather than only the newly-created request, so a free/eligible rep goes to the highest-tier waiter, not simply to whichever request triggered the run. Design the exact semantics to avoid churn/starvation and to preserve the [BUG-054] / [BUG-058] / [BUG-063] guards.
+
+**Acceptance criteria (bug resolved when):**
+- Given a Gold and a Silver `Pending` request eligible for the same rep, the Gold is offered first.
+- On a rep free-up with multiple `Pending` requests, the highest-tier (then oldest) request is served first.
+- Repeated arrivals (Gold + Silver, then Gold + Silver) never leave a Gold waiting while a later Silver is assigned.
+- No regression to distance-based rep selection *within* a tier, or to [BUG-054] / [BUG-058] / [BUG-063] semantics.
