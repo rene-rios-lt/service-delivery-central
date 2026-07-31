@@ -172,7 +172,7 @@ A dispatcher cannot recover a stuck/offline rep's vehicle through the UI, despit
 
 ## BUG-016 — Simulator crashes on startup: `/vehicles/available` response shape mismatch
 
-- **Status:** Open
+- **Status:** **Fixed** — simulator PR #21 (startup crash on the `/vehicles/available` response-shape mismatch resolved). Status reconciled from execution-plan.md 2026-07-31 (the field lagged the merge; the plan row and rollup already listed it resolved).
 - **Severity:** High (simulator cannot start — blocks any end-to-end run)
 - **Repo / Area:** Simulator — `BackendApiClient.GetAvailableVehicleIdsAsync` / `IBackendApiClient` / `FleetClaimCoordinator`
 - **Related stories:** `SIM-008` (fleet reconciliation / initial vehicle claim), `BE-004` (`GET /vehicles/available`)
@@ -212,7 +212,7 @@ Contract drift between repos: the simulator assumed `GET /vehicles/available` re
 
 ## BUG-017 — Simulator never posts positions: VehicleWorker keyed by registration, fleet-state uses GUIDs
 
-- **Status:** Open
+- **Status:** **Fixed** — simulator PR #22 (vehicle positions posted by backend vehicle GUID, not registration). Status reconciled from execution-plan.md 2026-07-31 (the field lagged the merge; the plan row and rollup already listed it resolved).
 - **Severity:** High (no vehicle position is ever driven/posted — the fleet never moves, reps never get a position, so matching cannot select them; blocks any end-to-end run and the whole visual demo)
 - **Repo / Area:** Simulator — `Workers/FleetPositionDriver`, `Models/IowaRoutes`, `Workers/VehicleWorker` (possible Backend touch: `GET /simulator/fleet-state` payload)
 - **Related stories:** `SIM-003`/`SIM-004` (route loops + position posting), `SIM-006`/`SIM-008` (fleet-state-driven position), `BE-008`/`BE-027` (position endpoint / fleet-state read)
@@ -514,7 +514,7 @@ protected override async Task OnParametersSetAsync()
 
 ## BUG-023 — Web host cannot reach the backend: CORS not configured in `Program.cs`
 
-- **Status:** **Open**
+- **Status:** **Fixed** — backend PR #45 (CORS configured so the Blazor web host can reach the backend). Status reconciled from execution-plan.md 2026-07-31 (the field lagged the merge; the plan row and rollup already listed it resolved).
 - **Severity:** High (the Blazor WASM web host at `:5023` cannot make any API or SignalR calls to the backend at `:5180` from a browser; login always fails with `net::ERR_FAILED`; all Playwright E2E tests fail as a result)
 - **Repo / Area:** Backend — `src/ServiceDelivery.Api/Program.cs` (composition root)
 - **Related stories:** `QUAL-003` (Playwright E2E suite), `FE-001` (login)
@@ -848,7 +848,7 @@ On the rendered offer screen the service tier badge does not appear at all. `Job
 
 ## BUG-037 — Frontend ignores the `JobOfferExpired` RepHub event; the offer screen only clears on its own local countdown
 
-- **Status:** **Open**
+- **Status:** **Fixed** — frontend PR #47 (the `JobOfferExpired` RepHub event now dismisses the offer screen immediately). Status reconciled from execution-plan.md 2026-07-31 (the field lagged the merge; the plan row and rollup already listed it resolved).
 - **Severity:** Medium (the offer screen self-clears when its local 60 s timer runs out, so the rep is never *permanently* stuck — but until then they sit on an offer the backend has already retired, and can accept it only to hit a 409. The push that should dismiss it immediately is dropped on the floor.)
 - **Repo / Area:** Frontend — `src/ServiceDelivery.Client.Core/Interfaces/IRepHubService.cs`, `src/ServiceDelivery.Client.UI/Features/ServiceRep/Services/SignalRRepHubService.cs`, `Core/ViewModels/JobOfferViewModel.cs`, `Features/ServiceRep/Pages/JobOffer.razor`
 - **Related stories:** `FE-008` (job-offer screen), `FE-009`/`FE-010` (accept/decline), `BE-018` (offer expiry / `ExpiredJobOfferSweeper`), `BE-025` (RepHub event catalogue), `BUG-030` (RepHub auth — same hub wiring)
@@ -915,7 +915,7 @@ The RepHub connection start is unguarded, and `WithAutomaticReconnect()` is reli
 
 ## BUG-039 — Active-job screen doesn't match the rep mockup (app-bar title, ETA card distance + placement, En Route chip style)
 
-- **Status:** **Open**
+- **Status:** **Fixed** — backend PR #49 + frontend PR #49 (active-job screen repointed to `rep/active-job-state`; `DistanceMiles` + `Tier` surfaced; app-bar/ETA/chip fidelity closed). Status reconciled from execution-plan.md 2026-07-31 (the field lagged the merge; the plan row and rollup already listed it resolved).
 - **Severity:** Low/Medium (the screen is functional — the map, route line, ETA, state chip, and the "I've Arrived"/"Mark Complete" actions all work — but its presentation diverges from the `rep-active-job` mockup on several points, the most user-visible being a missing distance on the ETA card and a generic app-bar title.)
 - **Repo / Area:** Frontend — `src/ServiceDelivery.Client.UI/Features/ServiceRep/Pages/ActiveJob.razor`, `ActiveJob.razor.css`, `Core/ViewModels/ActiveJobViewModel.cs`, `Core/Models/ActiveJobContext.cs` (distance), and the shared `PersonaShell` title/subtitle wiring
 - **Related stories:** `FE-011` (active-job navigation view), `FE-012` (mark-arrived / on-site), `FE-021` (PersonaShell chrome), `BUG-033`/`BUG-036` (same class — rep-screen mockup fidelity), `BUG-035` (precedent for surfacing a value through the active-job DTO)
@@ -1352,7 +1352,7 @@ Make claim selection collision-free and self-healing on the simulator side (the 
 
 ## BUG-053 — Simulator rep RepHub connections die silently and stay dead: deaf-but-`Available` reps let every job offer expire, starving requests and the E2E fleet non-deterministically
 
-- **Status:** Open
+- **Status:** **Fixed** — simulator PR #27 (RepHub lifecycle made observable and self-healing). Status reconciled from execution-plan.md 2026-07-31 (the field lagged the merge; the plan row and rollup already listed it resolved).
 - **Severity:** Medium–High (systemic / test-infrastructure — no crash, but it non-deterministically breaks the fleet's ability to answer job offers. Every offer routed to a deaf rep silently burns its full 60 s TTL; with `BUG-054`'s skip-list poisoning the affected request can become **permanently** unmatchable. This is the true root cause of the *remaining* `BUG-049` pending-starvation flake now that `BUG-052` is fixed: whether a given E2E run goes green is a dice roll on whether the nearest `Available` qualified rep happens to be deaf. In demo operation it is masked because healthy reps eventually complete jobs, re-trigger matching, and pick up the slack — minutes later.)
 - **Repo / Area:** **Simulator** (primary) — `Services/SignalRClient.cs` (per-rep `HubConnection`s: `Closed` event unobserved, so reconnect-exhaustion is invisible), `Services/DefaultHubConnectionFactory.cs` (`WithAutomaticReconnect([0s, 2s, 10s, 30s])` then **permanent silent death**; **no logger is passed to the `HubConnectionBuilder`**, so the client's own lifecycle logging goes to `NullLogger` — the sim log contains *zero* connection-lifecycle lines), `Workers/SimulatorStartupService.cs` (connects each rep's hub exactly once at startup; nothing ever reconciles connection state afterwards). **Backend** (aggravating, see `BUG-054`): a rep whose hub connection is gone but whose disconnect the server never observed stays `Available`, so matching keeps offering to reps that cannot hear.
 - **Related stories:** `BUG-049` (the Playwright redirect flake whose resumed live gate exposed this), `BUG-052` (the previous fleet-starvation root cause, fixed — its fan-out fix is confirmed working), `BUG-054` (the backend skip-list poisoning this compounds), `QUAL-012` (hub-connection logging routed through `ILoggerFactory` — done for the **frontend** hub clients; this is the simulator analogue), `BUG-019` (the prior sim-websocket App Nap false alarm — the "keep host awake" memory note documents this exact drop mode).
@@ -1380,7 +1380,7 @@ Simulator-side hardening, in preference order: (1) **observe and log the lifecyc
 
 ## BUG-054 — Expired job offers permanently poison a request's skip list: once every qualified rep has one expired offer, the request is unmatchable forever
 
-- **Status:** Open
+- **Status:** **Fixed** — backend PR #57 (expired job offers no longer poison a request's skip list). Status reconciled from execution-plan.md 2026-07-31 (the field lagged the merge; the plan row and rollup already listed it resolved).
 - **Severity:** Medium (product-logic defect with a systemic E2E footprint — a request that cycles through its qualified pool without an accept is **permanently** starved even when the whole fleet later sits `Available`. Live-observed twice in one run. For human reps this is a real product bug: ignoring one offer permanently disqualifies that rep from that request. Compounded 5× by `BUG-053`'s deaf reps, which convert transient delivery failures into skip-list entries.)
 - **Repo / Area:** **Backend** — `Infrastructure/Repositories/JobOfferRepository.cs` `GetSkippedRepIdsForRequestAsync` (`Status == Declined || Status == Expired`, no time bound, never cleared) consumed by `Application/Common/Services/MatchingService.cs` (`.Where(c => !skippedRepIds.Contains(c.RepId))` → `winner = null` → request stays `Pending` forever once the qualified pool is exhausted).
 - **Related stories:** `BUG-053` (deaf sim reps — the main producer of expired offers today), `BUG-049` (whose live gate exposed the whole chain), `BE-` matching stories / `docs/business-rules.md` (declined-rep cooldown semantics).
@@ -1453,7 +1453,7 @@ A full `/master` run took both frontend-only candidate fixes to the live Playwri
 
 ## BUG-056 — Playwright `DispatcherFleetMapTests` fleet-marker click flakes with "Element is not attached to the DOM": stale `IElementHandle` races the 3 s Maps-SDK marker re-render
 
-- **Status:** Open
+- **Status:** **Fixed** — frontend PR #80 (fleet-marker click uses an auto-retrying Playwright `Locator`; live-verified across 4 cycles). Status reconciled from execution-plan.md 2026-07-31 (the field lagged the merge; the plan row and rollup already listed it resolved).
 - **Severity:** Low (frontend test-infrastructure flake — intermittent; passed in cycle 2 of the same run. No product defect: the marker renders and the popover works when the click lands.)
 - **Repo / Area:** **Frontend** — `tests/ServiceDelivery.Client.E2E/DispatcherFleetMapTests.cs` `GivenAuthenticatedDispatcher_WhenFleetMarkerClicked_ThenPopoverShowsRepDetails`: `var marker = await Page.WaitForSelectorAsync("[data-testid^='fleet-marker-']"); await marker!.ClickAsync();` — a fixed `IElementHandle` clicked after the wait.
 - **Related stories:** `BUG-046` (Appium `ActiveJobTests` map `StaleElementReferenceException` — the same class of Google-Maps-SDK DOM-churn flake, WKWebView edition), `BUG-053` (whose resumed live gate surfaced this).
@@ -1644,7 +1644,7 @@ The latch-held branch now **relinquishes the concurrent offer via the existing d
 
 ## BUG-063 — Matcher offers a request to a rep that already holds a live Pending offer for a *different* request (double-offer at the source)
 
-- **Status:** **Open** — filed 2026-07-24 from the [BUG-055]/[QUAL-030] live investigation.
+- **Status:** **Fixed** — backend PR #62, merged 2026-07-25 (rep-grain `GetRepIdsWithLivePendingOfferAsync` soft-reservation excludes reps holding a live `Pending` offer from the matcher candidate pool; preserves BUG-054/058 semantics — 15 tests). Filed 2026-07-24 from the [BUG-055]/[QUAL-030] live investigation. Status reconciled from execution-plan.md 2026-07-31 (the field lagged the merge; the plan row and rollup already listed it resolved).
 - **Severity:** Medium (root cause of the contention that [BUG-062] and [BUG-061] each mitigate downstream; not human-reachable at scale, but it destabilises the finite-fleet E2E suite).
 - **Repo / Area:** **Backend** — `Application/Common/Services/MatchingService.cs` (`RunAsync` candidate selection) + `Infrastructure/Repositories/RepStateRepository.cs` (`GetAvailableByDealerAsync`).
 - **Related:** [BUG-062] (simulator mitigation: decline the surplus offer), [BUG-061] (release-on-409 mitigation, which mentioned "consider not offering the same request to a rep that already holds a live offer" but did **not** implement it), [BUG-057]/[BUG-058] (the accept-side and duplicate-offer guards), [QUAL-029]/[QUAL-030].
