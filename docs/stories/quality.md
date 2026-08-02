@@ -779,3 +779,26 @@ The BUG-055 investigation (2026-07-22/23) fixed six real defects, but a retrospe
 **Out of scope:** backend/product changes; the marker-click flake (BUG-056, separate).
 
 **Done when:** the redirect test is green across 2–3 fresh boots with the isolated fleet, the held BUG-055 branch is merged, BUG-055 is struck/closed, and QUAL-030 is struck in `execution-plan.md`. Ships via `/master` (frontend E2E code).
+
+---
+
+## QUAL-031 — Extend the QUAL-030 dedicated-fleet E2E isolation to the remaining requester-lifecycle / dispatcher-completion Playwright tests that still over-contend the shared pool
+
+- **Repo / Area:** Frontend — `tests/ServiceDelivery.Client.E2E/RequesterFindingTests.cs`, `RequesterTrackingTests.cs`, `RequesterCompleteTests.cs`, `DispatcherRequestQueueTests.cs`, `Helpers/BackendApiHelper.cs` (fleet arrange)
+
+**As a** maintainer of the Playwright E2E suite,
+**I want** the remaining requester-lifecycle and dispatcher-completion scenarios to run against reps they exclusively control,
+**so that** a full `test-playwright.sh` run is deterministically green instead of intermittently reddening on finite-fleet contention.
+
+**Motivation**
+QUAL-030 gave the redirect + requester-tracking-redirect scenarios a dedicated fleet, but the **FE-022 live gate (2026-08-01)** showed the *same* self-inflicted contention still **4-reddens an otherwise-clean full-suite run** in four sibling tests QUAL-030 did not cover: `DispatcherRequestQueueTests` (completed-event card disappears), `RequesterCompleteTests` (service-completed), `RequesterFindingTests` (pending→tracking transition), and `RequesterTrackingTests` (rep-assigned map overlay). Their arranges starve because all 8 vehicles are simultaneously `EnRoute` to *other* tests' requests, so no rep is available/`EnRoute` at the tracked coordinates within the arrange window (`WaitForRepServingRequestAtAsync` starvation / `/requester/tracking` navigation timeouts). This is the documented **BUG-049/055 fleet-contention family** ("not a product defect" — the flows are correct live): the finite 7-HydraulicTool-rep pool is over-shared across concurrently-running requester-lifecycle tests. It is **unrelated to FE-022** (surfaced during, not caused by, its live gate — FE-022's only E2E change was additively adding a helper method) and erodes the "green suite = healthy" signal exactly as BUG-048/049 did.
+
+**Acceptance Criteria:**
+- The four contention-prone scenarios (and any sibling requester-lifecycle / dispatcher-completion tests drawing from the same pool) reserve/claim a dedicated set of reps (or a dedicated dealer) that no concurrently-running test contends, applying the QUAL-030 isolation pattern.
+- A full `test-playwright.sh` run is green across **2–3 consecutive fresh boots** with no contention-family reds (`WaitForRepServingRequestAtAsync` starvation or `/requester/tracking` navigation timeouts).
+- No reduction in what the tests assert (real assignment, real completion, real tracking transition/overlay).
+- Complements QUAL-029 (human-realistic simulator) + QUAL-030 (redirect/tracking isolation); together they close the contention flake family across the whole requester lifecycle.
+
+**Out of scope:** backend/product changes (the flows are correct live); FE-022's AC-5 idempotent-force-release-error and Desktop-Mac2 parity items (those are tracked on FE-006, not here).
+
+**Done when:** a full `test-playwright.sh` run is green across 2–3 fresh boots with the extended isolation, no contention-family reds remain, and QUAL-031 is struck in `execution-plan.md`. Ships via `/master` (frontend E2E code).

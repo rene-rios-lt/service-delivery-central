@@ -125,6 +125,8 @@ _No dedicated screen — redirects to the login screen (see FE-001)._
 - Banner carries a **Force-release vehicle** action that opens the force-release flow (see FE-022)
 - Banner is responsive across Desktop and Web (spans the map column)
 
+**Note — live Desktop (Mac2) E2E, FE-022 parity follow-up.** The banner's **Force-release vehicle** action is the **AX-reachable** dispatcher entry that FE-022 lacked: FE-022's only in-scope entry — the FE-003 `google.maps` marker popover — is AX-invisible under the Appium `mac2` driver, so FE-022's Desktop force-release E2E mirror was authored but quarantined `[Explicit]` (ratified at its Checkpoint #2, 2026-08-01). **FE-006 must add the paired live Appium Mac2 Desktop force-release E2E through this banner entry** (mirroring FE-022's Web Playwright AC-3/AC-7 scenarios and run green live), discharging the Dispatcher Web/Desktop E2E parity obligation for the force-release dialog. See the FE-022 AI review in `.stories/FE-022/04-ai-review.md`.
+
 **Mockup —** _the alert banner above the Desktop dashboard map_
 
 <img src="../ui-mockups/images/dispatcher-dashboard__desktop-1440x900.png" alt="Dispatcher offline alert banner — desktop" width="600">
