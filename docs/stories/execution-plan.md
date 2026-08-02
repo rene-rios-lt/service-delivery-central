@@ -242,7 +242,7 @@
 | ~~[FE-004](frontend.md)~~ | ~~Frontend~~ | ~~Active request queue with tier badges~~ |
 | ~~[FE-005](frontend.md)~~ | ~~Frontend~~ | ~~Redirect controls with confirmation dialog~~ |
 | [FE-006](frontend.md) | Frontend | Rep offline alert banner |
-| [FE-022](frontend.md) | Frontend | Force-release a vehicle — button → confirm dialog → `POST /vehicles/{id}/force-release`; reachable from the FE-006 offline-alert banner and the FE-003 rep-marker popover (Dispatcher; Desktop + Web per ADR-0008) |
+| ~~[FE-022](frontend.md)~~ | ~~Frontend~~ | ~~Force-release a vehicle — button → confirm dialog → `POST /vehicles/{id}/force-release`; reachable from the FE-006 offline-alert banner and the FE-003 rep-marker popover (Dispatcher; Desktop + Web per ADR-0008)~~ |
 
 **Depends on:** Phase 8, Phases 2, 5, 6 (vehicle management + state transitions + dispatcher endpoints)
 **Exit criteria:** A Dispatcher user can see all 8 simulator vehicles moving on the map in real time, redirect a rep, and receive offline alerts.
