@@ -802,3 +802,31 @@ QUAL-030 gave the redirect + requester-tracking-redirect scenarios a dedicated f
 **Out of scope:** backend/product changes (the flows are correct live); FE-022's AC-5 idempotent-force-release-error and Desktop-Mac2 parity items (those are tracked on FE-006, not here).
 
 **Done when:** a full `test-playwright.sh` run is green across 2–3 fresh boots with the extended isolation, no contention-family reds remain, and QUAL-031 is struck in `execution-plan.md`. Ships via `/master` (frontend E2E code).
+
+> **Update (2026-08-03) — QUAL-031 needs [QUAL-032] first.** Two `/master` implementor cycles + live boots proved the frontend-only isolation fixes the cleanup bugs ("Mode A") but CANNOT make the requester-lifecycle / dispatcher-completion tests deterministic ("Mode B"): the simulator drives every truck every ~3 s and the matcher has no radius cap, so a test-posted position doesn't hold and a reserved rep doesn't reliably win its own match. QUAL-031's real greening depends on the simulator affordance **[QUAL-032]**; its branch is WIP-preserved (`feat/QUAL-031-extend-fleet-isolation`) pending that.
+
+---
+
+## QUAL-032 — Deterministic E2E test-fleet: exempt reserved vehicles from the simulator's position-driving so tests can control them
+
+- **Repo / Area:** Simulator — `Configuration/SimulatorOptions.cs`, `Workers/VehicleWorker.cs` (the position-drive step), `Program.cs` (worker wiring); consumed by the frontend E2E harness via a `start.sh` / `test-playwright.sh` env override (like the existing `Simulator__AutoDeclineRatePercent=0`).
+
+**As a** maintainer of the E2E suite,
+**I want** the simulator to leave a configured set of reserved vehicles un-driven (exempt from both the idle-loop and job-navigate position steps),
+**so that** E2E tests can deterministically position and control those vehicles and a reserved rep reliably wins its own test's match — closing the finite-fleet contention that frontend-only isolation cannot.
+
+**Motivation**
+The QUAL-030/031 frontend-only reserved-rep-subset isolation reduces cross-test contention but **cannot** make the requester-lifecycle / dispatcher-completion E2E tests deterministic — proven live across two QUAL-031 implementor cycles (2026-08-02/03). The simulator's position engine drives **every** truck every ~3 s (idle-loop drift when `Available`, straight-line navigate when `EnRoute`), and the backend matcher has **no radius cap** and runs only on submit / free-up — so a test-posted position does not hold and a reserved rep does not reliably win its own request. The existing human-takeover yields a rep's **decisions** (sticky) but per ADR-0009 the position engine **still drives its truck** — so even take-over leaves position non-deterministic. This is the durable root cause behind BUG-055/059, the QUAL-030 redirect-test quarantine, FE-006's blocked mid-job arrange, and QUAL-031's "Mode B" reds. It is a **test-determinism** gap, not a product defect (the flows are correct live).
+
+**Acceptance Criteria:**
+- `SimulatorOptions` gains a configurable reserved-vehicle set (e.g. `ReservedVehicleIds`), **defaulting to empty** — a normal/production run drives all 8 trucks exactly as today (zero behaviour change when unset).
+- For a reserved vehicle the position engine does **not** post positions and does **not** drive it (neither idle-loop nor job-navigate); its position is left entirely to whoever posts it (the E2E test, via the Simulator-role account). Non-reserved vehicles are unaffected.
+- Planning decides whether a reserved rep's **decision**-operation is also exempted or whether the existing take-over path already covers decisions — so a test gets full deterministic control of a reserved rep's lifecycle.
+- Unit tests: a reserved vehicle's worker skips its drive step; an unset/empty config drives all 8 as today — **no regression** to QUAL-029 human-realism or the reconciliation / yield-on-takeover semantics.
+- The frontend E2E harness (`start.sh` / `test-playwright.sh`) sets the reserved set via an env override.
+
+**Design direction (derive fully at planning via `/solid-principles`):** a config-driven exemption predicate in the `VehicleWorker` drive step (Open/Closed — a new gate, not a rewrite), reading `SimulatorOptions.ReservedVehicleIds`. **Rejected alternative:** a backend matching-radius cap — that is a **product-behaviour** change to the matcher (interacts with [BUG-064] tier ordering and the whole matching algorithm) for a test-only need; the simulator exemption is test-scoped and product-neutral.
+
+**Out of scope:** the frontend E2E rewiring (that is QUAL-031 resuming + FE-006 resuming, which *consume* this affordance); any backend matching change.
+
+**Done when:** the simulator exempts reserved vehicles from position-driving (config-gated, default-off, unit-tested with no QUAL-029 / take-over regression); and — the real proof — **QUAL-031 resumes and greens its 4 target tests across 2–3 fresh boots WITHOUT quarantine** using this affordance. Ships via `/master` (simulator).
